@@ -315,3 +315,23 @@ func TestMascotAskKeyboard(t *testing.T) {
 	})
 	d.quitApp()
 }
+
+// A session that works before it was given anything — claude starting, a
+// resume loading its conversation — has finished nothing: no party and no
+// blinking name. Its first answer to the user is news as before.
+func TestStartWorkIsNoNews(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	e.vars = map[string]string{"FAKE_CLAUDE_START_WORK": "1"}
+	d := start(t, e, 120, 32)
+	d.session("ivy", "")
+	d.expect("FAKE CLAUDE READY")
+	d.holds(3*time.Second, "starting up was taken for a finished answer", func() bool {
+		return !strings.Contains(d.screen(), "ivy waits") && !strings.Contains(d.mascot(), "✦")
+	})
+	d.key("enter")
+	d.expect("(ctrl+q) back to lazychat")
+	d.raw("work\r")
+	d.leave()
+	d.expect("ivy waits")
+	d.quitApp()
+}

@@ -89,7 +89,11 @@ func (c *Chat) watchSessions() {
 			} else if time.Since(w.stopped[r.Key]) >= stopGrace {
 				delete(w.working, r.Key)
 				delete(w.stopped, r.Key)
-				w.waiting[r.Key] = time.Now()
+				// Work before the user gave any input is claude starting or a
+				// resume loading its conversation: nothing finished to call for.
+				if s.Given() {
+					w.waiting[r.Key] = time.Now()
+				}
 			}
 		}
 		// Its pane holding the keys is the user looking at it.

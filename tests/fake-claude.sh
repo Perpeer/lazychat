@@ -45,6 +45,13 @@ if [ -n "$FAKE_CLAUDE_LINES" ]; then
   i=1
   while [ "$i" -le "$FAKE_CLAUDE_LINES" ]; do printf 'line %04d\n' "$i"; i=$((i + 1)); done
 fi
+# FAKE_CLAUDE_START_WORK=1 spins the title for a moment before it is ready,
+# as claude does while a resume loads its conversation.
+if [ -n "$FAKE_CLAUDE_START_WORK" ]; then
+  printf '\033]0;\342\227\220 fake\007'
+  sleep 1.5
+  printf '\033]0;\342\234\263 fake\007'
+fi
 printf 'FAKE CLAUDE READY in %s args:%s\n' "$(pwd)" "$*"
 # FAKE_CLAUDE_PASTE=1 asks for bracketed paste, as claude does, and reports
 # what each read held: a paste (between ESC[200~ and ESC[201~) as pasted,

@@ -555,8 +555,9 @@ tabs never move; on a short terminal (80×24) it shrinks to one.
   in the last two seconds). One badge `●` on its top edge per session at
   work, the first by the right corner, three at most: as sessions finish
   their badges go one by one, and it types until none works.
-- **a party** when a session is done and you have not looked at it yet: a
-  star runs round it, its frame turns from green to the accent and back,
+- **a party** when a session is done and you have not looked at it yet —
+  work before you gave it any input, claude starting or a resume loading its
+  conversation, finishes nothing — a star runs round it, its frame turns from green to the accent and back,
   and the session's name blinks in Chat's list (`✓ ivy`). Looking at it —
   one click on its row, `Enter`, a click on its pane or the mascot's click
   — ends its call: the ✓ stays, steady, until its next prompt. When one

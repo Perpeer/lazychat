@@ -66,6 +66,9 @@ type Session struct {
 	// can be told from typing; lastOutput is when it last wrote, in unix nanos.
 	pasteMode  atomic.Bool
 	lastOutput atomic.Int64
+	// given is the user having sent the program anything — a key, a paste —
+	// since it started; focus reports lazychat sends on its own do not count.
+	given atomic.Bool
 	// focusMode is the program asking to be told when it gains and loses
 	// the keys (?1004), as a terminal tells it of its window's focus.
 	focusMode atomic.Bool
@@ -418,13 +421,26 @@ func (s *Session) Focus(in bool) {
 		return
 	}
 	if in {
-		_ = s.Write([]byte("\x1b[I"))
+		_ = s.send([]byte("\x1b[I"))
 	} else {
-		_ = s.Write([]byte("\x1b[O"))
+		_ = s.send([]byte("\x1b[O"))
 	}
 }
 
+// Write is input from the user.
 func (s *Session) Write(b []byte) error {
+	if err := s.send(b); err != nil {
+		return err
+	}
+	s.given.Store(true)
+	return nil
+}
+
+// Given says the user has sent the program input since it started: work
+// before that is the program starting or a resume loading, not an answer.
+func (s *Session) Given() bool { return s.given.Load() }
+
+func (s *Session) send(b []byte) error {
 	if !s.Alive() {
 		return fmt.Errorf("%s has ended", s.Name)
 	}
