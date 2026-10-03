@@ -1,7 +1,7 @@
 // Lazychat.app puts Lazy, lazychat's mascot, in the macOS menu bar. Every running
 // lazychat writes ~/.lazychat/state/<pid>.json with its sessions' states;
-// this app reads that folder, shows the mascot's news as its own face,
-// lists the sessions, and brings a lazychat's terminal window forward on a
+// this app reads that folder and Claude desktop's Code sessions
+// (desktop.swift), shows the mascot's news as its own face, lists the sessions, and brings a lazychat's terminal window forward on a
 // click: a click on the icon opens the lazychat with news, a right-click
 // (or ⌥-click) shows the menu. With no lazychat running, either click offers
 // the installed terminals to open one in. Settings' "menu bar" row
@@ -35,6 +35,7 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return URL(fileURLWithPath: dir)
     }()
     var snapshots: [Snapshot] = []
+    let desktop = Desktop()
     var written: [Int32: Date] = [:] // when each lazychat last wrote its snapshot
     var mood: Mood = .rest
     var busy = 0 // sessions at work: one badge each, up to maxBadges
@@ -91,7 +92,14 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
             written[s.pid] = (try? f.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
         }
         snapshots = next.sorted { $0.workspace < $1.workspace }
+        desktop.read()
+        if let d = desktop.snapshot() {
+            snapshots.append(d)
+            written[desktopPid] = desktop.written
+        }
     }
+
+    var lazychats: [Snapshot] { snapshots.filter { $0.pid != desktopPid } }
 
     // animate runs the 150 ms beat only while there is news, as the app's
     // mascot does, and draws the frame.
@@ -134,7 +142,7 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        if snapshots.isEmpty {
+        if lazychats.isEmpty {
             menu.addItem(withTitle: "no lazychat open", action: nil, keyEquivalent: "")
             menu.addItem(withTitle: "Open lazychat in", action: nil, keyEquivalent: "")
             for t in installedTerminals() {
@@ -161,13 +169,14 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let entry = menu.addItem(withTitle: "    \(mark) \(x.name) · \(x.project)", action: #selector(open(_:)), keyEquivalent: "")
                 entry.target = self
                 entry.tag = Int(s.pid)
+                entry.representedObject = x.key
             }
             menu.addItem(.separator())
         }
         menu.addItem(withTitle: "Quit Lazychat Menu Bar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
-    @objc func open(_ sender: NSMenuItem) { focus(pid: Int32(sender.tag)) }
+    @objc func open(_ sender: NSMenuItem) { focus(pid: Int32(sender.tag), key: sender.representedObject as? String) }
 
     // openIn starts lazychat in the terminal picked from the menu; a failure
     // is shown, since nothing else would say why no window came.
@@ -186,7 +195,11 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // focus brings forward the terminal tab lazychat pid runs in, found by
     // its tty; macOS asks once to let this app control the terminal.
-    func focus(pid: Int32) {
+    func focus(pid: Int32, key: String? = nil) {
+        if pid == desktopPid {
+            openDesktop(key)
+            return
+        }
         guard let s = snapshots.first(where: { $0.pid == pid }), let tty = ttyOf(pid) else { return }
         let script: String
         if s.terminal == "iTerm.app" {
@@ -225,6 +238,15 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         var err: NSDictionary?
         NSAppleScript(source: script)?.executeAndReturnError(&err)
+    }
+
+    // openDesktop opens a Claude desktop session: the one picked, else the
+    // one a click on the icon would mean, by the same order as lazychats.
+    func openDesktop(_ key: String?) {
+        guard let d = snapshots.first(where: { $0.pid == desktopPid }) else { return }
+        let pick = d.sessions.first { $0.key == key } ?? pickDesktop(d)
+        guard let x = pick else { return }
+        desktop.open(x.key, asks: x.state == "asks")
     }
 
     // ttyOf is the terminal device a process runs on, as ps names it.
@@ -273,30 +295,65 @@ func target(_ snapshots: [Snapshot], _ written: [Int32: Date]) -> Int32? {
     return snapshots.max { (written[$0.pid] ?? .distantPast) < (written[$1.pid] ?? .distantPast) }?.pid
 }
 
+// pickDesktop is the desktop session a click on the icon opens: one that
+// asks, else one done, else one at work, else the first.
+func pickDesktop(_ d: Snapshot) -> SessionState? {
+    for state in ["asks", "done", "working"] {
+        if let x = d.sessions.first(where: { $0.state == state }) { return x }
+    }
+    return d.sessions.first
+}
+
+// status is what --status prints for one read.
+func status(_ b: Bar) -> String {
+    var out: [String] = []
+    let (m, busy) = weigh(b.snapshots)
+    out.append("mood \(m.rawValue), \(busy) at work (\(min(busy, maxBadges)) badges) from \(b.home.appendingPathComponent("state").path)")
+    if let pid = target(b.snapshots, b.written) {
+        out.append(pid == desktopPid ? "a click opens a Claude app session" : "a click opens pid \(pid)")
+    }
+    if b.lazychats.isEmpty {
+        out.append("no lazychat writes its state here: one started before the menu bar was installed does not; quit it and start it again")
+    }
+    for s in b.snapshots {
+        out.append(s.pid == desktopPid ? "Claude app · \(b.desktop.config.appendingPathComponent("sessions").path)" : "pid \(s.pid) · \(s.workspace) · \(s.terminal)")
+        for x in s.sessions {
+            if s.pid == desktopPid {
+                let link = b.desktop.link(x.key, asks: x.state == "asks")?.absoluteString ?? "brings Claude to the front"
+                out.append("  \(x.state) \(x.name) · \(x.project) · a click: \(link)")
+            } else {
+                out.append("  \(x.state) \(x.name) · \(x.project)")
+            }
+        }
+    }
+    return out.joined(separator: "\n")
+}
+
 // --icon <dir> and --frames <dir> render the drawing instead of running:
 // install.sh makes the app icon from it, and the frames are for looking at.
 // --status says what the menu bar would show now and which lazychats it
-// sees, for when the mascot does not move as it should. --terminals lists the
+// sees, for when the mascot does not move as it should; --status <seconds>
+// watches it change. --terminals lists the
 // terminals a click offers while no lazychat runs; --open <name> opens
 // lazychat in one, as picking it does.
 let args = CommandLine.arguments
 if args.count == 3, args[1] == "--icon" || args[1] == "--frames" {
     exit(render(args[1], into: args[2]))
 }
-if args.count == 2, args[1] == "--status" {
+if (args.count == 2 || args.count == 3), args[1] == "--status" {
+    // With a number of seconds it reads every second and prints each new
+    // picture, so a session's way from work to done can be watched.
+    let seconds = args.count == 3 ? Int(args[2]) ?? 0 : 0
+    // Line by line, so a watch piped into a file or a pager shows each change.
+    setvbuf(stdout, nil, _IOLBF, 0)
     let b = Bar()
-    b.load()
-    let (m, busy) = weigh(b.snapshots)
-    print("mood \(m.rawValue), \(busy) at work (\(min(busy, maxBadges)) badges) from \(b.home.appendingPathComponent("state").path)")
-    if let pid = target(b.snapshots, b.written) {
-        print("a click opens pid \(pid)")
-    }
-    if b.snapshots.isEmpty {
-        print("no lazychat writes its state here: one started before the menu bar was installed does not; quit it and start it again")
-    }
-    for s in b.snapshots {
-        print("pid \(s.pid) · \(s.workspace) · \(s.terminal)")
-        for x in s.sessions { print("  \(x.state) \(x.name) · \(x.project)") }
+    var shown = ""
+    for i in 0...seconds {
+        if i > 0 { Thread.sleep(forTimeInterval: 1) }
+        b.load()
+        let text = status(b)
+        if text != shown { print(text) }
+        shown = text
     }
     exit(0)
 }

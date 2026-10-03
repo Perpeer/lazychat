@@ -641,6 +641,22 @@ a terminal whose PATH lacks `~/.local/bin` still finds it. `Lazychat
 --terminals` lists what the menu would offer, and `Lazychat --open
 <name>` opens lazychat in one as a click does.
 
+It follows Claude desktop's Code tab too, with or without a lazychat open:
+the Claude Code inside Claude.app keeps a file per session in
+`~/.claude/sessions` (`$CLAUDE_CONFIG_DIR/sessions` when that is set), and
+the menu bar reads the ones Claude desktop started — it writes nothing
+there and changes no Claude setting. They move the mascot by the same rules:
+typing while one works, the `?` while one waits for a permission or an
+answer, the party when one finished while Claude was not in front, until
+Claude comes to the front. The menu lists them under "Claude app"; a click
+on one, or on the icon when it is the one with news, opens it in Claude
+desktop — the session itself when Claude's own list names it, else
+"Sessions Waiting for You" while it asks, else Claude comes forward.
+Sessions run with `claude` in a terminal or in VS Code are not followed;
+in lazychat they are. Claude desktop's chat is not followed either: it
+leaves nothing to read, and reading its window would need the Accessibility
+permission.
+
 The mascot is drawn once, in code (`macos/Lazy/mascot.swift`): the
 menu bar draws its frames live, and `install.sh` renders the app's icon
 from the same drawing (`Lazychat --icon`, then `iconutil`), so Finder,
@@ -650,8 +666,9 @@ System Settings and macOS's dialogs show the same face. `Lazychat
 A mascot that does not move is a lazychat that writes nothing: one started
 before the menu bar was installed keeps running its old build, so quit it
 and start it again. `/Applications/Lazychat.app/Contents/MacOS/Lazychat
---status` says what the menu bar would show now and every lazychat it sees,
-with its sessions' states.
+--status` says what the menu bar would show now and every lazychat and
+Claude desktop session it sees, with their states and what a click opens;
+`--status <seconds>` keeps reading and prints each change.
 
 Settings' `menu bar` row turns it off and on: off, the helper reads
 `settings.json` within a second and takes its icon away, and lazychat does
@@ -732,7 +749,7 @@ internal/ui/vm            shared plain-Go state: the list cursor
 internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
 internal/core             agent, api, files, git, history, keylayout, presence, settings, state, workspace — no terminal packages; api runs no subprocess
-macos/Lazy                Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal
+macos/Lazy                Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions
 assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
 ```
 
