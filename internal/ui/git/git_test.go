@@ -1,0 +1,138 @@
+package git
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/charmbracelet/x/ansi"
+
+	"lazychat/internal/core/api"
+	coregit "lazychat/internal/core/git"
+	"lazychat/internal/core/state"
+	"lazychat/internal/ui/kit"
+	"lazychat/internal/ui/text"
+)
+
+// The footers name everything each column does, and nothing works that
+// they do not name but moving the cursor.
+func TestKeymap(t *testing.T) {
+	for name, c := range map[string]struct {
+		keys []binding
+		want string
+	}{
+		"branch":  {branchKeys, "c commit · p pull · shift+p push · f fetch · b switch · r refresh · wheel scroll · ? help"},
+		"project": {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+x remove"},
+		"changes": {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
+		"commits": {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
+		"diff":    {diffKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
+		"commit":  {commitKeys, "ctrl+s commit · ctrl+n suggest · Tab next · esc projects"},
+	} {
+		var parts []string
+		for _, h := range kit.FooterHints(c.keys) {
+			parts = append(parts, h.Key+" "+h.Does)
+		}
+		if got := strings.Join(parts, " · "); got != c.want {
+			t.Errorf("%s footer\n got %q\nwant %q", name, got, c.want)
+		}
+		if hidden := kit.Unlisted(c.keys); len(hidden) > 0 {
+			t.Errorf("%s: keys that work unnamed: %q", name, hidden)
+		}
+	}
+	help := helpText()
+	if hidden := kit.Unlisted(append(append([]binding(nil), branchKeys...), projectKeys...)); len(hidden) > 0 {
+		t.Errorf("branch and project rows: keys that work unnamed: %q", hidden)
+	}
+	for _, b := range append(append(append(branchKeys, projectKeys...), changeKeys...), moveKeys...) {
+		if d := b.Does(); d != "" && !strings.Contains(help, d) {
+			t.Errorf("help lacks %q", d)
+		}
+	}
+}
+
+// A diff row carries both line numbers and its mark, is filled to the
+// panel's width, and is cut there; tabs are spaces.
+func TestDrawLine(t *testing.T) {
+	files := coregit.Parse("diff --git a/x b/x\n@@ -9,2 +9,2 @@ func f()\n-\tb := 2\n+\tb := 3\n " + strings.Repeat("y", 200) + "\n")
+	lines := flatten(files)
+	got := drawDiff(lines, 0, 60, 10)
+	if len(got) != 4 {
+		t.Fatalf("%d rows", len(got))
+	}
+	plain := func(s string) string { return ansi.Strip(s) }
+	if r := plain(got[1]); !strings.HasPrefix(r, "  9     - ") || !strings.Contains(r, "    b := 2") {
+		t.Errorf("removed row %q", r)
+	}
+	if r := plain(got[2]); !strings.HasPrefix(r, "      9 + ") {
+		t.Errorf("added row %q", r)
+	}
+	for i, r := range got {
+		if w := text.Width(r); w > 60 {
+			t.Errorf("row %d is %d wide", i, w)
+		}
+	}
+	if w := text.Width(got[1]); w != 60 {
+		t.Errorf("a removed row fills %d of 60 columns", w)
+	}
+	if !strings.Contains(plain(got[0]), "⋯ func f()") {
+		t.Errorf("hunk row %q", plain(got[0]))
+	}
+}
+
+// A huge diff draws only the rows on screen.
+func TestDrawWindow(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("diff --git a/big b/big\n@@ -0,0 +1,20000 @@\n")
+	for range 20000 {
+		b.WriteString("+line\n")
+	}
+	lines := flatten(coregit.Parse(b.String()))
+	if len(lines) != 20001 {
+		t.Fatalf("%d lines", len(lines))
+	}
+	if got := drawDiff(lines, 19990, 80, 30); len(got) != 11 || !strings.Contains(ansi.Strip(got[10]), "20000") {
+		t.Errorf("the window from 19990: %d rows, last %q", len(got), ansi.Strip(got[len(got)-1]))
+	}
+}
+
+// A patch of several files heads each file with its path.
+func TestFileHeadings(t *testing.T) {
+	lines := flatten(coregit.Parse("diff --git a/a b/a\n@@ -1 +1 @@\n-x\n+y\ndiff --git a/b b/b\n@@ -1 +1 @@\n-p\n+q\n"))
+	if lines[0].file != "a" || lines[4].file != "b" {
+		t.Errorf("headings: %+v", lines)
+	}
+}
+
+// A branch too long for its row wraps to two rows under the connector, both
+// bold, and the counts come after.
+func TestBranchWraps(t *testing.T) {
+	p := &project{}
+	p.st.Branch = "core-data-redesign/feature/TASK-7130"
+	rows := branchEntry(p, 30, true)
+	if len(rows) != 3 {
+		t.Fatalf("%d rows: %+v", len(rows), rows)
+	}
+	if rows[0].Plain != "● core-data-redesign/" || strings.TrimSpace(rows[1].Plain) != "feature/TASK-7130" {
+		t.Errorf("branch rows %q / %q", rows[0].Plain, rows[1].Plain)
+	}
+	if !strings.Contains(rows[2].Plain, "clean") {
+		t.Errorf("the counts row %q", rows[2].Plain)
+	}
+}
+
+// An answer another Git started — the tab of a workspace just left — is
+// dropped, so a project of the same name here never takes it; this Git's
+// own is read.
+func TestForeignAnswers(t *testing.T) {
+	core := &api.Core{Store: &state.Store{State: state.State{Projects: []state.Project{{Name: "demo", Path: t.TempDir()}}}}}
+	g := &Git{core: core, status: map[string]*project{}, boxes: map[string]*kit.CommitBox{}}
+	old := &Git{}
+	st := coregit.Status{Branch: "elsewhere"}
+	g.Update(owned{by: old, msg: statusMsg{name: "demo", st: st}})
+	if g.status["demo"] != nil {
+		t.Fatalf("a foreign status was taken: %+v", g.status["demo"])
+	}
+	g.Update(owned{by: g, msg: statusMsg{name: "demo", st: st}})
+	if p := g.status["demo"]; p == nil || p.st.Branch != "elsewhere" {
+		t.Fatalf("its own status was not taken: %+v", p)
+	}
+}

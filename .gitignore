@@ -1,0 +1,15 @@
+# IDE and OS state
+.idea/
+.vscode/
+.DS_Store
+
+# Local secrets, and Claude Code's per-machine settings, plans and notes
+.env
+.env.*
+.claude/
+
+# Build and test output
+/lazychat
+*.test
+*.out
+coverage.*
