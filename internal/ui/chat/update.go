@@ -41,7 +41,7 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 	case draftSentMsg:
 		c.draftSent(msg)
 	case reportMsg:
-		c.reported(msg)
+		return c.reported(msg)
 	case kit.CmdEnter:
 		if c.drafting {
 			return c.sendDraft()
@@ -76,11 +76,11 @@ func (c *Chat) Key(msg tea.KeyMsg) tea.Cmd {
 	if c.drafting {
 		return c.draftKey(msg)
 	}
-	if c.rep.shown && c.repFocus {
-		return c.reportKey(msg)
+	if !(c.rep.shown && c.repFocus) {
+		c.list.scroll.Follow()
 	}
-	c.list.scroll.Follow()
-	return kit.Dispatch(c.bindings(), msg.String(), c)
+	// A move in the tree while the report shows reads the new session.
+	return tea.Batch(kit.Dispatch(c.bindings(), msg.String(), c), c.reportFollow())
 }
 
 // selectShown moves the cursor to the shown session, so leaving the terminal
@@ -215,16 +215,17 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 	hit := hits.At(msg, len(c.tree.Sessions()), len(c.core.Store.Projects))
 	if c.rep.shown {
 		if d := kit.Wheel(msg); d != 0 && (hit.Kind == kit.HitPane || hit.Kind == kit.HitPanel && hit.N == 2) {
-			c.moveReport(d / kit.WheelRows)
-			return nil
-		}
-		if kit.LeftClick(msg) && c.reportMouse(msg) {
-			c.repFocus = true
+			c.rep.scroll += d / kit.WheelRows
 			return nil
 		}
 		if kit.LeftClick(msg) && hit.Kind == kit.HitPanel && hit.N == 2 {
 			c.repFocus = true
 			return nil
+		}
+		// A click on a session in the tree goes to that session's chat.
+		if kit.LeftClick(msg) && hit.Kind == kit.HitRow {
+			c.showChat()
+			c.repFocus = false
 		}
 	}
 	if d := kit.Wheel(msg); d != 0 {

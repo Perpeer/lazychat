@@ -6,9 +6,6 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	zone "github.com/lrstanley/bubblezone"
-
 	"lazychat/internal/core/usage"
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/text"
@@ -23,14 +20,22 @@ func (c *Chat) chatTabs(chatTitle string) string {
 	return kit.TabTitle("ctab", []string{kit.PanelTitle(2, chatTitle), kit.PanelTitle(3, "report")}, active)
 }
 
-func zoneHit(id string, msg tea.MouseMsg) bool { return zone.Get(id).InBounds(msg) }
-
 // tokenLabels name the four kinds as the charts stack them, cheapest first.
 var tokenLabels = []string{"cache read", "input", "cache write", "output"}
 
 // segs is a usage's kinds as chart segments, in tokenLabels' order.
 func segs(t usage.Tokens) []kit.Seg {
 	return []kit.Seg{{Kind: 0, Value: t.CacheRead}, {Kind: 1, Value: t.Input}, {Kind: 2, Value: t.CacheWrite}, {Kind: 3, Value: t.Output}}
+}
+
+// kinds is a usage in one line, each kind with its glyph and colour.
+func kinds(t usage.Tokens) string {
+	values := []int64{t.CacheRead, t.Input, t.CacheWrite, t.Output}
+	var parts []string
+	for i, v := range values {
+		parts = append(parts, kit.StyleSeries[i].Render(kit.SeriesGlyphs[i])+" "+num(v))
+	}
+	return strings.Join(parts, "  ")
 }
 
 // num is a count the way the report writes it: 812, 12.4k, 1.3M.
@@ -51,33 +56,25 @@ func num(n int64) string {
 // reportBox is the report on the right, w by h.
 func (c *Chat) reportBox(chatTitle string, w, h int) string {
 	inner, rows := w-2, h-2
-	var lines []string
 	r := &c.rep
+	var lines []string
 	switch {
-	case r.view == viewDetail:
-		lines = c.detailView(inner)
-	case r.view == viewTranscript:
+	case r.transcript:
 		lines = c.transcriptView(inner)
-	default:
-		active := int(r.view)
-		lines = append(lines, " "+kit.TabTitle("rview", reportViews, active), "")
-		switch {
-		case !r.read:
-			lines = append(lines, kit.StyleDim.Render(" reading Claude Code's transcripts…"))
-		case r.err != nil && len(r.sessions) == 0:
-			lines = append(lines, kit.StyleDim.Render(" "+r.err.Error()))
-		case r.view == viewLive:
-			lines = append(lines, c.liveView(inner)...)
-		case r.view == viewSessions:
-			lines = append(lines, c.sessionsView(inner, rows-2)...)
-		case r.view == viewOverview:
-			lines = append(lines, c.overviewView(inner)...)
+	case r.shownFor.id == "?":
+		lines = []string{"", kit.StyleDim.Render(" Claude Code has not said this session's id yet: its report shows once it has.")}
+	case !r.read:
+		lines = []string{"", kit.StyleDim.Render(" reading the session's transcript…")}
+	case r.s == nil:
+		msg := " no Claude transcript for this project yet"
+		if r.err != nil {
+			msg = " " + r.err.Error()
 		}
+		lines = []string{"", kit.StyleDim.Render(msg)}
+	default:
+		lines = c.pageView(r.s, inner)
 	}
-	if r.view != viewSessions {
-		lines = scrolled(lines, &r.scroll, rows)
-	}
-	return kit.Box(c.chatTabs(chatTitle), lines, w, h, c.repFocus, false)
+	return kit.Box(c.chatTabs(chatTitle), scrolled(lines, &r.scroll, rows), w, h, c.repFocus, false)
 }
 
 // scrolled is lines from the scroll offset, the offset kept in range.
@@ -86,245 +83,92 @@ func scrolled(lines []string, at *int, rows int) []string {
 	return lines[*at:]
 }
 
-// figures walk a path from a house to the work and back, one step a beat.
-const path = 12
+// section is a heading inside the page.
+func section(title, note string) string {
+	return kit.StyleBold.Render(" "+title) + kit.StyleDim.Render("  "+note)
+}
 
-// liveView is the village: each session at work a house, its agents
-// figures walking out to their work and back with what they found, a
-// meter over each; then a ledger of how fast each session writes.
-func (c *Chat) liveView(w int) []string {
+// pageView is the session on one page: who it is and what it spent, the
+// last prompt, its agents as a sequence, every prompt, then its charts.
+func (c *Chat) pageView(s *usage.Session, w int) []string {
 	now := time.Now()
-	var live, recent []*usage.Session
-	for _, s := range c.rep.sessions {
-		switch {
-		case c.working(s, now):
-			live = append(live, s)
-		case now.Sub(s.Last) < 24*time.Hour:
-			recent = append(recent, s)
-		}
-	}
-	sort.SliceStable(live, func(i, j int) bool { return live[i].Last.After(live[j].Last) })
-	agents, five := 0, usage.Tokens{}
-	for _, s := range live {
-		agents += len(s.Running(now, liveWithin))
-		five = five.Add(usage.Since(s.AllCalls(), now.Add(-5*time.Minute)))
-	}
-	head := fmt.Sprintf(" %s %d session(s) at work   %s %d agent(s) out   %s tokens in the last 5 min",
-		kit.StyleBusy.Render("◐"), len(live), kit.StyleAccent.Render("☺"), agents, num(five.Sum()))
-	out := []string{head, ""}
-	if len(live) == 0 {
-		out = append(out, kit.StyleDim.Render(" The village sleeps: no Claude session works now."), "")
-	}
-	for _, s := range live {
-		out = append(out, c.house(s, now, w)...)
-		out = append(out, "")
-	}
-	out = append(out, kit.StyleBold.Render(" ledger")+kit.StyleDim.Render("  output tokens a minute, the last 30"))
-	ledger := append(append([]*usage.Session(nil), live...), recent...)
-	if len(ledger) == 0 {
-		out = append(out, kit.StyleDim.Render(" nothing in the last day"))
-	}
-	nameW := min(24, max(10, w/4))
-	for _, s := range ledger {
-		t := s.Totals()
-		last := int64(0)
-		if all := s.AllCalls(); len(all) > 0 {
-			last = all[len(all)-1].Tokens.Context()
-		}
-		row := " " + text.Pad(text.Fit(c.reportName(s), nameW), nameW) + " " + kit.StyleSeries[3].Render(kit.Sparkline(usage.PerMinute(s.AllCalls(), now, 30), 30)) +
-			kit.StyleDim.Render(fmt.Sprintf("  out %s · ctx %s · %d calls · %d agents", num(t.Output), num(last), len(s.AllCalls()), len(s.Agents)))
-		out = append(out, row)
-	}
-	return out
-}
-
-// house is one session at work: its roof, its door with the agents out
-// walking, the ones back home with their result.
-func (c *Chat) house(s *usage.Session, now time.Time, w int) []string {
 	t := s.Totals()
-	name := kit.StyleBold.Render(c.reportName(s)) + " " + kit.StyleBusy.Render(kit.Spinner[(c.tick/2)%len(kit.Spinner)])
-	out := []string{
-		"  " + kit.StyleAccent.Render("╱▔▔╲") + " " + name + kit.StyleDim.Render(fmt.Sprintf("   out %s · cache %s · %d calls", num(t.Output), num(t.CacheRead+t.CacheWrite), len(s.AllCalls()))),
+	state := kit.StyleDim.Render("idle")
+	if c.working(s, now) {
+		state = kit.StyleBusy.Render(kit.Spinner[(c.tick/2)%len(kit.Spinner)] + " working")
 	}
-	var lanes []string
-	for _, a := range s.Agents {
-		running := !a.Done() && now.Sub(a.Last) <= liveWithin
-		backLately := a.Done() && now.Sub(a.Last) <= 5*time.Minute
-		label := a.Type
-		if label == "" {
-			label = "agent"
-		}
-		if a.Description != "" {
-			label += " · " + a.Description
-		}
-		switch {
-		case running:
-			// Out at work: the figure walks there and stays busy there.
-			step := (c.tick + len(lanes)*3) % (path + 4)
-			pos := min(step, path)
-			walk := strings.Repeat("─", pos) + kit.StyleAccent.Render("☺→") + strings.Repeat("─", path-pos)
-			lanes = append(lanes, walk+" "+kit.StyleAccent.Render(text.Fit(label, max(8, w-path-30)))+kit.StyleDim.Render(" "+num(a.Totals().Sum())))
-		case backLately:
-			lanes = append(lanes, kit.StyleBusy.Render("←☺")+strings.Repeat("─", path)+" "+text.Fit(label, max(8, w-path-30))+kit.StyleBusy.Render(" ✓ ")+kit.StyleDim.Render(num(max(a.Reported, a.Totals().Sum()))))
-		}
-	}
-	if len(lanes) == 0 {
-		lanes = []string{kit.StyleDim.Render("the agent works alone")}
-	}
-	for i, l := range lanes {
-		if i >= 4 {
-			out = append(out, kit.StyleDim.Render(fmt.Sprintf("  │  │ +%d more", len(lanes)-4)))
-			break
-		}
-		wall := "  │⌂ │ "
-		if i > 0 {
-			wall = "  │  │ "
-		}
-		out = append(out, kit.StyleAccent.Render(wall)+l)
-	}
-	return append(out, kit.StyleAccent.Render("  └──┘"))
-}
-
-// sessionsView is the list: one row per session, sortable and filtered.
-func (c *Chat) sessionsView(w, h int) []string {
-	r := &c.rep
-	rows := c.listed()
-	order := "▼"
-	if r.desc {
-		order = "▲"
-	}
-	head := kit.StyleDim.Render(fmt.Sprintf(" sorted by %s %s · %d of %d", sortKeys[r.sortBy], order, len(rows), len(r.sessions)))
-	if r.filtering || r.filter != "" {
-		head += "   " + kit.StyleAccent.Render("/ ") + r.filter
-		if r.filtering {
-			head += kit.StyleCursor.Render(" ")
-		}
-	}
-	// The numbers take about ninety columns; the name gets what is left.
-	nameW := kit.Clamp(w-93, 10, 26)
-	cols := kit.StyleBold.Render(" " + text.Pad("session", nameW) + "  last         dur    res msgs calls agt " + "  cache r  input  cache w   output" + "     cost")
-	out := []string{head, cols}
-	r.cursor = kit.Clamp(r.cursor, 0, max(0, len(rows)-1))
-	top := kit.Clamp(r.cursor-(h-4)/2, 0, max(0, len(rows)-(h-3)))
-	for i := top; i < len(rows) && len(out) < h; i++ {
-		s := rows[i]
-		t := s.Totals()
-		cost := "        –"
-		if v, ok := r.prices.Cost(s.AllCalls()); ok {
-			cost = fmt.Sprintf("%9.2f", v)
-		}
-		line := fmt.Sprintf(" %s  %s %6s %4d %4d %5d %3d  %8s %6s %8s %8s %s",
-			text.Pad(text.Fit(c.reportName(s), nameW), nameW), s.Last.Local().Format("01-02 15:04"), text.Span(s.Last.Sub(s.First)),
-			len(s.Resumes), s.UserMessages, len(s.AllCalls()), len(s.Agents), num(t.CacheRead), num(t.Input), num(t.CacheWrite), num(t.Output), cost)
-		line = text.Pad(text.Fit(line, w), w)
-		if i == r.cursor {
-			line = kit.StyleSel.Render(line)
-		}
-		out = append(out, kit.ZoneBlock(fmt.Sprintf("rrow-%d", i), []string{line}, w)...)
-	}
-	if len(rows) == 0 {
-		out = append(out, kit.StyleDim.Render(" no session matches"))
-	}
-	return out
-}
-
-// detailView is one session: cards, its context over time, each call's
-// tokens, each agent's, the tools, and its agents to open.
-func (c *Chat) detailView(w int) []string {
-	s, ok := c.detailed()
-	if !ok {
-		return []string{kit.StyleDim.Render(" the session is no longer listed")}
-	}
-	r := &c.rep
-	t := s.Totals()
-	cost := "–"
-	if v, ok := r.prices.Cost(s.AllCalls()); ok {
-		cost = fmt.Sprintf("%.2f", v)
-	}
-	card := func(label, value string) string {
-		return kit.StyleDim.Render(label+" ") + kit.StyleBold.Render(value)
+	cost := ""
+	if v, ok := c.rep.prices.Cost(s.AllCalls()); ok {
+		cost = fmt.Sprintf(" · cost %.2f", v)
 	}
 	out := []string{
-		" " + kit.StyleBold.Render(c.reportName(s)) + kit.StyleDim.Render("  "+text.ShortHome(s.Dir)+" · "+s.Branch+" · v"+s.Version),
-		"",
-		" " + strings.Join([]string{card("first", s.First.Local().Format("01-02 15:04")), card("last", s.Last.Local().Format("01-02 15:04")), card("resumes", fmt.Sprint(len(s.Resumes))), card("messages", fmt.Sprint(s.UserMessages))}, "   "),
-		" " + strings.Join([]string{card("calls", fmt.Sprint(len(s.AllCalls()))), card("tools", fmt.Sprint(s.ToolCount())), card("agents", fmt.Sprint(len(s.Agents))), card("cost", cost)}, "   "),
-		" " + strings.Join([]string{card("output", num(t.Output)), card("thinking", num(t.Thinking)), card("cache write", num(t.CacheWrite)), card("cache read", num(t.CacheRead)), card("input", num(t.Input))}, "   "),
+		" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state + kit.StyleDim.Render(fmt.Sprintf("   %d calls · %d agents · %d tools · since %s", len(s.AllCalls()), len(s.Agents), s.ToolCount(), s.First.Local().Format("01-02 15:04"))+cost),
+		" " + kinds(t) + kit.StyleDim.Render("   "+strings.Join(tokenLabels, " · ")),
 	}
 	if s.Bad > 0 {
 		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %d line(s) were not JSON and are left out", s.Bad)))
 	}
-	calls := s.AllCalls()
-	chartW := max(10, w-4)
-	out = append(out, "", kit.StyleBold.Render(" context per call")+kit.StyleDim.Render("  │ a resume   ☺ an agent starts"))
-	var ctx []int64
-	for _, c := range calls {
-		ctx = append(ctx, c.Tokens.Context())
-	}
-	for _, l := range kit.Line(ctx, chartW, 5) {
-		out = append(out, "  "+l)
-	}
-	if len(calls) > 0 {
-		marks := []rune(strings.Repeat(" ", chartW))
-		shown := calls
-		if len(shown) > 2*chartW {
-			shown = shown[len(shown)-2*chartW:]
+	turns := s.Turns()
+	working := c.working(s, now)
+	if len(turns) > 0 {
+		last := turns[len(turns)-1]
+		end := "working"
+		if !working && !last.End.IsZero() {
+			end = last.End.Local().Format("15:04:05")
 		}
-		place := func(at time.Time, m rune) {
-			for i, c := range shown {
-				if !c.Time.Before(at) {
-					marks[min(i/2, chartW-1)] = m
-					return
+		took := now.Sub(last.Time)
+		if !working && !last.End.IsZero() {
+			took = last.End.Sub(last.Time)
+		}
+		out = append(out, "", section("last prompt", last.Time.Local().Format("15:04:05")+" → "+end+" · "+text.Span(took)),
+			" "+kit.StyleAccent.Render("❯ "+text.Fit(last.Text, max(10, w-4))),
+			" "+kinds(last.Tokens)+kit.StyleDim.Render(fmt.Sprintf("   %d calls · %d agents", last.Calls, last.Agents)))
+	}
+	out = append(out, "", section("agents", "spawned →, back ← with what they spent; ←→ picks one, t opens its transcript"))
+	out = append(out, c.sequence(s, now, w)...)
+	if len(turns) > 1 {
+		out = append(out, "", section("prompts", "newest first: when, how long, output, all tokens"))
+		for i := len(turns) - 1; i >= 0 && i >= len(turns)-20; i-- {
+			tn := turns[i]
+			end := "now  "
+			span := now.Sub(tn.Time)
+			if i < len(turns)-1 || !working {
+				end = tn.End.Local().Format("15:04")
+				span = tn.End.Sub(tn.Time)
+				if tn.End.IsZero() {
+					end, span = "–    ", 0
 				}
 			}
+			row := fmt.Sprintf(" %s → %s %6s %7s %7s  %s", tn.Time.Local().Format("01-02 15:04"), end, text.Span(max(0, span)), num(tn.Tokens.Output), num(tn.Tokens.Sum()), tn.Text)
+			out = append(out, text.Fit(row, w))
 		}
-		for _, a := range s.Agents {
-			place(a.First, '☺')
-		}
-		for _, rs := range s.Resumes {
-			place(rs, '│')
-		}
-		out = append(out, "  "+kit.StyleAccent.Render(string(marks)))
 	}
-	out = append(out, "", kit.StyleBold.Render(" tokens per call")+"  "+kit.Legend(tokenLabels))
-	// Few calls get wider bars, a gap between, so each reads on its own.
+	calls := s.AllCalls()
+	chartW := max(10, w-4)
+	out = append(out, "", section("context per call", "│ a resume"))
+	var ctx []int64
+	for _, cl := range calls {
+		ctx = append(ctx, cl.Tokens.Context())
+	}
+	for _, l := range kit.Line(ctx, chartW, 4) {
+		out = append(out, "  "+l)
+	}
+	out = append(out, "", section("tokens per call", "")+kit.Legend(tokenLabels))
 	var stacks [][]kit.Seg
 	from := max(0, len(calls)-chartW)
 	bar := kit.Clamp(chartW/max(1, len(calls)-from)-1, 1, 4)
-	for _, c := range calls[from:] {
+	for _, cl := range calls[from:] {
 		for range bar {
-			stacks = append(stacks, segs(c.Tokens))
+			stacks = append(stacks, segs(cl.Tokens))
 		}
 		if bar > 1 {
 			stacks = append(stacks, nil)
 		}
 	}
-	for _, l := range kit.Columns(stacks, 0, 6) {
+	for _, l := range kit.Columns(stacks, 0, 5) {
 		out = append(out, "  "+l)
 	}
-	out = append(out, "", kit.StyleBold.Render(" agents")+kit.StyleDim.Render("  ↑↓ picks one, t opens its transcript"))
-	labelW := min(30, max(12, w/3))
-	barW := max(8, w-labelW-14)
-	scale := s.MainTotals().Sum()
-	for _, a := range s.Agents {
-		scale = max(scale, a.Totals().Sum())
-	}
-	line := func(i int, label string, tk usage.Tokens) string {
-		row := " " + text.Pad(text.Fit(label, labelW), labelW) + " " + kit.StackedBar(segs(tk), scale, barW) + " " + num(tk.Sum())
-		if i == r.item {
-			return kit.StyleAccent.Render("▸") + row[1:]
-		}
-		return row
-	}
-	out = append(out, line(0, "main agent", s.MainTotals()))
-	for i, a := range s.Agents {
-		label := a.Type
-		if a.Description != "" {
-			label += " · " + a.Description
-		}
-		out = append(out, line(i+1, label, a.Totals()))
-	}
-	out = append(out, "", kit.StyleBold.Render(" tools"))
+	out = append(out, "", section("tools", ""))
 	tools := map[string]int{}
 	for k, v := range s.Tools {
 		tools[k] += v
@@ -348,25 +192,124 @@ func (c *Chat) detailView(w int) []string {
 	for _, x := range tl {
 		out = append(out, " "+text.Pad(text.Fit(x.name, 16), 16)+" "+kit.StackedBar([]kit.Seg{{Kind: 1, Value: int64(x.n)}}, int64(top), max(8, w-26))+fmt.Sprintf(" %d", x.n))
 	}
-	if len(s.Agents) > 0 {
-		out = append(out, "", kit.StyleBold.Render(" subagents"))
-		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %-9s %-14s %-10s %8s %5s %8s  %s", "id", "type", "status", "time", "tools", "output", "prompt")))
-		for _, a := range s.Agents {
-			id := a.ID
-			if len(id) > 9 {
-				id = id[:9]
+	return out
+}
+
+// seqLanes is how many agents' lifelines the sequence draws at most.
+const seqLanes = 12
+
+// sequence draws the session and its agents as a sequence diagram: the
+// session's lifeline on the left, one per agent beside it, an arrow out
+// when it was spawned and one back when it returned, in time order; a
+// lifeline still dotted is an agent at work.
+func (c *Chat) sequence(s *usage.Session, now time.Time, w int) []string {
+	if len(s.Agents) == 0 {
+		return []string{kit.StyleDim.Render(" the session worked alone: no subagent")}
+	}
+	agents := append([]*usage.Agent(nil), s.Agents...)
+	sort.SliceStable(agents, func(i, j int) bool { return agents[i].First.Before(agents[j].First) })
+	var out []string
+	if len(agents) > seqLanes {
+		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %d earlier agents are not drawn", len(agents)-seqLanes)))
+		agents = agents[len(agents)-seqLanes:]
+	}
+	// Lanes: the session at column 2, each agent laneW to the right; with
+	// too many for the width, the lanes narrow down to 6.
+	laneW := kit.Clamp((w-4)/(len(agents)+1), 6, 22)
+	xs := make([]int, len(agents)+1)
+	for i := range xs {
+		xs[i] = 2 + i*laneW
+	}
+	width := xs[len(xs)-1] + laneW
+	index := map[*usage.Agent]int{}
+	for i, a := range agents {
+		index[a] = i + 1
+	}
+	head := []rune(strings.Repeat(" ", width))
+	put := func(row []rune, x int, s string) {
+		for i, r := range []rune(s) {
+			if x+i >= 0 && x+i < len(row) {
+				row[x+i] = r
 			}
-			status := a.Status
-			if status == "" {
-				status = "running"
-			}
-			d := "–"
-			if a.Duration > 0 {
-				d = text.Span(a.Duration)
-			}
-			row := fmt.Sprintf(" %-9s %-14s %-10s %8s %5d %8s  %s", id, text.Fit(a.Type, 14), text.Fit(status, 10), d, a.ToolUses, num(a.Totals().Output), firstLine(a.Prompt))
-			out = append(out, text.Fit(row, w))
 		}
+	}
+	put(head, xs[0]-1, "session")
+	for i, a := range agents {
+		name := a.Type
+		if name == "" {
+			name = "agent"
+		}
+		put(head, xs[i+1]-1, text.Fit(name, laneW-1))
+	}
+	out = append(out, kit.StyleBold.Render(string(head)))
+	type event struct {
+		at   time.Time
+		a    *usage.Agent
+		back bool
+	}
+	var events []event
+	for _, a := range agents {
+		events = append(events, event{at: a.First, a: a})
+		if a.Done() {
+			end := a.Last
+			if a.Duration > 0 && !a.First.IsZero() {
+				end = a.First.Add(a.Duration)
+			}
+			events = append(events, event{at: end, a: a, back: true})
+		}
+	}
+	sort.SliceStable(events, func(i, j int) bool { return events[i].at.Before(events[j].at) })
+	alive := map[*usage.Agent]bool{}
+	lifelines := func() []rune {
+		row := []rune(strings.Repeat(" ", width))
+		row[xs[0]] = '│'
+		for a := range alive {
+			row[xs[index[a]]] = '┊'
+		}
+		return row
+	}
+	for _, e := range events {
+		x := xs[index[e.a]]
+		row := lifelines()
+		label := ""
+		if e.back {
+			delete(alive, e.a)
+			for i := xs[0] + 1; i < x; i++ {
+				row[i] = '─'
+			}
+			row[xs[0]+1], row[x] = '◀', '┘'
+			label = kit.StyleBusy.Render("✓ ") + kit.StyleDim.Render(num(max(e.a.Reported, e.a.Totals().Sum()))+" · "+text.Span(e.a.Duration))
+		} else {
+			alive[e.a] = true
+			for i := xs[0] + 1; i < x; i++ {
+				row[i] = '─'
+			}
+			row[x-1], row[x] = '▶', '┐'
+			desc := e.a.Description
+			if desc == "" {
+				desc = text.Fit(firstLine(e.a.Prompt), 30)
+			}
+			label = kit.StyleDim.Render(e.at.Local().Format("15:04:05")+" ") + desc
+		}
+		line := string(row)
+		if index[e.a] == c.rep.item {
+			line = kit.StyleAccent.Render(line)
+		}
+		out = append(out, " "+line+" "+text.Fit(label, max(8, w-width-3)))
+	}
+	if len(alive) > 0 {
+		row := lifelines()
+		var names []string
+		for _, a := range agents {
+			if alive[a] && now.Sub(a.Last) <= liveWithin {
+				names = append(names, fmt.Sprintf("%s %s", a.Type, num(a.Totals().Sum())))
+			}
+		}
+		note := "waiting for their result"
+		if len(names) > 0 {
+			note = "at work: " + strings.Join(names, ", ")
+		}
+		out = append(out, " "+string(row)+" "+kit.StyleAccent.Render(text.Fit(note, max(8, w-width-3))))
 	}
 	return out
 }
@@ -375,7 +318,12 @@ func (c *Chat) detailView(w int) []string {
 // unless asked for.
 func (c *Chat) transcriptView(w int) []string {
 	r := &c.rep
-	out := []string{kit.StyleDim.Render(" ↑↓ scroll · a shows the context lines the tool added · esc back"), ""}
+	whose := "the main agent"
+	if r.s != nil && r.item > 0 && r.item <= len(r.s.Agents) {
+		a := r.s.Agents[r.item-1]
+		whose = a.Type + " · " + a.Description
+	}
+	out := []string{section("transcript", whose+" · ↑↓ scroll · a shows the context lines the tool added · esc back"), ""}
 	style := map[string]func(...string) string{
 		"user": kit.StyleAccent.Render, "assistant": kit.StyleBold.Render, "tool call": kit.StyleSeries[2].Render,
 		"tool result": kit.StyleDim.Render, "context": kit.StyleDim.Render,
@@ -384,84 +332,7 @@ func (c *Chat) transcriptView(w int) []string {
 		if l.meta && !r.showMeta {
 			continue
 		}
-		who := strings.ToUpper(l.who)
-		out = append(out, " "+style[l.who](text.Pad(who, 12))+" "+text.Fit(l.text, max(10, w-15)))
-	}
-	return out
-}
-
-// overviewView is every session together: tokens a day, by project, by
-// agent type, and the costliest.
-func (c *Chat) overviewView(w int) []string {
-	r := &c.rep
-	now := time.Now()
-	days := usage.Daily(r.sessions, now, min(30, max(7, (w-4)/2)))
-	out := []string{kit.StyleBold.Render(" tokens a day") + "  " + kit.Legend(tokenLabels)}
-	var stacks [][]kit.Seg
-	for _, d := range days {
-		stacks = append(stacks, segs(d.Tokens), nil)
-	}
-	for _, l := range kit.Columns(stacks, 0, 7) {
-		out = append(out, "  "+l)
-	}
-	out = append(out, kit.StyleDim.Render("  "+days[0].Date.Format("01-02")+strings.Repeat(" ", max(1, 2*len(days)-10))+days[len(days)-1].Date.Format("01-02")))
-	bars := func(title string, rows map[string]usage.Tokens) {
-		out = append(out, "", kit.StyleBold.Render(" "+title))
-		type kv struct {
-			k string
-			t usage.Tokens
-		}
-		var list []kv
-		var top int64
-		for k, t := range rows {
-			list = append(list, kv{k, t})
-			top = max(top, t.Sum())
-		}
-		sort.Slice(list, func(i, j int) bool { return list[i].t.Sum() > list[j].t.Sum() })
-		labelW := min(26, max(10, w/4))
-		for i, x := range list {
-			if i >= 10 {
-				break
-			}
-			out = append(out, " "+text.Pad(text.Fit(x.k, labelW), labelW)+" "+kit.StackedBar(segs(x.t), top, max(8, w-labelW-12))+" "+num(x.t.Sum()))
-		}
-	}
-	byProject, byType := map[string]usage.Tokens{}, map[string]usage.Tokens{}
-	for _, s := range r.sessions {
-		p := text.ShortHome(s.Dir)
-		byProject[p] = byProject[p].Add(s.Totals())
-		for _, a := range s.Agents {
-			t := a.Type
-			if t == "" {
-				t = "agent"
-			}
-			byType[t] = byType[t].Add(a.Totals())
-		}
-	}
-	bars("by project", byProject)
-	bars("by agent type", byType)
-	title := " the 10 costliest sessions"
-	if len(r.prices) == 0 {
-		title = " the 10 largest sessions" + kit.StyleDim.Render("  (no prices.json: x exports and makes one to fill in)")
-	}
-	out = append(out, "", kit.StyleBold.Render(title))
-	list := append([]*usage.Session(nil), r.sessions...)
-	value := func(s *usage.Session) float64 {
-		if v, ok := r.prices.Cost(s.AllCalls()); ok {
-			return v
-		}
-		return float64(s.Totals().Sum())
-	}
-	sort.SliceStable(list, func(i, j int) bool { return value(list[i]) > value(list[j]) })
-	for i, s := range list {
-		if i >= 10 {
-			break
-		}
-		v := num(s.Totals().Sum()) + " tokens"
-		if cost, ok := r.prices.Cost(s.AllCalls()); ok {
-			v = fmt.Sprintf("%.2f", cost)
-		}
-		out = append(out, fmt.Sprintf(" %2d. %s  %s", i+1, text.Fit(c.reportName(s), max(10, w-24)), kit.StyleDim.Render(v)))
+		out = append(out, " "+style[l.who](text.Pad(strings.ToUpper(l.who), 12))+" "+text.Fit(l.text, max(10, w-15)))
 	}
 	return out
 }

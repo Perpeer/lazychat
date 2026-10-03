@@ -87,6 +87,56 @@ type Session struct {
 	Agents       []*Agent
 	// Bad is lines that were not JSON; they are skipped.
 	Bad int
+	// Prompts are what the user typed, in order: each starts a turn.
+	Prompts []Prompt
+}
+
+// Prompt is one thing the user typed: its first line and when.
+type Prompt struct {
+	Time time.Time
+	Text string
+}
+
+// Turn is a prompt and what answering it took: every call, the main
+// agent's and the subagents', until the next prompt.
+type Turn struct {
+	Prompt
+	End    time.Time // the last call's; zero before any
+	Tokens Tokens
+	Calls  int
+	Agents int // subagents started in the turn
+}
+
+// Turns is the session's prompts with what each took, in order.
+func (s *Session) Turns() []Turn {
+	out := make([]Turn, len(s.Prompts))
+	for i, p := range s.Prompts {
+		out[i].Prompt = p
+	}
+	at := func(t time.Time) int {
+		i := -1
+		for j, p := range s.Prompts {
+			if !t.Before(p.Time) {
+				i = j
+			}
+		}
+		return i
+	}
+	for _, c := range s.AllCalls() {
+		if i := at(c.Time); i >= 0 {
+			out[i].Tokens = out[i].Tokens.Add(c.Tokens)
+			out[i].Calls++
+			if c.Time.After(out[i].End) {
+				out[i].End = c.Time
+			}
+		}
+	}
+	for _, a := range s.Agents {
+		if i := at(a.First); i >= 0 && !a.First.IsZero() {
+			out[i].Agents++
+		}
+	}
+	return out
 }
 
 // MainTotals is the main agent's tokens.

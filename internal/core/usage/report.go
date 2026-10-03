@@ -20,6 +20,7 @@ func (s *Session) Clone() *Session {
 	c := *s
 	c.Calls = append([]Call(nil), s.Calls...)
 	c.Resumes = append([]time.Time(nil), s.Resumes...)
+	c.Prompts = append([]Prompt(nil), s.Prompts...)
 	c.Tools = maps.Clone(s.Tools)
 	c.Agents = make([]*Agent, len(s.Agents))
 	for i, a := range s.Agents {

@@ -220,6 +220,11 @@ func (r *Reader) mainLine(line []byte) {
 	case "user":
 		if _, isList := blocks(rec.Message.Content); !isList && len(rec.Message.Content) > 0 {
 			r.s.UserMessages++
+			var text string
+			if json.Unmarshal(rec.Message.Content, &text) == nil {
+				line, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
+				r.s.Prompts = append(r.s.Prompts, Prompt{Time: rec.Timestamp, Text: line})
+			}
 		}
 		if len(rec.ToolUseResult) > 0 {
 			r.agentResult(rec.ToolUseResult)

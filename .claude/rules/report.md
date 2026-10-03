@@ -23,13 +23,20 @@ paths:
   skipped, bad lines counted. Subagent tokens are only in their own files;
   a background agent first writes `async_launched` with no totals.
   Tokens stay by kind; Sum is only for a scale.
+- The report is the tree cursor's session alone, on one page (the user
+  dropped the live, sessions and overview views): header, the last prompt
+  (Session.Turns: a prompt and every call, subagents' too, until the next),
+  the agents as a sequence diagram, every prompt, charts. On a project,
+  its newest session. A click on a session row goes back to the chat.
 - The read runs off the loop, one at a time; readers live only in that
-  goroutine and the screen keeps Clones. Every second on the live view,
-  every ten on the others, only while the report shows.
+  goroutine and the screen keeps Clones. Every second while the report
+  shows, and at once when the cursor moves to another session; an answer
+  for a session no longer under the cursor is dropped.
 - Costs only from ~/.lazychat/prices.json, never built in; exports to
   ~/.lazychat/reports. Tests use invented transcripts (the repository is
   public): the spec's sample numbers rebuilt with made-up content.
 - Charts are drawn by hand in kit (no chart library): blocks for bars and
   sparklines, braille for lines, each kind with a glyph beside its
   Okabe–Ito colour (Theme.Series).
-- Tab is the app's tab switch; the report's views walk with v.
+- Tab is the app's tab switch. In the report ↑↓ scroll, ←→ pick the agent
+  whose transcript t opens.

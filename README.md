@@ -415,42 +415,50 @@ switch them, and the session runs on behind the report.
 
 ### Report
 
-What the Claude sessions of the workspace's projects spend and do, read
-from Claude Code's own transcripts (`~/.claude/projects/<folder>/<id>.jsonl`
-and each session's `subagents/agent-<id>.jsonl`, `.meta.json`), started by
-lazychat or not; `shift+a` widens it to every project in `~/.claude`. It
-only reads, line by line, and follows a running session by reading what
-was appended since: every second on the live view, every ten on the
-others. Codex keeps no such usage yet, so its sessions are not in it.
+The tree cursor's Claude session on one page — on a project, its newest
+— read from Claude Code's own transcript (`~/.claude/projects/<folder>/<id>.jsonl`
+and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
+second while the report shows. It only reads. Codex keeps no such usage
+yet.
 
-- **live** — the village: each session at work a house, its subagents
-  figures walking out to their work (`☺→`) and back with their result
-  (`←☺ ✓`), with tokens over each; the agents out and the tokens of the
-  last five minutes on top; under it a ledger of the day's sessions, each
-  with a sparkline of output tokens a minute.
-- **sessions** — one row per session: last activity, length, resumes,
-  your messages, model calls, subagents, tokens by kind, cost. `s` sorts
-  by the next column, `shift+s` reverses, `/` filters by name, folder or
-  date; `Enter` opens a session.
-- **a session** — cards (first and last activity, resumes, messages,
-  calls, tools, subagents, tokens by kind, cost), the context of each call
-  over time with resumes (`│`) and subagent starts (`☺`) under it, each
-  call's tokens stacked, each agent's, the tools, and the subagents' table;
-  `↑↓` picks the main agent or a subagent and `t` opens its transcript as
-  USER / ASSISTANT / TOOL CALL / TOOL RESULT rows, `a` showing the context
-  lines the tool added.
-- **overview** — tokens a day stacked by kind, by project, by subagent
-  type, and the ten costliest (or largest) sessions.
+```
+ shed work  ◐ working   14 calls · 2 agents · 9 tools · since 10-04 14:02
+ ░ 1.3M  ▒ 12  ▓ 18k  █ 3.1k   cache read · input · cache write · output
 
-`v` walks the views, `esc` goes back, `x` exports the sessions listed to
-`~/.lazychat/reports/usage-<time>.json` and `.csv`. Tokens are kept by
-kind — cache read, input, cache write, output (thinking within it) — each
-with a glyph (`░ ▒ ▓ █`) as well as a colour-blind safe colour. A reply
-written over several lines counts once, its largest numbers kept; a
-fork's copied history counts once; a gap over 30 minutes is a resume.
-Costs show only for models priced in `~/.lazychat/prices.json` (per
-million tokens: `input`, `cache_write`, `cache_read`, `output`), which the
-first export creates empty to fill in; nothing is priced by lazychat.
+ last prompt  14:02:10 → working · 3m 12s
+ ❯ paint the garden shed
+ ░ 410k  ▒ 6  ▓ 9k  █ 1.2k   9 calls · 2 agents
+
+ agents  spawned →, back ← with what they spent
+ session               Explore               general
+   │────────────────────▶┐                              14:02:40 count the boards
+   │──────────────────────────────────────────▶┐        14:03:05 find the brushes
+   │◀────────────────────┘                     ┊        ✓ 21k · 4s
+   │                                           ┊        at work: general 9k
+```
+
+- the session: its state, calls, agents, tools, first activity and its
+  tokens by kind (`░` cache read, `▒` input, `▓` cache write, `█` output,
+  each with a colour-blind safe colour too), and a cost when priced;
+- the last prompt: when it started, when it ended or that it still works,
+  how long, and its tokens — the main agent's and every subagent's calls
+  until the next prompt;
+- the agents as a sequence: the session's lifeline and one per subagent,
+  an arrow out when it was spawned, one back when it returned with its
+  tokens and time, a dotted line while it works;
+- every prompt, newest first, then the context of each call over time,
+  each call's tokens stacked, and the tools.
+
+`↑↓` scrolls, `←→` picks the main agent or a subagent and `t` opens its
+transcript as USER / ASSISTANT / TOOL CALL / TOOL RESULT rows (`a` shows
+the context lines the tool added), `x` exports the session to
+`~/.lazychat/reports/usage-<time>.json` and `.csv`. A reply written over
+several lines counts once, its largest numbers kept; a fork's copied
+history counts once. Costs show only for models priced in
+`~/.lazychat/prices.json` (per million tokens: `input`, `cache_write`,
+`cache_read`, `output`), which the first export creates empty to fill in;
+nothing is priced by lazychat. A click on a session in the tree goes back
+to its chat.
 
 | Key | Does |
 | --- | --- |

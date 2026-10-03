@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"lazychat/internal/core/history"
+	"lazychat/internal/core/state"
 )
 
 // writeTranscript lays an invented Claude transcript in the stand-in home:
@@ -52,35 +53,50 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 }
 
 // Chat's right side has two tabs, the chat and the report; 3 opens the
-// report on its live view — the village, a session at work with an agent
-// out — tab walks to the sessions, Enter to one's detail and t to its
-// transcript, and a click on the chat's tab brings the chat back.
+// report on the tree cursor's session alone: its last prompt and what it
+// took, its agents as a sequence — one back with its result, one at work —
+// and its charts; t opens a transcript, x exports, and a click on the
+// session's row in the tree brings its chat back.
 func TestReport(t *testing.T) {
-	e, dir := seeded(t)
+	e, dir := seeded(t, state.Session{Tool: "claude", Name: "shed work", ID: "garden-1"})
 	e.lazyHome = t.TempDir()
 	writeTranscript(t, e, dir, "garden-1", time.Now().Add(-time.Minute).UTC())
-	d := start(t, e, 180, 44)
-	d.expect("[2] ", "[3] report")
+	d := start(t, e, 180, 48)
+	d.expect("[2] ", "[3] report", "shed work")
 	d.key("3")
-	d.expect("live", "sessions", "overview", "1 session(s) at work", "1 agent(s) out", "find the brushes", "count the boards", "ledger")
-	d.expect("(v) view")
-	d.key("v")
-	d.expect("sorted by last", "demo2 · garden-1")
+	d.expect("shed work", "last prompt", "❯ paint the garden shed", "agents", "session", "Explore", "count the boards", "find the brushes", "✓", "at work: Explore", "context per call", "tokens per call", "tools")
+	d.expect("(t) transcript · (←→) pick agent · (x) export")
+	d.key("t")
+	d.expect("transcript", "the main agent", "USER", "paint the garden shed", "TOOL CALL", "Agent")
+	d.key("esc", "right", "t")
+	d.expect("Explore · count the boards")
+	d.key("esc")
+	d.expect("last prompt")
 	d.key("x") // export, and the prices file to fill in, made once
-	d.expect("exported 1 sessions", "prices.json made")
+	d.expect("exported usage-", "prices.json made")
 	if got, _ := filepath.Glob(filepath.Join(e.lazyHome, "reports", "usage-*.csv")); len(got) != 1 {
 		t.Errorf("exports: %v", got)
 	}
-	d.key("enter")
-	d.expect("context per call", "tokens per call", "main agent", "subagents", "Explore")
-	d.key("t")
-	d.expect("USER", "paint the garden shed", "TOOL CALL", "Agent")
-	d.key("esc", "esc", "v")
-	d.expect("tokens a day", "by project", "the 10 largest sessions")
+	// A click on the session in the tree is going to its chat.
+	// The tree's row, not the report's header: the one in the left column.
+	y, x := -1, 0
+	for i, row := range strings.Split(d.screen(), "\n") {
+		if at := strings.Index(row, "shed work"); at >= 0 && len([]rune(row[:at])) < 46 {
+			y, x = i, len([]rune(row[:at]))
+			break
+		}
+	}
+	d.click(x, y)
+	d.expectNot("last prompt")
+	if d.screen(); strings.Contains(d.screen(), "(ctrl+q) back to lazychat") {
+		d.leave() // the row was already the cursor's: the click went into the session
+	}
+	d.key("3")
+	d.expect("last prompt")
 	rows := strings.Split(d.screen(), "\n")
-	y := lineOf(d.screen(), "[3] report")
-	x := strings.Index(rows[y], "[2] ")
+	y = lineOf(d.screen(), "[3] report")
+	x = strings.Index(rows[y], "[2] ")
 	d.click(len([]rune(rows[y][:x]))+1, y)
-	d.expectNot("tokens a day")
+	d.expectNot("last prompt")
 	d.quitApp()
 }

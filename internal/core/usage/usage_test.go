@@ -252,3 +252,32 @@ func TestReportSums(t *testing.T) {
 		t.Error("the template was written over the user's prices")
 	}
 }
+
+// Each prompt is a turn: the calls after it until the next prompt, the
+// subagents' too, and when the last of them was.
+func TestTurns(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "s-4.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "paint the shed\nblue, please"}})
+	w.call("t1-a", 1, 10, 100, 20)
+	w.call("t1-b", 1, 10, 100, 30, "Agent")
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "now the fence"}})
+	w.call("t2-a", 1, 10, 100, 7)
+	w.flush()
+	sub := newTranscript(t, filepath.Join(root, "s-4", "subagents", "agent-f.jsonl"))
+	sub.at = w.at.Add(-25 * time.Second) // inside the first turn
+	sub.call("f1", 1, 5, 50, 9)
+	sub.flush()
+	s, _ := Open(path).Update()
+	turns := s.Turns()
+	if len(turns) != 2 || turns[0].Text != "paint the shed" || turns[1].Text != "now the fence" {
+		t.Fatalf("turns %+v", turns)
+	}
+	if turns[0].Tokens.Output != 20+30+9 || turns[0].Calls != 3 || turns[0].Agents != 1 {
+		t.Errorf("first turn %+v", turns[0])
+	}
+	if turns[1].Tokens.Output != 7 || turns[1].Calls != 1 || turns[1].End.Before(turns[1].Time) {
+		t.Errorf("second turn %+v", turns[1])
+	}
+}
