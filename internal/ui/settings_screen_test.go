@@ -122,7 +122,8 @@ func TestSettingsTheme(t *testing.T) {
 	}
 	d.key("enter", "down", "enter")
 	d.expect("  Dracula", "(enter) change")
-	if d.painted.Background != "#282a36" || d.core.Settings.Theme != "Dracula" {
+	d.until("the terminal was not painted Dracula", func() bool { return d.painted.Background == "#282a36" })
+	if d.core.Settings.Theme != "Dracula" {
 		t.Fatalf("Dracula: terminal painted %q, saved %q", d.painted.Background, d.core.Settings.Theme)
 	}
 	d.quitApp()

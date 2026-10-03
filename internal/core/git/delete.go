@@ -42,7 +42,7 @@ const unmergedShown = 5
 
 // DeleteBranch deletes a local branch: only a merged one unless force.
 func DeleteBranch(root, name string, force bool) error {
-	if out, err := run(root, nil, "symbolic-ref", "--quiet", "--short", "HEAD"); err == nil && strings.TrimSpace(string(out)) == name {
+	if CurrentBranch(root) == name {
 		return ErrCurrentBranch
 	}
 	flag := "-d"
@@ -117,4 +117,44 @@ func RemoveWorktree(root, path string, force bool) error {
 		return ErrWorktreeDirty{files}
 	}
 	return locked(err)
+}
+
+// ErrNoDefault is a repository with no default branch to switch to: no
+// origin HEAD, no main, no master.
+var ErrNoDefault = errors.New("no default branch to switch to (origin's HEAD, main or master)")
+
+// DefaultBranch is the branch a checkout goes back to: origin's HEAD, else
+// a local main, else master.
+func DefaultBranch(root string) (string, error) {
+	if out, err := run(root, nil, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"); err == nil {
+		if _, name, ok := strings.Cut(strings.TrimSpace(string(out)), "/"); ok && name != "" {
+			return name, nil
+		}
+	}
+	for _, name := range []string{"main", "master"} {
+		if _, err := run(root, nil, "rev-parse", "--verify", "--quiet", "refs/heads/"+name); err == nil {
+			return name, nil
+		}
+	}
+	return "", ErrNoDefault
+}
+
+// Upstream is the remote branch a local one tracks, origin/feature; ""
+// when it tracks none.
+func Upstream(root, branch string) string {
+	out, err := run(root, nil, "rev-parse", "--abbrev-ref", branch+"@{upstream}")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// CurrentBranch is the branch the checkout in root is on, read now; "" when
+// it is detached.
+func CurrentBranch(root string) string {
+	out, err := run(root, nil, "symbolic-ref", "--quiet", "--short", "HEAD")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

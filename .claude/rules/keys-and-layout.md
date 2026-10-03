@@ -16,4 +16,9 @@ paths:
 - The projects column is `kit.ListWidth`: 28 %, 32–40 columns, in every
   tab; the user found wider too wide. Screen tests take x from it.
 - A footer over ~100 columns pushes the key log off at 120.
+- A note never replaces the footer's keys (the user saw them vanish
+  during a fetch or a switch): it sits on the last row right before the
+  version (`cornerTail`, `noteRoom` in ui/screen.go), the end of that row
+  giving way only while it shows. Tests that waited for keys to come back
+  after a note now wait for the state they need.
 - Headings are the same in every tab: the project, `⎇ branch`, no counts.

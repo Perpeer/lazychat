@@ -78,17 +78,16 @@ func (bp *branchPopup) taken(name string) bool {
 // openBranches is b on a project: a finder over its local and remote
 // branches only, opened at once with what the repository knows while a
 // fetch brings the remotes up to date. It switches, makes a branch from
-// what was typed, and Ctrl+D deletes one; worktrees are w's.
+// what was typed; worktrees are w's, and d on a row deletes.
 func (g *Git) openBranches() tea.Cmd { return g.openList(false) }
 
 // openWorktrees is w on a project: a finder over the repository's other
-// worktrees only. Enter goes to one's row, a new name makes one (another
-// of the row's branch, its name suggested, with nothing typed), and
-// Ctrl+D removes one.
+// worktrees only. Enter goes to one's row, and a new name makes one
+// (another of the row's branch, its name suggested, with nothing typed).
 func (g *Git) openWorktrees() tea.Cmd { return g.openList(true) }
 
 // openList opens the branch list or, with worktrees, the worktree list:
-// both read the same things, each lists, makes and deletes only its own.
+// both read the same things, each lists and makes only its own.
 func (g *Git) openList(worktrees bool) tea.Cmd {
 	at, ok := g.cursorRow()
 	p := g.cursorStatus()
@@ -118,7 +117,6 @@ func (g *Git) openList(worktrees bool) tea.Cmd {
 	}
 	bp := &branchPopup{project: name, owner: at.name, root: root, base: base, worktrees: worktrees}
 	bp.finder = kit.NewFinder(title, nil, func(i int) { g.pickBranch(bp, i) })
-	bp.finder.Delete = func(i int) { g.askDelete(bp, i) }
 	if worktrees {
 		bp.finder.Note = func(i int) string { return "⑂ " + text.ShortHome(bp.wts[i].Path) }
 		bp.finder.Create = func(q string) []string {
@@ -137,7 +135,6 @@ func (g *Git) openList(worktrees bool) tea.Cmd {
 			}
 			g.create(bp, q, true)
 		}
-		bp.finder.DeleteHint = "remove"
 	} else {
 		bp.finder.Group = func(i int) string {
 			if bp.list[i].Remote {
@@ -156,7 +153,6 @@ func (g *Git) openList(worktrees bool) tea.Cmd {
 			g.branches = nil
 			g.create(bp, q, false)
 		}
-		bp.finder.DeleteHint = "delete"
 	}
 	bp.finder.Status = "reading…"
 	g.branches = bp

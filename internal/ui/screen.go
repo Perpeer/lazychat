@@ -84,9 +84,6 @@ func (a *App) FooterLine(keys []kit.Hint) string { return a.footerLine("", keys)
 func (a *App) footerLine(lead string, keys []kit.Hint) string {
 	indent := strings.Repeat(" ", railW)
 	left := indent + lead + kit.RenderHints(keys)
-	if time.Now().Before(a.noteUntil) && a.note != "" {
-		left = indent + kit.StyleDim.Render(a.note)
-	}
 	// The log gets what the keys and the status leave, and none at all
 	// when that is too little to read.
 	status := a.status()
@@ -94,9 +91,12 @@ func (a *App) footerLine(lead string, keys []kit.Hint) string {
 	if log := text.Fit(a.keyLog, min(keyLogWidth, spare)); spare >= 8 && log != "" {
 		status = strings.TrimSpace(status + "   " + log)
 	}
-	// A one-row footer is the screen's last row: the version ends it.
-	if v := a.version(); v != "" && a.footerRows < 2 && text.Width(left)+text.Width(status)+text.Width(v)+8 <= a.width {
-		status = strings.TrimSpace(status + "   " + v)
+	// A one-row footer is the screen's last row: a fresh note and the
+	// version end it, the note cut to what the keys leave.
+	if a.footerRows < 2 {
+		if tail := a.cornerTail(max(a.width-text.Width(left)-text.Width(status)-8, a.noteRoom())); tail != "" {
+			status = strings.TrimSpace(status + "   " + tail)
+		}
 	}
 	right := kit.StyleDim.Render(status + " ")
 	room := a.width - text.Width(right) - 1
@@ -169,7 +169,7 @@ func (a *App) footer(keys []kit.Hint) string {
 		}
 	}
 	var top []string
-	if lines := a.keyRows(keys); rows < 2 || len(lines) < 2 || time.Now().Before(a.noteUntil) && a.note != "" {
+	if lines := a.keyRows(keys); rows < 2 || len(lines) < 2 {
 		top = []string{a.footerLine(a.leadText(), keys)}
 	} else {
 		lead := a.leadText()
@@ -191,20 +191,61 @@ func (a *App) footer(keys []kit.Hint) string {
 	return strings.Join(top, "\n")
 }
 
-// withVersion puts the build's version at a footer row's right end, the
-// screen's bottom-right corner, where the row leaves room for it: v1.0(N)
-// only, the hash being for the installer.
+// withVersion puts a fresh note and the build's version at a footer row's
+// right end, the screen's bottom-right corner, where the row leaves room:
+// the note never takes the keys' place, so they stay put while it shows.
+// v1.0(N) only, the hash being for the installer.
 func (a *App) withVersion(row string) string {
-	v := a.version()
-	if v == "" || a.footerRows < 2 {
-		return row // a one-row footer has it after the key log
+	if a.footerRows < 2 {
+		return row // a one-row footer has them after the key log
 	}
-	room := a.width - text.Width(v) - 1
-	left := strings.TrimRight(ansi.Strip(row), " ")
-	if text.Width(left) >= room-1 {
+	left := text.Width(strings.TrimRight(ansi.Strip(row), " "))
+	tail := a.cornerTail(max(a.width-left-4, a.noteRoom()))
+	if tail == "" {
 		return row
 	}
-	return text.Pad(ansi.Truncate(row, room, ""), room) + "\x1b[0m" + kit.StyleDim.Render(v) + " "
+	room := a.width - text.Width(tail) - 1
+	return text.Pad(ansi.Truncate(row, room, ""), room) + "\x1b[0m" + kit.StyleDim.Render(tail) + " "
+}
+
+// noteRoom is what a fresh note may take of the last row even when its
+// keys fill it: the note whole, the row's tail cut for the few seconds it
+// shows, and the rows above untouched. 0 with no note.
+func (a *App) noteRoom() int {
+	if !time.Now().Before(a.noteUntil) || a.note == "" {
+		return 0
+	}
+	room := text.Width(a.note)
+	if v := a.version(); v != "" {
+		room += 3 + text.Width(v)
+	}
+	return min(room, a.width-railW-2)
+}
+
+// cornerTail is what ends the footer's last row in at most room columns:
+// a fresh note, cut to fit, then the version; "" when neither fits.
+func (a *App) cornerTail(room int) string {
+	v := a.version()
+	if text.Width(v) > room {
+		v = ""
+	}
+	note := ""
+	if time.Now().Before(a.noteUntil) && a.note != "" {
+		gap := 0
+		if v != "" {
+			gap = 3
+		}
+		if free := room - text.Width(v) - gap; free >= 8 {
+			note = text.Fit(a.note, free)
+		}
+	}
+	switch {
+	case note != "" && v != "":
+		return note + "   " + v
+	case note != "":
+		return note
+	}
+	return v
 }
 
 // version is what the corner shows, v1.0(N); nothing for a build

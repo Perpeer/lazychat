@@ -17,11 +17,10 @@ paths:
   commits it asks to rebase (`--rebase --autostash`). Errors are typed
   (`ErrNoUpstream`, `ErrRejected`, `ErrDiverged`, `ErrAuth`,
   `ErrNoRemote`).
-- Branches and worktrees never share a list: `b` is branches only —
-  switch (stashing local changes and bringing them back, asked), make a
-  branch from what was typed, delete one; `w` is worktrees only — go to
-  one's row, make one, remove one. A list that offered both was found
-  confusing.
+- `b` and `w` only list and make, never delete: `b` is branches —
+  switch (stashing local changes and bringing them back, asked), make one
+  from what was typed; `w` is worktrees — go to one's row, make one. A
+  list that offered both, or deleted too, was found confusing.
 - New worktrees go in `<main checkout>/.worktrees/<name>`, excluded in
   the repository's `info/exclude` (no tracked file changes), each on a
   branch of its own made from the row's: git keeps a branch in one
@@ -34,16 +33,15 @@ paths:
   projects in Chat.
 - Off-loop answers are wrapped as `owned{by, msg}` so a stale or foreign
   answer is dropped.
-- Deleting is Ctrl+D on a finder's row (`kit.Finder.Delete`), every step
-  asked (`ui/git/delete.go`, `core/git/delete.go`): branches in `b`,
-  worktrees in `w`. What loses work or reaches others is asked a second
-  time: a branch with commits not merged here (`ErrUnmerged`, then `-D`),
-  a worktree with changes (`ErrWorktreeDirty`, then `--force`), and every
-  remote delete (`push <remote> --delete`), whose second question says it
-  goes for everyone. A local delete never takes its remote branch
-  silently; it offers it. A worktree goes with its project and the
-  project's session records (Terminal prunes its shells), refused while a
-  session of it runs; its branch stays — deletes are as separate as the
-  lists. The main checkout and the current branch are never deleted.
-  Screen tests wait for the list before Ctrl+D: on an empty finder it
-  does nothing.
+- Deleting is `d` on a row (`ui/git/delete.go`, `core/git/delete.go`),
+  every step asked, each row with its own warning. A worktree's row
+  removes the worktree with its project and the project's session records
+  (Terminal prunes its shells), refused while a session of it runs, asked
+  again when it has changes (`ErrWorktreeDirty`, then `--force`); its
+  branch stays. The project's own row deletes the branch it is on: git
+  deletes no checked-out branch, so it switches to the default branch
+  (`git.DefaultBranch`: origin's HEAD, main, master) first, never deleting
+  that one; the branch is read now (`git.CurrentBranch`), not from the
+  row's status, which lags a switch. Commits not merged there are asked
+  again (`ErrUnmerged`, then `-D`); a tracked branch offers its remote one,
+  whose delete (`push <remote> --delete`) is always asked a second time.

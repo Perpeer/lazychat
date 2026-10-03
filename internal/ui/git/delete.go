@@ -14,11 +14,12 @@ import (
 	"lazychat/internal/ui/text"
 )
 
-// Deleting with Ctrl+D on a finder's row: a local or a remote branch in
-// the branch list (b), a worktree in the worktree list (w). Each is asked; what loses work — commits merged
-// nowhere here, a worktree's changes — and what reaches others — a remote
-// branch — is asked a second time. The finder stays open under the
-// questions and reads its list again after.
+// Deleting is d on a row: a worktree's row removes the worktree, the
+// project's own row deletes the branch it is on, after switching to the
+// default branch, since git deletes no branch a checkout is on. Each is
+// asked, with its own warning; what loses work — commits not merged, a
+// worktree's changes — and what reaches others — a remote branch — is
+// asked a second time. b and w only make.
 
 // deletedMsg is a delete done off the loop; then decides what follows on
 // the loop: a second question, a note, an offer.
@@ -32,64 +33,88 @@ func (g *Git) deleteOff(op func() error, then func(err error) tea.Cmd) {
 	g.screen.Queue(g.own(func() tea.Msg { return deletedMsg{err: op(), then: then} }))
 }
 
-// askDelete is Ctrl+D on the finder's row i.
-func (g *Git) askDelete(bp *branchPopup, i int) {
-	if bp.worktrees {
-		g.askRemoveWorktree(bp, bp.wts[i])
+// deleteRow is d on the cursor's row.
+func (g *Git) deleteRow() {
+	at, ok := g.cursorRow()
+	p := g.cursorStatus()
+	if !ok || p == nil {
 		return
 	}
-	b := bp.list[i]
-	if b.Remote {
-		remote, name := git.SplitRemote(b.Name)
-		g.askRemoteDelete(bp, remote, name)
+	if p.err != nil {
+		g.screen.Note("%s: %v", at.name, p.err)
 		return
 	}
-	g.askBranchDelete(bp, b)
+	if at.wt != nil {
+		g.askRemoveWorktree(at, p.st.Root)
+		return
+	}
+	// Read now: the row's status may still be the one before a switch.
+	g.askCheckoutDelete(at, p.st.Root, git.CurrentBranch(p.st.Root))
 }
 
-// askBranchDelete deletes a local branch, asked; one with commits not
-// merged here is asked again, naming them, before it is forced. One that
-// tracks a remote branch then offers that one too.
-func (g *Git) askBranchDelete(bp *branchPopup, b git.Branch) {
-	if b.Current {
-		g.screen.Note("%s: %v", b.Name, git.ErrCurrentBranch)
+// askCheckoutDelete deletes the branch the project's own checkout is on:
+// the checkout switches to the default branch first, which itself is never
+// deleted. Commits not merged there are asked again, naming them; a branch
+// that tracks a remote one offers that one after.
+func (g *Git) askCheckoutDelete(at row, root, branch string) {
+	if branch == "" {
+		g.screen.Note("%s is on no branch: nothing to delete", at.name)
 		return
 	}
-	question := "delete branch " + b.Name + "?"
-	if b.Upstream != "" {
-		question += " " + b.Upstream + " on the remote stays unless you say so next"
+	def, err := git.DefaultBranch(root)
+	if err != nil {
+		g.screen.Note("delete %s: %v", branch, err)
+		return
+	}
+	if branch == def {
+		g.screen.Note("%s is the default branch: it is not deleted", branch)
+		return
+	}
+	upstream := git.Upstream(root, branch)
+	question := "delete branch " + branch + "? the checkout switches to " + def + " first"
+	if upstream != "" {
+		question += "; " + upstream + " on the remote stays unless you say so next"
 	}
 	var done func(force bool) func(err error) tea.Cmd
 	done = func(force bool) func(err error) tea.Cmd {
 		return func(err error) tea.Cmd {
 			var un git.ErrUnmerged
+			var dirty git.ErrDirty
 			switch {
+			case errors.As(err, &dirty):
+				g.screen.Note("local changes are in the way of %s: commit them, or switch with b first", def)
+				return nil
 			case errors.As(err, &un) && !force:
 				g.screen.Push(&kit.Confirm{
-					Question: fmt.Sprintf("%s has %d commit(s) not merged here, lost with it: %s. Delete it anyway?", b.Name, len(un.Commits), strings.Join(un.Commits, " · ")),
-					Yes:      func() { g.deleteOff(func() error { return git.DeleteBranch(bp.root, b.Name, true) }, done(true)) },
+					Question: fmt.Sprintf("%s has %d commit(s) not in %s, lost with it: %s. Delete it anyway? (the checkout is on %s now)", branch, len(un.Commits), def, strings.Join(un.Commits, " · "), def),
+					Yes:      func() { g.deleteOff(func() error { return git.DeleteBranch(root, branch, true) }, done(true)) },
 				})
-				return nil
+				return g.load(at.key)
 			case err != nil:
-				g.screen.Note("delete %s: %v", b.Name, err)
-				return nil
+				g.screen.Note("delete %s: %v", branch, err)
+				return g.load(at.key)
 			}
-			g.screen.Note("deleted branch %s", b.Name)
-			if b.Upstream != "" {
-				remote, name := git.SplitRemote(b.Upstream)
-				g.askRemoteDelete(bp, remote, name)
+			g.screen.Note("switched to %s and deleted branch %s", def, branch)
+			if upstream != "" {
+				remote, name := git.SplitRemote(upstream)
+				g.askRemoteDelete(at, root, remote, name)
 			}
-			return g.rereadBranches(bp)
+			return g.load(at.key)
 		}
 	}
 	g.screen.Push(&kit.Confirm{Question: question, Yes: func() {
-		g.deleteOff(func() error { return git.DeleteBranch(bp.root, b.Name, false) }, done(false))
+		g.deleteOff(func() error {
+			if err := git.Switch(root, git.Branch{Name: def}); err != nil {
+				return err
+			}
+			return git.DeleteBranch(root, branch, false)
+		}, done(false))
 	}})
 }
 
 // askRemoteDelete deletes a branch on a remote after two questions: the
 // second says it goes for everyone who uses that remote.
-func (g *Git) askRemoteDelete(bp *branchPopup, remote, name string) {
+func (g *Git) askRemoteDelete(at row, root, remote, name string) {
 	full := remote + "/" + name
 	g.screen.Push(&kit.Confirm{
 		Question: "also delete " + full + " on the remote?",
@@ -97,13 +122,13 @@ func (g *Git) askRemoteDelete(bp *branchPopup, remote, name string) {
 			g.screen.Push(&kit.Confirm{
 				Question: full + " goes from " + remote + " for everyone who uses it, and only a push brings it back. Delete it on the remote?",
 				Yes: func() {
-					g.deleteOff(func() error { return git.DeleteRemoteBranch(bp.root, remote, name) }, func(err error) tea.Cmd {
+					g.deleteOff(func() error { return git.DeleteRemoteBranch(root, remote, name) }, func(err error) tea.Cmd {
 						if err != nil {
 							g.screen.Note("delete %s: %v", full, err)
 							return nil
 						}
 						g.screen.Note("deleted %s on the remote", full)
-						return g.rereadBranches(bp)
+						return g.load(at.key)
 					})
 				},
 			})
@@ -111,11 +136,12 @@ func (g *Git) askRemoteDelete(bp *branchPopup, remote, name string) {
 	})
 }
 
-// askRemoveWorktree removes a worktree, asked: refused while a session of
-// its project runs, asked again when it has changes, and its project and
-// the project's saved sessions go with it, so its shells close too. Its
-// branch stays: branches are deleted from the branch list.
-func (g *Git) askRemoveWorktree(bp *branchPopup, w git.Worktree) {
+// askRemoveWorktree removes the row's worktree, asked: refused while a
+// session of its project runs, asked again when it has changes, and its
+// project and the project's saved sessions go with it, so its shells close
+// too. Its branch stays.
+func (g *Git) askRemoveWorktree(at row, root string) {
+	w := *at.wt
 	shown := filepath.Base(w.Path)
 	p, isProject := g.projectAt(w.Path)
 	var records []state.Session
@@ -135,6 +161,9 @@ func (g *Git) askRemoveWorktree(bp *branchPopup, w git.Worktree) {
 	if isProject {
 		question += fmt.Sprintf(", and the project %s with its %d saved session(s) and its shells", p.Name, len(records))
 	}
+	if w.Branch != "" {
+		question += "; its branch " + w.Branch + " stays"
+	}
 	var done func(force bool) func(err error) tea.Cmd
 	done = func(force bool) func(err error) tea.Cmd {
 		return func(err error) tea.Cmd {
@@ -143,7 +172,7 @@ func (g *Git) askRemoveWorktree(bp *branchPopup, w git.Worktree) {
 			case errors.As(err, &dirty) && !force:
 				g.screen.Push(&kit.Confirm{
 					Question: shown + " has changes that go with it: " + strings.Join(dirty.Files, ", ") + ". Remove it anyway?",
-					Yes:      func() { g.deleteOff(func() error { return git.RemoveWorktree(bp.root, w.Path, true) }, done(true)) },
+					Yes:      func() { g.deleteOff(func() error { return git.RemoveWorktree(root, w.Path, true) }, done(true)) },
 				})
 				return nil
 			case err != nil:
@@ -151,16 +180,12 @@ func (g *Git) askRemoveWorktree(bp *branchPopup, w git.Worktree) {
 				return nil
 			}
 			g.forgetProject(p, isProject, records)
-			if w.Branch != "" {
-				g.screen.Note("removed worktree %s; its branch %s stays, b deletes it", shown, w.Branch)
-			} else {
-				g.screen.Note("removed worktree %s", shown)
-			}
-			return tea.Batch(g.rereadBranches(bp), g.load(bp.owner))
+			g.screen.Note("removed worktree %s", shown)
+			return g.load(at.name)
 		}
 	}
 	g.screen.Push(&kit.Confirm{Question: question, Yes: func() {
-		g.deleteOff(func() error { return git.RemoveWorktree(bp.root, w.Path, false) }, done(false))
+		g.deleteOff(func() error { return git.RemoveWorktree(root, w.Path, false) }, done(false))
 	}})
 }
 
@@ -189,14 +214,4 @@ func (g *Git) forgetProject(p state.Project, isProject bool, records []state.Ses
 	if err := g.core.Store.RemoveProject(p.Path); err != nil {
 		g.screen.Note("remove %s: %v", p.Name, err)
 	}
-}
-
-// rereadBranches reads the open finder's list again after a delete.
-func (g *Git) rereadBranches(bp *branchPopup) tea.Cmd {
-	root, name, base := bp.root, bp.project, bp.base
-	return g.own(func() tea.Msg {
-		l, err := git.Branches(root)
-		wts, _, _ := git.Others(root)
-		return branchesMsg{name: name, list: l, wts: wts, suggest: git.FreeName(root, base), err: err, fetched: true}
-	})
 }

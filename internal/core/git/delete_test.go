@@ -103,3 +103,28 @@ func TestRemoveWorktree(t *testing.T) {
 		t.Errorf("worktrees left: %+v", wts)
 	}
 }
+
+// The default branch is origin's HEAD, else main, else master; a branch's
+// upstream is what it tracks.
+func TestDefaultAndUpstream(t *testing.T) {
+	dir := repo(t)
+	if got, err := DefaultBranch(dir); err != nil || got != "main" {
+		t.Fatalf("no origin: %q %v, want main", got, err)
+	}
+	sh(t, dir, "branch", "-m", "main", "trunk")
+	if _, err := DefaultBranch(dir); !errors.Is(err, ErrNoDefault) {
+		t.Errorf("neither main nor master: %v", err)
+	}
+	sh(t, dir, "branch", "-m", "trunk", "main")
+	clone, _ := withOrigin(t)
+	sh(t, clone, "remote", "set-head", "origin", "main")
+	if got, err := DefaultBranch(clone); err != nil || got != "main" {
+		t.Errorf("origin HEAD: %q %v", got, err)
+	}
+	if got := Upstream(clone, "main"); got != "origin/main" {
+		t.Errorf("upstream of main: %q", got)
+	}
+	if got := Upstream(clone, "other"); got != "" {
+		t.Errorf("upstream of an untracked branch: %q", got)
+	}
+}

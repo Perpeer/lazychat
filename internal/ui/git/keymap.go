@@ -31,8 +31,9 @@ func init() {
 		{Keys: []string{"pgdown"}, Run: act(func(g *Git) { g.scrollDiff(g.diffRows() / 2) })},
 	}
 	keyCommit := binding{Keys: []string{"c"}, Hint: kit.Hint{Key: "c", Does: "commit"}, Help: "write the commit's subject and description in the box under the diff, as 5 does; Tab walks to the Commit button", Run: act(func(g *Git) { g.startCommit() })}
-	keyBranch := binding{Keys: []string{"b"}, Hint: kit.Hint{Key: "b", Does: "branches"}, Help: "the branch list: local, then remote branches, newest first, the remotes fetched as it opens. Enter switches to one (a remote one as a local branch tracking it); a name no branch has offers a new branch from the row's, switched to; Ctrl+D deletes one, asked — again, naming them, when its commits are not merged here, and a remote one always a second time. Worktrees are w's", Run: func(g *Git) tea.Cmd { return g.openBranches() }}
-	keyWorktree := binding{Keys: []string{"w"}, Hint: kit.Hint{Key: "w", Does: "worktrees"}, Help: "the worktree list: the repository's other worktrees. Enter goes to one's row; a new name makes a worktree on a branch of that name from the row's branch, in .worktrees/, opened as a project — with nothing typed another of the row's branch, its name suggested; Ctrl+D removes one with its project, asked — again when it has changes; its branch stays", Run: func(g *Git) tea.Cmd { return g.openWorktrees() }}
+	keyBranch := binding{Keys: []string{"b"}, Hint: kit.Hint{Key: "b", Does: "branches"}, Help: "the branch list: local, then remote branches, newest first, the remotes fetched as it opens. Enter switches to one (a remote one as a local branch tracking it); a name no branch has offers a new branch from the row's, switched to. Worktrees are w's; d on a row deletes", Run: func(g *Git) tea.Cmd { return g.openBranches() }}
+	keyWorktree := binding{Keys: []string{"w"}, Hint: kit.Hint{Key: "w", Does: "worktrees"}, Help: "the worktree list: the repository's other worktrees. Enter goes to one's row; a new name makes a worktree on a branch of that name from the row's branch, in .worktrees/, opened as a project — with nothing typed another of the row's branch, its name suggested; d on a worktree's row removes it", Run: func(g *Git) tea.Cmd { return g.openWorktrees() }}
+	keyDelete := binding{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "delete"}, Help: "delete what the row is, asked: on a worktree's row the worktree with its folder, its project and the project's saved sessions and shells (asked again when it has changes; refused while a session of it runs; its branch stays); on the project's own row the branch it is on — the checkout switches to the default branch first, which itself is never deleted; commits not merged there are asked again, and a branch tracking a remote one then offers that one, asked twice since it goes for everyone", Run: act(func(g *Git) { g.deleteRow() })}
 	// Branches have no order of their own, so m moves nothing here; M
 	// moves the project, as in every tab.
 	keyPush := binding{Keys: []string{"P"}, Hint: kit.Hint{Key: "shift+p", Does: "push"}, Help: "push the row's branch to its upstream; with none, asked, to the first remote, tracked there. Never a force push: a rejected push says to pull first", Run: func(g *Git) tea.Cmd { return g.push() }}
@@ -45,6 +46,7 @@ func init() {
 		keyFetch,
 		keyBranch,
 		keyWorktree,
+		keyDelete,
 		keyRefresh,
 		keyBack,
 	}
