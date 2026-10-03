@@ -17,10 +17,11 @@ paths:
   commits it asks to rebase (`--rebase --autostash`). Errors are typed
   (`ErrNoUpstream`, `ErrRejected`, `ErrDiverged`, `ErrAuth`,
   `ErrNoRemote`).
-- `b` switches branch, stashing local changes and bringing them back,
-  asked first. It also finds worktrees and makes a branch or a worktree
-  from what was typed (`kit.Finder.Create`, rows under the matches so
-  Enter still takes the first match).
+- Branches and worktrees never share a list: `b` is branches only —
+  switch (stashing local changes and bringing them back, asked), make a
+  branch from what was typed, delete one; `w` is worktrees only — go to
+  one's row, make one, remove one. A list that offered both was found
+  confusing.
 - New worktrees go in `<main checkout>/.worktrees/<name>`, excluded in
   the repository's `info/exclude` (no tracked file changes), each on a
   branch of its own made from the row's: git keeps a branch in one
@@ -33,15 +34,16 @@ paths:
   projects in Chat.
 - Off-loop answers are wrapped as `owned{by, msg}` so a stale or foreign
   answer is dropped.
-- Deleting is Ctrl+D in the `b` finder (`kit.Finder.Delete`), every step
-  asked (`ui/git/delete.go`, `core/git/delete.go`). What loses work or
-  reaches others is asked a second time: a branch with commits not merged
-  here (`ErrUnmerged`, then `-D`), a worktree with changes
-  (`ErrWorktreeDirty`, then `--force`), and every remote delete (`push
-  <remote> --delete`), whose second question says it goes for everyone.
-  A local delete never takes its remote branch silently; it offers it.
-  A worktree goes with its project and the project's session records
-  (Terminal prunes its shells), refused while a session of it runs; its
-  branch is offered after. The main checkout and the current branch are
-  never deleted. Screen tests wait for the list before Ctrl+D: on an empty
-  finder it does nothing.
+- Deleting is Ctrl+D on a finder's row (`kit.Finder.Delete`), every step
+  asked (`ui/git/delete.go`, `core/git/delete.go`): branches in `b`,
+  worktrees in `w`. What loses work or reaches others is asked a second
+  time: a branch with commits not merged here (`ErrUnmerged`, then `-D`),
+  a worktree with changes (`ErrWorktreeDirty`, then `--force`), and every
+  remote delete (`push <remote> --delete`), whose second question says it
+  goes for everyone. A local delete never takes its remote branch
+  silently; it offers it. A worktree goes with its project and the
+  project's session records (Terminal prunes its shells), refused while a
+  session of it runs; its branch stays — deletes are as separate as the
+  lists. The main checkout and the current branch are never deleted.
+  Screen tests wait for the list before Ctrl+D: on an empty finder it
+  does nothing.

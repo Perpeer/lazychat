@@ -105,7 +105,7 @@ func TestGitTab(t *testing.T) {
 	}
 	// Unstaged and Staged split the column over the commits box, a quarter
 	// of it, as many rows each.
-	if h := lineOf(d.screen(), "(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh") - up; low-up != (h-max(5, h/4))/2 || lineOf(d.screen(), "┌ [4] commits")-up != h-max(5, h/4) {
+	if h := lineOf(d.screen(), "(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh") - up; low-up != (h-max(5, h/4))/2 || lineOf(d.screen(), "┌ [4] commits")-up != h-max(5, h/4) {
 		t.Errorf("the boxes do not split the column: Staged %d rows under Unstaged, of %d\n%s", low-up, h, d.screen())
 	}
 	d.expect("┌ [6] commit", "Commit subject", "Description", "[ Commit ]")
@@ -122,26 +122,26 @@ func TestGitTab(t *testing.T) {
 	d.key("left") // not a way back any more: the diff keeps the keys
 	d.expect("(esc) projects · (c) commit")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.key("3", "6")
 	d.expect("(ctrl+s) commit · (ctrl+n) suggest · (Tab) next · (esc) projects")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.key("3")
 	d.expect("(space) stage / unstage")
 	d.key("6", "ctrl+q") // Ctrl+Q goes back to the projects, from the commit box too
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.key("5", "ctrl+q")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	// A click on a box's empty part gives it the keys; its selection stays.
 	sc := d.screen()
 	staged := lineOf(sc, "┌ [3] Staged")
 	d.click(utf8.RuneCountInString(strings.Split(sc, "\n")[staged][:strings.Index(strings.Split(sc, "\n")[staged], "┌ [3] Staged")])+5, staged+4)
 	d.expect("(space) stage / unstage", "      1 + package app")
 	d.click(10, lineOf(d.screen(), "(space) stage")-2) // the projects box, below its last project
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.key("1")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.key("2")
 	d.expect("┌ [5] all unstaged", "(space) stage / unstage")
 	d.key("1")
@@ -157,7 +157,7 @@ func TestGitTab(t *testing.T) {
 	clickOn("M app.go")
 	d.expect("      3 + func One() int { return 2 }")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll · (?) help")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll · (?) help")
 	// The first change's diff is on the right before the middle has the keys.
 	d.expect("app.go", "  3     - func One() int { return 1 }", "      3 + func One() int { return 2 }")
 
@@ -195,7 +195,7 @@ func TestGitTab(t *testing.T) {
 	d.key("c", "x")                     // typed into the box, not a key of the tab
 	d.expect("(ctrl+s) commit")
 	d.key("esc") // to the projects, as ctrl+q; what was typed stays
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch · (r) refresh · (wheel) scroll", "│ x")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (r) refresh · (wheel) scroll", "│ x")
 	d.key("3") // the empty Staged box takes the keys all the same: no diff, space does nothing
 	d.expect("┌ [5] diff", "(space) stage / unstage")
 	d.key(" ", "j")
@@ -362,9 +362,9 @@ func TestBranchSwitch(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main", "(b) switch")
+	d.expect("● main", "(b) branches")
 	d.key("b")
-	d.expect("switch branch · demo2", " Local", "main", "● current · origin/main", "other", " Remote", "origin/feature")
+	d.expect("branches · demo2", " Local", "main", "● current · origin/main", "other", " Remote", "origin/feature")
 	d.expect("origin/late") // after the fetch the popup started
 	d.typ("oth")
 	d.expect("1 of 4")
@@ -375,7 +375,7 @@ func TestBranchSwitch(t *testing.T) {
 	}
 
 	d.key("b")
-	d.expect("switch branch · demo2", "origin/feature")
+	d.expect("branches · demo2", "origin/feature")
 	d.typ("feature")
 	d.key("enter")
 	d.expect("switched to feature (tracking origin/feature)", "● feature")
@@ -385,7 +385,7 @@ func TestBranchSwitch(t *testing.T) {
 
 	write(t, filepath.Join(dir, "a.txt"), "one\nfeature\nthree\nfour\n")
 	d.key("b")
-	d.expect("switch branch · demo2", "● current") // the list is in
+	d.expect("branches · demo2", "● current") // the list is in
 	d.typ("main")
 	d.key("enter")
 	d.expect("Local changes to a.txt are in the way of main")
@@ -540,7 +540,7 @@ func TestGitCommits(t *testing.T) {
 	d.key("5") // the diff keeps the commit's patch while it has the keys
 	d.expect("      1 + one", "(esc) projects")
 	d.key("esc") // the projects: the changes' diff comes back
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees")
 	d.expectNot("      1 + one")
 	// A click on a commit gives the box the keys and shows that commit.
 	sc := d.screen()
@@ -673,11 +673,11 @@ func TestGitPushPull(t *testing.T) {
 	d.quitApp()
 }
 
-// b finds or makes: a name no branch has offers a new branch, made from the
-// row's and switched to, or a new worktree in .worktrees/ on a branch of
-// its own, opened as a project; with nothing typed it offers another
-// worktree of the row's branch under a free name, and Enter on a listed
-// worktree takes the cursor to its row.
+// b makes branches and w worktrees, never one the other: a name no branch
+// has offers in b a new branch, made from the row's and switched to, and in
+// w a new worktree in .worktrees/ on a branch of its own, opened as a
+// project; with nothing typed w offers another worktree of the row's branch
+// under a free name, and Enter on a listed worktree takes the cursor there.
 func TestGitCreate(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -693,19 +693,19 @@ func TestGitCreate(t *testing.T) {
 	d.tab(2)
 	d.expect("● main")
 	d.key("b")
-	d.expect("switch branch · demo2", "+ new worktree main-2 from main")
+	d.expect("branches · demo2", "● current")
 	d.typ("tea-kettle")
-	d.expect("▸ + new branch tea-kettle from main", "+ new worktree tea-kettle from main")
+	d.expect("▸ + new branch tea-kettle from main")
+	d.expectNot("new worktree")
 	d.key("enter")
 	d.expect("made tea-kettle from main and switched to it", "● tea-kettle")
 	if got := head(); got != "tea-kettle" {
 		t.Fatalf("HEAD is %q, want tea-kettle", got)
 	}
 
-	d.key("b")
-	d.expect("+ new worktree tea-kettle-2 from tea-kettle")
-	d.key("pgdown") // past the branches, onto the suggestion
-	d.expect("▸ + new worktree tea-kettle-2")
+	d.key("w")
+	d.expect("worktrees · demo2", "▸ + new worktree tea-kettle-2 from tea-kettle", "Ctrl+D remove")
+	d.expectNot("new branch")
 	d.key("enter")
 	// The row under the project, not the new project's own heading.
 	d.expect("made worktree tea-kettle-2 from tea-kettle, opened as demo2 · tea-kettle-2", "└─ ⑂ tea-kettle-2")
@@ -717,29 +717,29 @@ func TestGitCreate(t *testing.T) {
 		t.Errorf("the project sees the worktrees folder: %q", st)
 	}
 
-	d.key("b") // a second worktree of the same work, named on
+	d.key("w") // a second worktree of the same work, named on
 	d.expect("+ new worktree tea-kettle-3 from tea-kettle-2")
 	d.key("esc")
 	d.key("g") // back to the project's own row
 	d.expect("● tea-kettle")
-	d.key("b")
-	d.expect(" Worktrees", "+ new worktree tea-kettle-3 from tea-kettle")
+	d.key("w")
+	d.expect("worktrees · demo2", "tea-kettle-2", "+ new worktree tea-kettle-3 from tea-kettle")
 	d.typ("kettle-2")
 	d.expect("▸ tea-kettle-2")
 	d.key("enter")
 	d.key("b") // the cursor is on the worktree's row now
-	d.expect("switch branch · demo2 · tea-kettle-2")
+	d.expect("branches · demo2 · tea-kettle-2")
 	d.key("esc")
 	d.tab(1) // the worktree is a project in Chat, ready for sessions
 	d.expect("demo2 · tea-kettle-2")
 	d.quitApp()
 }
 
-// Ctrl+D in the b finder deletes the row: a merged branch after one
-// question, an unmerged one after a second naming its commits; a branch
-// that tracks a remote one offers that one too, which goes only after two
-// questions; a worktree goes with its project, asked again when it has
-// changes, and offers its branch after.
+// Ctrl+D deletes the finder's row, each list only its own kind: in b a
+// merged branch after one question, an unmerged one after a second naming
+// its commits, and a branch that tracks a remote one offers that one too,
+// which goes only after two questions; in w a worktree goes with its
+// project, asked again when it has changes, and its branch stays.
 func TestGitDelete(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -768,7 +768,7 @@ func TestGitDelete(t *testing.T) {
 	d.tab(2)
 	d.expect("● main")
 	d.key("b")
-	d.expect("switch branch · demo2", "Ctrl+D delete", "origin/main") // the list is in
+	d.expect("branches · demo2", "Ctrl+D delete", "origin/main") // the list is in
 	d.typ("merged")
 	d.key("ctrl+d")
 	d.expect("delete branch merged?")
@@ -814,9 +814,9 @@ func TestGitDelete(t *testing.T) {
 	}
 	d.key("esc")
 
-	d.key("b")
+	d.key("w")
+	d.expect("worktrees · demo2")
 	d.typ("spare")
-	d.key("down") // the new worktree row, under the new branch one
 	d.expect("▸ + new worktree spare from main")
 	d.key("enter")
 	d.expect("made worktree spare from main, opened as demo2 · spare")
@@ -824,18 +824,20 @@ func TestGitDelete(t *testing.T) {
 	write(t, filepath.Join(wt, "unsaved.txt"), "not kept\n")
 	d.key("g")
 	d.expect("● main")
-	d.key("b")
-	d.expect(" Worktrees")
+	d.key("w")
+	d.expect("worktrees · demo2", "Ctrl+D remove")
 	d.typ("spare")
-	d.expect("▸ spare")
+	d.expect("▸ spare", "1 of 1") // the list is in
 	d.key("ctrl+d")
 	d.expect("remove worktree spare", "the project demo2 · spare")
 	d.key("y")
 	d.expect("has changes that go with it", "unsaved.txt")
 	d.key("y")
-	d.expect("removed worktree spare", "delete branch spare?")
-	d.key("y")
-	d.expect("deleted branch spare")
+	d.expect("removed worktree spare; its branch spare stays")
+	d.expectNot("delete branch spare?")
+	if !strings.Contains(branches(), "spare") {
+		t.Errorf("removing the worktree took its branch:\n%s", branches())
+	}
 	if _, err := os.Stat(wt); !os.IsNotExist(err) {
 		t.Errorf("the worktree's folder is left: %v", err)
 	}

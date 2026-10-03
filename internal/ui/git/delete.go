@@ -14,8 +14,8 @@ import (
 	"lazychat/internal/ui/text"
 )
 
-// Deleting from the b finder, Ctrl+D on its row: a local branch, a remote
-// one, or a worktree. Each is asked; what loses work — commits merged
+// Deleting with Ctrl+D on a finder's row: a local or a remote branch in
+// the branch list (b), a worktree in the worktree list (w). Each is asked; what loses work — commits merged
 // nowhere here, a worktree's changes — and what reaches others — a remote
 // branch — is asked a second time. The finder stays open under the
 // questions and reads its list again after.
@@ -34,11 +34,11 @@ func (g *Git) deleteOff(op func() error, then func(err error) tea.Cmd) {
 
 // askDelete is Ctrl+D on the finder's row i.
 func (g *Git) askDelete(bp *branchPopup, i int) {
-	if i < len(bp.wts) {
+	if bp.worktrees {
 		g.askRemoveWorktree(bp, bp.wts[i])
 		return
 	}
-	b := bp.list[i-len(bp.wts)]
+	b := bp.list[i]
 	if b.Remote {
 		remote, name := git.SplitRemote(b.Name)
 		g.askRemoteDelete(bp, remote, name)
@@ -114,7 +114,7 @@ func (g *Git) askRemoteDelete(bp *branchPopup, remote, name string) {
 // askRemoveWorktree removes a worktree, asked: refused while a session of
 // its project runs, asked again when it has changes, and its project and
 // the project's saved sessions go with it, so its shells close too. Its
-// branch is offered after.
+// branch stays: branches are deleted from the branch list.
 func (g *Git) askRemoveWorktree(bp *branchPopup, w git.Worktree) {
 	shown := filepath.Base(w.Path)
 	p, isProject := g.projectAt(w.Path)
@@ -151,9 +151,10 @@ func (g *Git) askRemoveWorktree(bp *branchPopup, w git.Worktree) {
 				return nil
 			}
 			g.forgetProject(p, isProject, records)
-			g.screen.Note("removed worktree %s", shown)
 			if w.Branch != "" {
-				g.offerBranch(bp, w.Branch)
+				g.screen.Note("removed worktree %s; its branch %s stays, b deletes it", shown, w.Branch)
+			} else {
+				g.screen.Note("removed worktree %s", shown)
 			}
 			return tea.Batch(g.rereadBranches(bp), g.load(bp.owner))
 		}
@@ -161,18 +162,6 @@ func (g *Git) askRemoveWorktree(bp *branchPopup, w git.Worktree) {
 	g.screen.Push(&kit.Confirm{Question: question, Yes: func() {
 		g.deleteOff(func() error { return git.RemoveWorktree(bp.root, w.Path, false) }, done(false))
 	}})
-}
-
-// offerBranch asks whether a removed worktree's branch goes too, as a
-// local delete would ask it.
-func (g *Git) offerBranch(bp *branchPopup, name string) {
-	b := git.Branch{Name: name}
-	for _, x := range bp.list {
-		if !x.Remote && x.Name == name {
-			b = x
-		}
-	}
-	g.askBranchDelete(bp, b)
 }
 
 // projectAt is the project whose folder is dir.

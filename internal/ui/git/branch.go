@@ -45,19 +45,20 @@ type (
 	}
 )
 
-// branchPopup is the open finder and what it lists — the repository's
-// other worktrees, then its branches — so a list that arrives later (the
-// fetch) redraws it in place. base is the row's branch, what a new branch
-// or worktree is made from.
+// branchPopup is the open finder — the branch list, or with worktrees the
+// worktree list — and what the repository has, so a list that arrives
+// later (the fetch) redraws it in place. base is the row's branch, what a
+// new branch or worktree is made from.
 type branchPopup struct {
-	project string // the row's key
-	owner   string // the project's name
-	root    string
-	base    string
-	suggest string
-	finder  *kit.Finder
-	wts     []git.Worktree
-	list    []git.Branch
+	worktrees bool
+	project   string // the row's key
+	owner     string // the project's name
+	root      string
+	base      string
+	suggest   string
+	finder    *kit.Finder
+	wts       []git.Worktree
+	list      []git.Branch
 }
 
 // taken says a name is a branch already, local or as a remote one a switch
@@ -75,9 +76,20 @@ func (bp *branchPopup) taken(name string) bool {
 }
 
 // openBranches is b on a project: a finder over its local and remote
-// branches, opened at once with what the repository knows while a fetch
-// brings the remotes up to date.
-func (g *Git) openBranches() tea.Cmd {
+// branches only, opened at once with what the repository knows while a
+// fetch brings the remotes up to date. It switches, makes a branch from
+// what was typed, and Ctrl+D deletes one; worktrees are w's.
+func (g *Git) openBranches() tea.Cmd { return g.openList(false) }
+
+// openWorktrees is w on a project: a finder over the repository's other
+// worktrees only. Enter goes to one's row, a new name makes one (another
+// of the row's branch, its name suggested, with nothing typed), and
+// Ctrl+D removes one.
+func (g *Git) openWorktrees() tea.Cmd { return g.openList(true) }
+
+// openList opens the branch list or, with worktrees, the worktree list:
+// both read the same things, each lists, makes and deletes only its own.
+func (g *Git) openList(worktrees bool) tea.Cmd {
 	at, ok := g.cursorRow()
 	p := g.cursorStatus()
 	if !ok || p == nil {
@@ -93,7 +105,10 @@ func (g *Git) openBranches() tea.Cmd {
 		return nil
 	}
 	root := p.st.Root
-	title := "switch branch · " + shown
+	title := "branches · " + shown
+	if worktrees {
+		title = "worktrees · " + shown
+	}
 	if p.st.Branch == "(detached)" {
 		title += " · detached"
 	}
@@ -101,43 +116,49 @@ func (g *Git) openBranches() tea.Cmd {
 	if base == "(detached)" {
 		base = "HEAD"
 	}
-	bp := &branchPopup{project: name, owner: at.name, root: root, base: base}
+	bp := &branchPopup{project: name, owner: at.name, root: root, base: base, worktrees: worktrees}
 	bp.finder = kit.NewFinder(title, nil, func(i int) { g.pickBranch(bp, i) })
-	bp.finder.Group = func(i int) string {
-		switch {
-		case i < len(bp.wts):
-			return "Worktrees"
-		case bp.list[i-len(bp.wts)].Remote:
-			return "Remote"
-		}
-		return "Local"
-	}
-	bp.finder.Note = func(i int) string {
-		if i < len(bp.wts) {
-			return "⑂ " + text.ShortHome(bp.wts[i].Path)
-		}
-		return branchNote(bp.list[i-len(bp.wts)])
-	}
-	bp.finder.Create = func(q string) []string {
-		switch {
-		case q == "" && bp.suggest != "":
-			return []string{"new worktree " + bp.suggest + " from " + base}
-		case q == "" || bp.taken(q):
-			return nil
-		}
-		return []string{"new branch " + q + " from " + base, "new worktree " + q + " from " + base}
-	}
-	bp.finder.Made = func(i int, q string) {
-		g.branches = nil
-		if q == "" {
-			g.create(bp, bp.suggest, true)
-			return
-		}
-		g.create(bp, q, i == 1)
-	}
 	bp.finder.Delete = func(i int) { g.askDelete(bp, i) }
-	bp.finder.DeleteHint = "delete"
-	bp.finder.Status = "reading branches…"
+	if worktrees {
+		bp.finder.Note = func(i int) string { return "⑂ " + text.ShortHome(bp.wts[i].Path) }
+		bp.finder.Create = func(q string) []string {
+			switch {
+			case q == "" && bp.suggest != "":
+				return []string{"new worktree " + bp.suggest + " from " + base}
+			case q == "" || bp.taken(q):
+				return nil
+			}
+			return []string{"new worktree " + q + " from " + base}
+		}
+		bp.finder.Made = func(_ int, q string) {
+			g.branches = nil
+			if q == "" {
+				q = bp.suggest
+			}
+			g.create(bp, q, true)
+		}
+		bp.finder.DeleteHint = "remove"
+	} else {
+		bp.finder.Group = func(i int) string {
+			if bp.list[i].Remote {
+				return "Remote"
+			}
+			return "Local"
+		}
+		bp.finder.Note = func(i int) string { return branchNote(bp.list[i]) }
+		bp.finder.Create = func(q string) []string {
+			if q == "" || bp.taken(q) {
+				return nil
+			}
+			return []string{"new branch " + q + " from " + base}
+		}
+		bp.finder.Made = func(_ int, q string) {
+			g.branches = nil
+			g.create(bp, q, false)
+		}
+		bp.finder.DeleteHint = "delete"
+	}
+	bp.finder.Status = "reading…"
 	g.branches = bp
 	g.screen.Push(bp.finder)
 	read := func(fetched bool, ferr error) branchesMsg {
@@ -146,6 +167,9 @@ func (g *Git) openBranches() tea.Cmd {
 		return branchesMsg{name: name, list: l, wts: wts, suggest: git.FreeName(root, base), err: err, fetched: fetched, fetchErr: ferr}
 	}
 	list := g.own(func() tea.Msg { return read(false, nil) })
+	if worktrees {
+		return list
+	}
 	fetch := g.own(func() tea.Msg { ferr := git.Fetch(root); return read(true, ferr) })
 	return tea.Batch(list, fetch)
 }
@@ -239,17 +263,22 @@ func (g *Git) showBranches(msg branchesMsg) {
 		names[i] = b.Name
 	}
 	bp.list, bp.wts, bp.suggest = msg.list, msg.wts, msg.suggest
-	items := make([]string, 0, len(msg.wts)+len(names))
-	for _, w := range msg.wts {
-		label := w.Branch
-		if label == "" {
-			label = "detached " + text.Fit(w.Head, 7)
+	if bp.worktrees {
+		items := make([]string, 0, len(msg.wts))
+		for _, w := range msg.wts {
+			label := w.Branch
+			if label == "" {
+				label = "detached " + text.Fit(w.Head, 7)
+			}
+			items = append(items, label)
 		}
-		items = append(items, label)
+		bp.finder.SetItems(items)
+		bp.finder.Status = ""
+		return
 	}
-	bp.finder.SetItems(append(items, names...))
+	bp.finder.SetItems(names)
 	switch {
-	case !msg.fetched && bp.finder.Status == "reading branches…":
+	case !msg.fetched && bp.finder.Status == "reading…":
 		bp.finder.Status = "fetching the remotes…"
 	case msg.fetched && msg.fetchErr != nil:
 		bp.finder.Status = msg.fetchErr.Error() + " — the remotes as last fetched"
@@ -262,7 +291,7 @@ func (g *Git) showBranches(msg branchesMsg) {
 // popup closes, and the footer tells how it went.
 func (g *Git) pickBranch(bp *branchPopup, i int) {
 	g.branches = nil
-	if i < len(bp.wts) {
+	if bp.worktrees {
 		if !g.selectPath(bp.wts[i].Path) {
 			g.screen.Note("%s is not listed here", text.ShortHome(bp.wts[i].Path))
 			return
@@ -272,7 +301,7 @@ func (g *Git) pickBranch(bp *branchPopup, i int) {
 		g.screen.Queue(tea.Batch(g.loadCursor(), g.loadDiff()))
 		return
 	}
-	b := bp.list[i-len(bp.wts)]
+	b := bp.list[i]
 	if b.Current {
 		g.screen.Note("already on %s", b.Name)
 		return

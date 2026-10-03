@@ -70,7 +70,7 @@ func TestChildCursor(t *testing.T) {
 	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 
 	d.tab(2) // Git: the branch is the row, the project's key below it
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.key("j")
 	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.quitApp()

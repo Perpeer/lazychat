@@ -105,7 +105,7 @@ func TestChatFlow(t *testing.T) {
 	d.key("shift+tab") // back around the rail: Chat → Terminal, then Terminal → Git
 	d.expect("demo2 · terminals (0)")
 	d.key("shift+tab")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees")
 	d.key("tab", "tab")
 	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help")
 	d.click(79, 14)
