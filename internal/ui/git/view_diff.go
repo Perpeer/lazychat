@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"lazychat/internal/core/git"
 	"lazychat/internal/ui/kit"
@@ -16,6 +17,7 @@ import (
 // holds several files, the file's own heading.
 type line struct {
 	file string // set on a file heading
+	path string // the file every row belongs to, for a copy's header
 	row  git.Row
 	w    int // the width of the numbers in this line's file
 }
@@ -34,10 +36,10 @@ func flatten(files []git.File) []line {
 			if f.Orig != "" {
 				name = f.Orig + " → " + f.Path
 			}
-			out = append(out, line{file: name})
+			out = append(out, line{file: name, path: f.Path})
 		}
 		for _, r := range f.Rows {
-			out = append(out, line{row: r, w: w})
+			out = append(out, line{path: f.Path, row: r, w: w})
 		}
 	}
 	return out
@@ -47,10 +49,14 @@ func flatten(files []git.File) []line {
 const tabWidth = 4
 
 // drawDiff draws rows from..from+h of lines, w wide: only what is on
-// screen, however long the diff is.
-func drawDiff(lines []line, from, w, h int) []string {
+// screen, however long the diff is; the rows lit says are drawn selected.
+func drawDiff(lines []line, from, w, h int, lit func(i int) bool) []string {
 	var out []string
 	for i := from; i < len(lines) && len(out) < h; i++ {
+		if lit != nil && lit(i) {
+			out = append(out, kit.StyleSel.Render(text.Pad(ansi.Strip(drawLine(lines[i], w)), w)))
+			continue
+		}
 		out = append(out, drawLine(lines[i], w))
 	}
 	return out

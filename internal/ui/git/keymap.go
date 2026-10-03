@@ -88,15 +88,24 @@ func init() {
 	commitsKeys = append(commitsKeys, keyBack)
 	commitsKeys = append(commitsKeys, panelKeys()...)
 	diffKeys = []binding{
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as ctrl+q", Run: act(func(g *Git) { g.goTo(panelProjects) })},
+		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "drop the selection; with none, back to the projects, as ctrl+q", Run: act(func(g *Git) {
+			if g.diff.marked {
+				g.diff.marked = false
+				return
+			}
+			g.goTo(panelProjects)
+		})},
+		{Keys: []string{"v"}, Hint: kit.Hint{Key: "v", Does: "select"}, Help: "mark the cursor's row as one end of a selection, the cursor the other; v again drops it", Run: act(func(g *Git) { g.markDiff() })},
+		{Keys: []string{"y"}, Hint: kit.Hint{Key: "y", Does: "copy"}, Help: "copy the selected rows, or the cursor's, for a prompt: each file's part headed by its path and line numbers (path:28-35), every line marked + added, - removed or a space", Run: act(func(g *Git) { g.copyDiff() })},
+		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the diff to select rows; the release copies them, as y does"},
 		keyCommit,
 	}
 	diffKeys = append(diffKeys, scroll...)
 	diffKeys = append(diffKeys, keyRefresh, keyHelp, keyQuit,
-		binding{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "scroll the diff a row; g and G to its top and end", Run: act(func(g *Git) { g.scrollDiff(-1) })},
-		binding{Keys: []string{"down", "j"}, Run: act(func(g *Git) { g.scrollDiff(1) })},
-		binding{Keys: []string{"g", "home"}, Run: act(func(g *Git) { g.scrollDiff(-1 << 20) })},
-		binding{Keys: []string{"G", "end"}, Run: act(func(g *Git) { g.scrollDiff(1 << 20) })},
+		binding{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move the row cursor, the diff following; g and G to its first and last row", Run: act(func(g *Git) { g.moveDiff(-1) })},
+		binding{Keys: []string{"down", "j"}, Run: act(func(g *Git) { g.moveDiff(1) })},
+		binding{Keys: []string{"g", "home"}, Run: act(func(g *Git) { g.moveDiff(-1 << 20) })},
+		binding{Keys: []string{"G", "end"}, Run: act(func(g *Git) { g.moveDiff(1 << 20) })},
 	)
 	diffKeys = append(diffKeys, keyBack)
 	diffKeys = append(diffKeys, panelKeys()...)

@@ -104,6 +104,10 @@ type diff struct {
 	lines []line
 	err   error
 	top   int
+	// cur is the diff's row cursor and anchor, when marked, the other end
+	// of a selection; dragging is a mouse selection under way.
+	cur, anchor      int
+	marked, dragging bool
 }
 
 type Git struct {

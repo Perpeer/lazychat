@@ -98,9 +98,9 @@ func (g *Git) projectsBox(w, h int) string {
 			blocks[r.index] = append(blocks[r.index], kit.ChildGap())
 		}
 		last := i+1 == len(rs) || rs[i+1].index != r.index
-		entry := branchEntry(st, r.path, g.runningIn(r.name, r.path), w-2, last)
+		entry := branchEntry(st, r.path, w-2, last)
 		if r.wt != nil {
-			entry = worktreeEntry(r, st, g.runningIn("", r.path), w-2, last)
+			entry = worktreeEntry(r, st, w-2, last)
 		}
 		blocks[r.index] = append(blocks[r.index], kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), kit.DrawEntry(entry, w-2, i == g.projects.Sel, focused), w-2)...)
 	}
@@ -141,25 +141,24 @@ func (g *Git) shownStatus(key string) *project {
 
 // branchEntry hangs a project's branch off its heading the way Chat hangs a
 // session: the branch on the connector row, how far it is from its upstream
-// and how much changed on the row under it, then the sessions running in
-// it. It is the checkout the project works in — Chat's sessions and
-// Terminal's shells start in its folder — so beside other checkouts it says
-// "current", and when its folder is an added worktree its branch takes the
-// worktree colour too, ⑂ before it. A project still loading (nil) or one
+// and how much changed on the row under it. It is the checkout the project
+// works in — Chat's sessions and Terminal's shells start in its folder — so
+// beside other checkouts it says "current", and when its folder is an added
+// worktree its branch takes the worktree colour too, ⑂ before it. A project still loading (nil) or one
 // git can not read shows that on the connector row instead; last says no
 // worktree follows it.
-func branchEntry(p *project, path string, sessions []string, w int, last bool) []kit.TreeLine {
+func branchEntry(p *project, path string, w int, last bool) []kit.TreeLine {
 	current := p != nil && len(p.wts) > 0
 	if p != nil && p.linked {
-		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, current, folderNote(path, p.st.Branch), sessions)
+		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, current, folderNote(path, p.st.Branch))
 	}
-	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, current, "", sessions)
+	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, current, "")
 }
 
 // worktreeEntry is one of the repository's other checkouts under the
 // project's branch: its branch after ⑂ (○ for the main checkout), the same
 // counts, and its folder only where the branch does not already say it.
-func worktreeEntry(r row, p *project, sessions []string, w int, last bool) []kit.TreeLine {
+func worktreeEntry(r row, p *project, w int, last bool) []kit.TreeLine {
 	var notes []string
 	if p != nil && !r.wt.Main {
 		if f := folderNote(r.path, p.st.Branch); f != "" {
@@ -179,7 +178,7 @@ func worktreeEntry(r row, p *project, sessions []string, w int, last bool) []kit
 	if r.wt.Main {
 		glyph = "○"
 	}
-	return checkoutEntry(p, w, last, glyph, kit.StyleDim, kit.StyleBold, false, strings.Join(notes, " · "), sessions)
+	return checkoutEntry(p, w, last, glyph, kit.StyleDim, kit.StyleBold, false, strings.Join(notes, " · "))
 }
 
 // folderNote is a worktree's folder when it is not named after its branch,
@@ -196,8 +195,8 @@ const currentMark = "  current"
 
 // checkoutEntry is a checkout's row: glyph and branch, "current" beside it
 // on the one the project works in, then ↑ ahead, ↓ behind and what changed
-// with any note, and a row of the sessions running in its folder.
-func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, current bool, note string, sessions []string) []kit.TreeLine {
+// with any note.
+func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, current bool, note string) []kit.TreeLine {
 	first, rest := "   └─ ", "      "
 	if !last {
 		first, rest = "   ├─ ", "   │  "
@@ -233,33 +232,7 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipglo
 	}
 	branch := text.FitMiddle(p.st.Branch, room)
 	out := []kit.TreeLine{{Prefix: first, Styled: mark.Render(glyph) + " " + name.Render(branch) + tail, Plain: glyph + " " + branch + plainTail}}
-	out = append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
-	if len(sessions) > 0 {
-		run := "  ◐ " + strings.Join(sessions, " · ◐ ")
-		out = append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleBusy.Render(run), Plain: run})
-	}
-	return out
-}
-
-// runningIn is the sessions running in a folder: a project's, or those of
-// the projects opened on a worktree's folder.
-func (g *Git) runningIn(project, path string) []string {
-	var out []string
-	for _, s := range g.core.Store.Sessions {
-		if !s.Running {
-			continue
-		}
-		in := project != "" && s.Project == project
-		if project == "" {
-			if p, ok := g.core.Store.ProjectNamed(s.Project); ok && filepath.Clean(p.Path) == filepath.Clean(path) {
-				in = true
-			}
-		}
-		if in {
-			out = append(out, s.Name)
-		}
-	}
-	return out
+	return append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
 }
 
 // problem says why git shows nothing for a project.
@@ -454,7 +427,7 @@ func (g *Git) diffBox(w, h int) string {
 		}
 	default:
 		g.diff.top = kit.Clamp(g.diff.top, 0, max(0, len(g.diff.lines)-g.diffRows()))
-		lines = drawDiff(g.diff.lines, g.diff.top, w-2, h-2)
+		lines = drawDiff(g.diff.lines, g.diff.top, w-2, h-2, g.diffLit)
 	}
 	b := kit.Box(title, kit.ZoneBlock(hits.Pane, pad(lines, h-2), w-2), w, h, g.focus == panelDiff, false)
 	// The thumb says where in a long diff the view is and how much of it

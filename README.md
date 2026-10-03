@@ -348,11 +348,16 @@ what its keys act on (`session:`, `terminal:`, `branch:`, `workspace:`), in
 one order: open, create, resume, edit, move, then close, delete or remove,
 then help. Under a row on a project comes one more, led by `project:`, the
 same in every tab; what acts on the whole project is Shift and a letter,
-so it never meets a row's key. The footer's right end holds the tab's
-status and the key log; a note an action left (a fetch, a switch, a push)
-shows for a few seconds on the footer's last row, right before the
-version, and never takes the keys' place: only the end of that last row
-gives way to it when the row is full.
+so it never meets a row's key. The rows of keys take the whole width.
+
+What goes on and what came of an action has one place, the same in every
+tab: the right end of the footer's last row, before the version — the
+mascot's line (`dev working`), the tab's status (`1 live`, `2 shell(s)`),
+a note an action left for a few seconds (`fetched`, `saved`, `copied 3
+line(s)`), the key log, then `v1.0(N)`. With no project's row, the area
+shares the last row of keys, or takes a row of its own when they fill it.
+When it is short of room the key log goes first, then the status; a fresh
+note takes what it needs of the row's end for the seconds it shows.
 
 A footer leaves out only the keys that move the cursor (`↑↓` `j k` `g G`
 `Home` `End` `PgUp` `PgDn`, the panel digits, the wheel) and the ones that
@@ -412,7 +417,6 @@ whole screen while shown and `Esc` brings the tree back.
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
 | `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`[3] draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
-| `shift+s` | paste the draft into the session's input and go into it, the draft then cleared: `Enter` is yours, after a last edit — only while the session runs, does not work and asks nothing (a question is answered first); otherwise the footer says why and the draft waits |
 | `d` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |
 
@@ -431,7 +435,6 @@ a diff with the commit box under it.
 │ ~/code/lazychat
 │   ├─ ● main  current
 │   │    ↑1 · clean
-│   │    ◐ fix the search box
 │   └─ ⑂ feature
 │        1 changed · wt-feature · from main
 ```
@@ -441,12 +444,11 @@ Chat's sessions and Terminal's shells start — marked `●` in the accent
 (`⑂` and the branch in the worktree colour when the folder is itself a
 worktree), `current` beside it in the worktree colour when the
 repository has other checkouts, so where you work reads off the row; under
-it `↑` `↓` ahead and behind its upstream and how many files changed, and a
-row of the sessions running in that folder (`◐ name`); or why there is
-nothing (not a git repository, git not installed). Under it hang the
+it `↑` `↓` ahead and behind its upstream and how many files changed; or
+why there is nothing (not a git repository, git not installed). Under it hang the
 repository's other checkouts (`git worktree list`): `⑂` and the branch
 (`○` for the main checkout), the same counts, the folder when it is not
-named after the branch, the sessions running there, `locked` or `gone` where git says so, and `from dev`
+named after the branch, `locked` or `gone` where git says so, and `from dev`
 when git noted the branch it was made from — `git worktree add -b feat
 ../feat dev` writes "Created from dev" first in the branch's reflog; a
 branch made from `HEAD`, from a commit, or whose note expired (90 days by
@@ -492,7 +494,8 @@ The panels, numbered as their titles show them:
 | Key | Does |
 | --- | --- |
 | `1`–`6` | the panel; `esc` and `ctrl+q` go back to `[1]` from any, the commit box too |
-| `↑↓` `j k` `g` `G` | over the rows, the changes or the commits, the diff following; in the diff, scroll it |
+| `↑↓` `j k` `g` `G` | over the rows, the changes or the commits, the diff following; in the diff, a row cursor |
+| `v` `y`, a drag (in the diff) | `v` marks the cursor's row as one end of a selection, `y` copies the selected rows (or the cursor's) for a prompt — each file's part headed `path:28-35`, every line marked `+` added, `-` removed or a space; a drag over the diff selects and its release copies the same way; `Esc` drops the selection |
 | `Space` | stage the file or folder under the cursor (`git add -A`), or in Staged unstage it (`git restore --staged`, `git rm --cached` before the first commit); a conflict is left for you to resolve |
 | `c` | the commit box, as `6` |
 | `b` | the branches: a finder over the `Local` then `Remote` branches, newest commit first (● the current one, what it tracks, how long ago), fetching (`git fetch --prune`) behind it; typing narrows it. `Enter` switches — a remote one as a local branch tracking it; local changes in the way are stashed and brought back, asked; any other refusal changes nothing and says why. A name no branch has adds `+ new branch <name> from <row's branch>` under the matches, made and switched to. Worktrees are `w`'s; deleting is `d` on a row |

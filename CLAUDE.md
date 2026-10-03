@@ -64,7 +64,7 @@ enforces the lines, so a wrong import fails the check.
   carries it (see `kit.Capture`'s messages).
 - Bubble Tea v1 drops kitty `CSI … u` keys; the input router turns text
   reports back into characters. A key that does nothing: read the key log
-  at the footer's right end first.
+  in the status area, the footer's last row before the version, first.
 - Zones are one global manager: tests in `internal/ui` never run in
   parallel.
 

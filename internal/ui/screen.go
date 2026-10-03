@@ -76,46 +76,15 @@ func (a *App) Header(title string) string {
 	return kit.StyleHeader.Render(text.Pad(text.Fit(" "+title, a.width-text.Width(clock)-1), a.width-text.Width(clock)) + clock)
 }
 
-// FooterLine is the bottom row, from the project column on: the keys, or a
-// recent note, then the tab's status and the key log at the right end.
+// FooterLine is the bottom row, from the project column on: the keys, then
+// the status area at the right end.
 func (a *App) FooterLine(keys []kit.Hint) string { return a.footerLine("", keys) }
 
-// footerLine is FooterLine with the keys led by what they act on.
+// footerLine is FooterLine with the keys led by what they act on: a
+// one-row footer, the keys and the status area on the screen's last row.
 func (a *App) footerLine(lead string, keys []kit.Hint) string {
-	indent := strings.Repeat(" ", railW)
-	left := indent + lead + kit.RenderHints(keys)
-	// The log gets what the keys and the status leave, and none at all
-	// when that is too little to read.
-	status := a.status()
-	spare := a.width - text.Width(left) - text.Width(status) - 5
-	if log := text.Fit(a.keyLog, min(keyLogWidth, spare)); spare >= 8 && log != "" {
-		status = strings.TrimSpace(status + "   " + log)
-	}
-	// A one-row footer is the screen's last row: a fresh note and the
-	// version end it, the note cut to what the keys leave.
-	if a.footerRows < 2 {
-		if tail := a.cornerTail(max(a.width-text.Width(left)-text.Width(status)-8, a.noteRoom())); tail != "" {
-			status = strings.TrimSpace(status + "   " + tail)
-		}
-	}
-	right := kit.StyleDim.Render(status + " ")
-	room := a.width - text.Width(right) - 1
-	if text.Width(left) > room {
-		left = ansi.Truncate(left, room-1, "…")
-	}
-	return text.Pad(left, a.width-text.Width(right)) + "\x1b[0m" + right
-}
-
-// footerRight is the footer's right end: the tab's status and the key log,
-// which gets what the keys leave on a row of left columns, and none at all
-// when that is too little to read.
-func (a *App) footerRight(left int) string {
-	status := a.status()
-	spare := a.width - left - text.Width(status) - 5
-	if log := text.Fit(a.keyLog, min(keyLogWidth, spare)); spare >= 8 && log != "" {
-		status = strings.TrimSpace(status + "   " + log)
-	}
-	return kit.StyleDim.Render(status + " ")
+	left := strings.Repeat(" ", railW) + lead + kit.RenderHints(keys)
+	return a.withArea(left)
 }
 
 // footerNeeds is how many rows the footer takes: the keys' rows, and one
@@ -128,16 +97,19 @@ func (a *App) footerNeeds(keys []kit.Hint) int {
 	return n
 }
 
-// keyRows lays the keys out on as many rows as they need, so none is cut:
-// one when they and a readable key log fit, else the first row keeps room
-// for the log, as long as the widest one, and the rows under it take the
-// whole width.
+// areaNeed is what the status area wants of the last row to be read: the
+// status, a short key log and the version.
+func (a *App) areaNeed() int {
+	return text.Width(a.status()) + 8 + text.Width(a.version()) + 9
+}
+
+// keyRows lays the keys out on as many rows as they need, so none is cut,
+// each the whole width. With no project's row under them, the last row is
+// also the status area's: when the keys leave it too little, the area gets
+// a row of its own.
 func (a *App) keyRows(keys []kit.Hint) [][]kit.Hint {
 	lead := text.Width(a.leadText())
-	if railW+lead+text.Width(kit.RenderHints(keys))+text.Width(a.status())+5+8 <= a.width || len(keys) == 0 {
-		return [][]kit.Hint{keys}
-	}
-	room := a.width - railW - lead - keyLogWidth - text.Width(a.status()) - 6
+	room := a.width - railW - lead - 1
 	var out [][]kit.Hint
 	for len(keys) > 0 {
 		n := len(keys)
@@ -148,36 +120,40 @@ func (a *App) keyRows(keys []kit.Hint) [][]kit.Hint {
 			}
 		}
 		out, keys = append(out, keys[:n]), keys[n:]
-		room = a.width - railW - lead - 1
+	}
+	if len(out) == 0 {
+		return [][]kit.Hint{nil}
+	}
+	if len(a.projectKeys()) == 0 && text.Width(kit.RenderHints(out[len(out)-1]))+a.areaNeed() > room {
+		out = append(out, nil)
 	}
 	return out
 }
 
 // footer is the footer's rows, from the project column on: the keys, on
-// as many rows as they need, or a recent note, with the status and the key
-// log at the first row's right end; then the project's keys on the last
-// row when the tab has them.
+// as many rows as they need, then the project's keys on the last row when
+// the tab has them; the last row ends with the status area.
 func (a *App) footer(keys []kit.Hint) string {
 	indent := strings.Repeat(" ", railW)
 	rows := a.footerRows
+	if rows < 2 {
+		return a.footerLine(a.leadText(), keys)
+	}
 	var last string
-	if below := a.projectKeys(); len(below) > 0 && rows > 1 {
+	if below := a.projectKeys(); len(below) > 0 {
 		rows--
 		last = indent + kit.StyleDim.Render("project: ") + kit.RenderHints(below)
-		if text.Width(last) > a.width-1 {
-			last = ansi.Truncate(last, a.width-2, "…")
-		}
 	}
+	lead := a.leadText()
+	pad := strings.Repeat(" ", text.Width(lead))
 	var top []string
-	if lines := a.keyRows(keys); rows < 2 || len(lines) < 2 {
-		top = []string{a.footerLine(a.leadText(), keys)}
-	} else {
-		lead := a.leadText()
-		pad := strings.Repeat(" ", text.Width(lead))
-		first := indent + lead + kit.RenderHints(lines[0])
-		right := a.footerRight(text.Width(first))
-		top = []string{text.Pad(first, a.width-text.Width(right)) + "\x1b[0m" + right}
-		for _, l := range lines[1:min(len(lines), rows)] {
+	for i, l := range a.keyRows(keys) {
+		if i >= rows {
+			break
+		}
+		if i == 0 {
+			top = append(top, indent+lead+kit.RenderHints(l))
+		} else {
 			top = append(top, indent+pad+kit.RenderHints(l))
 		}
 	}
@@ -187,32 +163,31 @@ func (a *App) footer(keys []kit.Hint) string {
 	if a.footerRows > rows {
 		top = append(top, last)
 	}
-	top[len(top)-1] = a.withVersion(top[len(top)-1])
+	top[len(top)-1] = a.withArea(top[len(top)-1])
 	return strings.Join(top, "\n")
 }
 
-// withVersion puts a fresh note and the build's version at a footer row's
-// right end, the screen's bottom-right corner, where the row leaves room:
-// the note never takes the keys' place, so they stay put while it shows.
-// v1.0(N) only, the hash being for the installer.
-func (a *App) withVersion(row string) string {
-	if a.footerRows < 2 {
-		return row // a one-row footer has them after the key log
-	}
+// withArea ends a row with the status area at the screen's bottom-right
+// corner; the row is cut to what the area leaves, a fresh note winning
+// over the row's tail for the few seconds it shows.
+func (a *App) withArea(row string) string {
 	left := text.Width(strings.TrimRight(ansi.Strip(row), " "))
-	tail := a.cornerTail(max(a.width-left-4, a.noteRoom()))
+	tail := a.area(max(a.width-left-4, a.noteRoom()))
 	if tail == "" {
-		return row
+		return text.Pad(ansi.Truncate(row, a.width-1, "…"), a.width)
 	}
 	room := a.width - text.Width(tail) - 1
-	return text.Pad(ansi.Truncate(row, room, ""), room) + "\x1b[0m" + kit.StyleDim.Render(tail) + " "
+	if text.Width(row) > room {
+		row = ansi.Truncate(row, room-1, "…")
+	}
+	return text.Pad(row, room) + "\x1b[0m" + kit.StyleDim.Render(tail) + " "
 }
 
 // noteRoom is what a fresh note may take of the last row even when its
-// keys fill it: the note whole, the row's tail cut for the few seconds it
-// shows, and the rows above untouched. 0 with no note.
+// keys fill it: the note and the version whole, the row's tail cut for the
+// few seconds it shows. 0 with no note.
 func (a *App) noteRoom() int {
-	if !time.Now().Before(a.noteUntil) || a.note == "" {
+	if !a.noteFresh() {
 		return 0
 	}
 	room := text.Width(a.note)
@@ -222,30 +197,50 @@ func (a *App) noteRoom() int {
 	return min(room, a.width-railW-2)
 }
 
-// cornerTail is what ends the footer's last row in at most room columns:
-// a fresh note, cut to fit, then the version; "" when neither fits.
-func (a *App) cornerTail(room int) string {
+func (a *App) noteFresh() bool { return time.Now().Before(a.noteUntil) && a.note != "" }
+
+// area is the status area in at most room columns, the one place in every
+// tab for what goes on and what came of an action, read left to right: the
+// mascot's line and the tab's status, a fresh note, the key log, then the
+// version. What does not fit goes in the order the key log, the status,
+// the note; the version stays while it fits.
+func (a *App) area(room int) string {
 	v := a.version()
 	if text.Width(v) > room {
 		v = ""
 	}
-	note := ""
-	if time.Now().Before(a.noteUntil) && a.note != "" {
+	used := text.Width(v)
+	take := func(s string, least int) string {
+		if s == "" {
+			return ""
+		}
 		gap := 0
-		if v != "" {
+		if used > 0 {
 			gap = 3
 		}
-		if free := room - text.Width(v) - gap; free >= 8 {
-			note = text.Fit(a.note, free)
+		free := room - used - gap
+		if free < least {
+			return ""
+		}
+		if text.Width(s) > free {
+			s = ansi.Truncate(s, free-1, "…")
+		}
+		used += gap + text.Width(s)
+		return s
+	}
+	note := ""
+	if a.noteFresh() {
+		note = take(a.note, 8)
+	}
+	status := take(a.status(), 4)
+	log := take(text.Fit(a.keyLog, keyLogWidth), 8)
+	var parts []string
+	for _, p := range []string{status, note, log, v} {
+		if p != "" {
+			parts = append(parts, p)
 		}
 	}
-	switch {
-	case note != "" && v != "":
-		return note + "   " + v
-	case note != "":
-		return note
-	}
-	return v
+	return strings.Join(parts, "   ")
 }
 
 // version is what the corner shows, v1.0(N); nothing for a build

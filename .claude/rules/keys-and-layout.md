@@ -27,7 +27,10 @@ paths:
   Settings.
 - The projects column is `kit.ListWidth`: 28 %, 32–40 columns, in every
   tab; the user found wider too wide. Screen tests take x from it.
-- A footer over ~100 columns pushes the key log off at 120.
+- One status area, every tab: the footer's last row, right end, before the
+  version — mascot line, tab status, fresh note, key log (screen.go area).
+  Nothing else draws state at a row's end; keys rows take the whole width.
+  When short of room the key log goes first.
 - A note never replaces the footer's keys (the user saw them vanish
   during a fetch or a switch): it sits on the last row right before the
   version (`cornerTail`, `noteRoom` in ui/screen.go), the end of that row

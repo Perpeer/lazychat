@@ -56,7 +56,6 @@ func init() {
 			}
 		})},
 		{Keys: []string{"w"}, Hint: kit.Hint{Key: "w", Does: "draft"}, Help: "write the session's next prompt in a box under its pane while it works; an answer it asks for never takes its place, and it is kept across runs (✎ on the row)", Run: act(func(c *Chat) { c.openDraft() })},
-		{Keys: []string{"S"}, Hint: kit.Hint{Key: "shift+s", Does: "paste draft"}, Help: "paste the session's draft into its input and go into it, once it runs, does not work and asks nothing; Enter is yours, after a last edit", Run: func(c *Chat) tea.Cmd { return c.sendDraft() }},
 		keyMove,
 		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "close"}, Help: "close the session, asked: a running one is stopped, the record leaves the tree; the transcript stays and r brings it back", Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"lazychat/internal/ui/kit"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -118,9 +119,9 @@ func TestGitTab(t *testing.T) {
 	d.key("3")
 	d.expect("      1 + package app", "(space) stage / unstage")
 	d.key("5")
-	d.expect("(esc) projects · (c) commit")
+	d.expect("(esc) projects · (v) select · (y) copy")
 	d.key("left") // not a way back any more: the diff keeps the keys
-	d.expect("(esc) projects · (c) commit")
+	d.expect("(esc) projects · (v) select · (y) copy")
 	d.key("esc")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("3", "6")
@@ -866,8 +867,8 @@ func TestGitDelete(t *testing.T) {
 // Where a session works is never a guess: a worktree project's heading
 // names the worktree beside its branch, a session in it carries ⑂ on its
 // row, and Git marks the checkout each project works in "current", with
-// the counts under every checkout and the sessions running in it. No line
-// over the pane repeats it.
+// the counts under every checkout and no session names. No line over the
+// pane repeats it.
 func TestWhereYouWork(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -903,8 +904,53 @@ func TestWhereYouWork(t *testing.T) {
 	d.expect("● main  current", "⑂ blue-door  current", "○ main")
 	d.expectNot("repository ")
 	d.expectNot("main checkout")
-	if n := strings.Count(d.screen(), "◐ "); n < 2 {
-		t.Errorf("the checkouts do not list their running sessions (%d):\n%s", n, d.screen())
+	d.expectNot("◐ session") // the rows name no sessions
+	d.quitApp()
+}
+
+// The diff takes a row cursor: v marks, the cursor moves, y copies the
+// rows for a prompt — the file's path and line numbers first, each line
+// marked — and the status area says so.
+func TestDiffCopy(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	var copied string
+	kit.CopyToClipboard = func(s string) error { copied = s; return nil }
+	defer func() { kit.CopyToClipboard = func(string) error { return nil } }()
+	e, dir := seeded(t)
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, filepath.Join(dir, "a.txt"), "one\ntwo\nthree\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-qm", "first")
+	write(t, filepath.Join(dir, "a.txt"), "one\nTWO\nthree\nfour\n")
+
+	d := start(t, e, 150, 36)
+	d.tab(2)
+	d.expect("[2] Unstaged · 1", "+ four")
+	d.key("5")
+	d.expect("(v) select · (y) copy")
+	d.key("g", "v", "G", "y")
+	d.expect("copied 5 line(s)")
+	if want := "a.txt:1-4\n  one\n- two\n+ TWO\n  three\n+ four"; copied != want {
+		t.Errorf("copied\n%q\nwant\n%q", copied, want)
+	}
+	d.key("k", "y") // the cursor's row alone
+	if want := "a.txt:3\n  three"; copied != want {
+		t.Errorf("copied %q, want %q", copied, want)
+	}
+
+	// A drag over the diff selects rows; the release copies them.
+	screen := d.screen()
+	rows := strings.Split(screen, "\n")
+	from, to := lineOf(screen, "- two"), lineOf(screen, "+ four")
+	x := utf8.RuneCountInString(rows[from][:strings.Index(rows[from], "- two")])
+	d.mouse(tea.MouseMsg{X: x, Y: from, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
+	d.mouse(tea.MouseMsg{X: x, Y: to, Action: tea.MouseActionMotion, Button: tea.MouseButtonLeft})
+	d.mouse(tea.MouseMsg{X: x, Y: to, Action: tea.MouseActionRelease, Button: tea.MouseButtonLeft})
+	d.expect("copied 4 line(s)")
+	if want := "a.txt:2-4\n- two\n+ TWO\n  three\n+ four"; copied != want {
+		t.Errorf("dragged %q, want %q", copied, want)
 	}
 	d.quitApp()
 }

@@ -48,7 +48,7 @@ func TestChatFlow(t *testing.T) {
 	d.expectCount(1, 1)
 	d.leave()
 
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help",
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help",
 		"project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("p", "s", "K", "J", "ctrl+k", "ctrl+j") // no menus, no second way to move: nothing happens
 	d.expectNot("project · demo")
@@ -77,7 +77,7 @@ func TestChatFlow(t *testing.T) {
 	d.raw("hello\r")
 	d.expect("got: hello")
 	d.leave()
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help", "ivy")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help", "ivy")
 	d.key("ctrl+c")
 	d.expect("stop 2 running session(s) and quit?")
 	d.key("n")
@@ -103,13 +103,13 @@ func TestChatFlow(t *testing.T) {
 	d.key("tab", "tab") // Chat → Git → Terminal
 	d.expect("demo2 · terminals (0)")
 	d.key("tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help")
 	d.key("shift+tab") // back around the rail: Chat → Terminal, then Terminal → Git
 	d.expect("demo2 · terminals (0)")
 	d.key("shift+tab")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees")
 	d.key("tab", "tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help")
 	d.click(79, 14)
 	d.expect("(ctrl+q) back to lazychat")
 	d.click(9, 4) // the project's heading, beside the pane: its first session
@@ -486,7 +486,9 @@ func TestDraft(t *testing.T) {
 		}
 	}
 
-	d.key("S")
+	d.key("w") // the kept draft, pasted from its box
+	d.expect("[3] draft · ivy", "next: the README")
+	paste()
 	// Pasted into the input and echoed there, with the keys in the pane.
 	d.expect("(ctrl+q) back to lazychat", "next: the README")
 	d.expectNot("got: next: the README")
@@ -523,4 +525,29 @@ func lineWith(screen, needle string) string {
 		}
 	}
 	return ""
+}
+
+// What goes on and what came of an action share one place in every tab:
+// the right end of the footer's last row, where the version sits, never
+// the end of the keys' row above it.
+func TestStatusArea(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 140, 36)
+	d.key("n", "enter", "enter", "enter")
+	d.expect("FAKE CLAUDE READY")
+	d.leave()
+	// Chat's live sessions, the key log, Terminal's shells.
+	for tab, needle := range map[int]string{1: "1 live", 2: "enter", 3: "shell(s)"} {
+		d.tab(tab)
+		d.expect("project: (shift+o)", needle)
+		rows := strings.Split(d.screen(), "\n")
+		at := lineOf(d.screen(), "project: (shift+o)")
+		if !strings.Contains(rows[at], needle) {
+			t.Errorf("tab %d: %q is not on the last row %q:\n%s", tab, needle, rows[at], d.screen())
+		}
+		if strings.Contains(rows[at-1], needle) {
+			t.Errorf("tab %d: %q is still on the keys' row %q", tab, needle, rows[at-1])
+		}
+	}
+	d.quitApp()
 }

@@ -25,7 +25,7 @@ func TestKeymap(t *testing.T) {
 		"project": {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		"changes": {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
 		"commits": {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
-		"diff":    {diffKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
+		"diff":    {diffKeys, "esc projects · v select · y copy · drag select · copy · c commit · wheel scroll · r refresh · ? help"},
 		"commit":  {commitKeys, "ctrl+s commit · ctrl+n suggest · Tab next · esc projects"},
 	} {
 		var parts []string
@@ -55,7 +55,7 @@ func TestKeymap(t *testing.T) {
 func TestDrawLine(t *testing.T) {
 	files := coregit.Parse("diff --git a/x b/x\n@@ -9,2 +9,2 @@ func f()\n-\tb := 2\n+\tb := 3\n " + strings.Repeat("y", 200) + "\n")
 	lines := flatten(files)
-	got := drawDiff(lines, 0, 60, 10)
+	got := drawDiff(lines, 0, 60, 10, nil)
 	if len(got) != 4 {
 		t.Fatalf("%d rows", len(got))
 	}
@@ -90,7 +90,7 @@ func TestDrawWindow(t *testing.T) {
 	if len(lines) != 20001 {
 		t.Fatalf("%d lines", len(lines))
 	}
-	if got := drawDiff(lines, 19990, 80, 30); len(got) != 11 || !strings.Contains(ansi.Strip(got[10]), "20000") {
+	if got := drawDiff(lines, 19990, 80, 30, nil); len(got) != 11 || !strings.Contains(ansi.Strip(got[10]), "20000") {
 		t.Errorf("the window from 19990: %d rows, last %q", len(got), ansi.Strip(got[len(got)-1]))
 	}
 }
@@ -108,7 +108,7 @@ func TestFileHeadings(t *testing.T) {
 func TestBranchOneRow(t *testing.T) {
 	p := &project{}
 	p.st.Branch = "garden-shed-paints/feature/blue-door"
-	rows := branchEntry(p, "", nil, 30, true)
+	rows := branchEntry(p, "", 30, true)
 	if len(rows) != 2 {
 		t.Fatalf("%d rows: %+v", len(rows), rows)
 	}
@@ -150,5 +150,23 @@ func TestFailedCheckoutStays(t *testing.T) {
 	}
 	if got := problem(p); got != "git failed" {
 		t.Errorf("problem = %q", got)
+	}
+}
+
+// A copy of diff rows heads each file's part with its path and new line
+// numbers and marks every line; hunk and file headings only part them.
+func TestDiffText(t *testing.T) {
+	files := []coregit.File{
+		{Path: "garden/shed.go", Rows: []coregit.Row{{Kind: coregit.Hunk, Text: "@@"}, {Kind: coregit.Context, Old: 7, New: 7, Text: "paint"}, {Kind: coregit.Removed, Old: 8, Text: "blue"}, {Kind: coregit.Added, New: 8, Text: "green"}}},
+		{Path: "garden/door.go", Rows: []coregit.Row{{Kind: coregit.Added, New: 1, Text: "package garden"}}},
+	}
+	lines := flatten(files)
+	got, n := diffText(lines, 0, len(lines)-1)
+	want := "garden/shed.go:7-8\n  paint\n- blue\n+ green\ngarden/door.go:1\n+ package garden"
+	if got != want || n != 4 {
+		t.Errorf("diffText = %q (%d), want %q (4)", got, n, want)
+	}
+	if got, n := diffText(lines, 0, 1); got != "" || n != 0 {
+		t.Errorf("a file heading and a hunk alone copied %q (%d)", got, n)
 	}
 }

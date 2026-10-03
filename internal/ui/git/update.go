@@ -146,11 +146,13 @@ func (g *Git) Update(msg tea.Msg) tea.Cmd {
 		if msg.seq != g.seq {
 			return nil
 		}
-		top := 0
+		next := diff{key: msg.key, title: g.diff.title, lines: flatten(msg.files), err: msg.err}
 		if msg.key == g.diff.key {
-			top = g.diff.top // a refresh of the same change keeps its place
+			// A refresh of the same change keeps its place and selection.
+			next.top, next.cur, next.anchor, next.marked = g.diff.top, g.diff.cur, g.diff.anchor, g.diff.marked
 		}
-		g.diff = diff{key: msg.key, title: g.diff.title, lines: flatten(msg.files), err: msg.err, top: top}
+		g.diff = next
+		g.diff.cur = kit.Clamp(g.diff.cur, 0, max(0, len(g.diff.lines)-1))
 	case kit.WorkspaceMoved:
 		g.status, g.primed = map[string]*project{}, false
 	}
@@ -429,6 +431,9 @@ func (g *Git) Mouse(msg tea.MouseMsg) tea.Cmd {
 		}
 		return nil
 	}
+	if g.diff.dragging {
+		return g.dragDiff(msg)
+	}
 	hit := hits.At(msg, len(g.rows()), len(g.nodes()))
 	if d := kit.Wheel(msg); d != 0 {
 		switch hit.Kind {
@@ -457,7 +462,9 @@ func (g *Git) Mouse(msg tea.MouseMsg) tea.Cmd {
 			return g.loadDiff()
 		}
 	case kit.HitPane:
-		return g.goTo(panelDiff)
+		cmd := g.goTo(panelDiff)
+		g.pressDiff(msg)
+		return cmd
 	case kit.HitPanel:
 		return g.clickPanel(panel(hit.N))
 	}
