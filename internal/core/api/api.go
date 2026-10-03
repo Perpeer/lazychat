@@ -126,6 +126,20 @@ func (c *Core) Overlay(tool string, e agent.Exec, x agent.Extras) agent.Exec {
 	return o.Overlay(e, x)
 }
 
+// StatusLine is the status line script lazychat offers claude sessions,
+// written to lazychat's folder; "" when turned off in Settings or with no
+// settings or folder to write to (the tests).
+func (c *Core) StatusLine() string {
+	if c.Settings == nil || c.Settings.NoStatusLine || c.Settings.Home == "" {
+		return ""
+	}
+	path, err := agent.WriteStatusLine(c.Settings.Home)
+	if err != nil {
+		return ""
+	}
+	return path
+}
+
 func (c *Core) Attach(p state.Project, tool, short string) (agent.Exec, error) {
 	a, err := capability[agent.Attacher](c, tool, "attach to a session")
 	if err != nil {

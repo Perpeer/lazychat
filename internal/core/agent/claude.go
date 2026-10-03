@@ -19,6 +19,9 @@ const ClaudeID = "claude"
 // Claude is Claude Code; Bin replaces "claude" as its program when set.
 type Claude struct {
 	Bin string
+	// Home holds Claude Code's user settings, .claude/settings.json; ""
+	// reads none.
+	Home string
 	// SessionsDir is where Claude Code writes <pid>.json for each running
 	// process, naming its session id.
 	SessionsDir string
@@ -48,7 +51,7 @@ var (
 
 // NewClaude is Claude Code, its data in home's .claude folder.
 func NewClaude(bin, home string) *Claude {
-	return &Claude{Bin: bin, SessionsDir: filepath.Join(home, ".claude", "sessions"), Saved: history.Lister{Dir: filepath.Join(home, ".claude", "projects")}}
+	return &Claude{Bin: bin, Home: home, SessionsDir: filepath.Join(home, ".claude", "sessions"), Saved: history.Lister{Dir: filepath.Join(home, ".claude", "projects")}}
 }
 
 // Past is Claude Code's saved sessions of dir.
@@ -115,6 +118,10 @@ func (c *Claude) Overlay(e Exec, x Extras) Exec {
 	if c.unsettled.Load() || len(e.Args) > 1 && e.Args[1] == "attach" {
 		return e
 	}
+	if x.Dir == "" {
+		x.Dir = e.Dir
+	}
+	x.Home = c.Home
 	s := overlay(claudePieces, x)
 	if s == nil {
 		return e

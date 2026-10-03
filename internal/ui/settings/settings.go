@@ -78,6 +78,7 @@ func (s *Settings) settings() []setting {
 			}
 			return st.Save()
 		}),
+		onOff("status line", "lazychat's status line in claude sessions whose own settings name none (user, project or project local): model, branch, context, cost, limits. Claude then hides most of its footer hints (esc to interrupt, ? for shortcuts); hide it to get them back. A status line of your own always wins", &st.NoStatusLine, st.Save),
 	}
 }
 

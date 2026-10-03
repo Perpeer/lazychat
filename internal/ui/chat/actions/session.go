@@ -368,7 +368,7 @@ func (a *Actions) launch(e agent.Exec, p state.Project, rec state.Session) error
 	a.nextID++
 	if f := a.questionFile(rec.Key); f != "" {
 		a.Answered(rec.Key)
-		e = a.core.Overlay(rec.Tool, e, agent.Extras{NoticeFile: f})
+		e = a.core.Overlay(rec.Tool, e, agent.Extras{NoticeFile: f, StatusLine: a.core.StatusLine()})
 	}
 	s, err := term.Start(a.nextID, rec.Name, p.Name, e.Dir, e.Args, cols, rows, a.onOutput)
 	if err != nil {

@@ -484,6 +484,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | mascot | shown | the face at the rail's top |
 | version | shown | the corner's `v1.0(N)` |
 | menu bar | shown | on macOS, the mascot in the menu bar (see Menu bar) |
+| status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
 
 One accent colour, the theme's, marks the focused frame, fills the selected
 entry as one band (only its text is coloured while a pane has the keys) and
@@ -533,9 +534,9 @@ a finished answer; claude's Notification hook confirms it some six seconds
 later. The question goes when the session works again. Codex has no such
 hook and only waits.
 
-What lazychat adds to a claude session — today only that hook, which
-writes a notice to a file in `$TMPDIR/lazychat-notices-<pid>-…` — is
-built in memory for that session and passed as one `claude --settings
+What lazychat adds to a claude session — that hook, which writes a notice
+to a file in `$TMPDIR/lazychat-notices-<pid>-…`, and a status line for a
+session that has none — is built in memory for that session and passed as one `claude --settings
 <json>`. No settings file of yours is written: Claude Code merges the
 flag's settings with yours, lists added to, never replaced, so your own
 hooks and status line run in lazychat's sessions as anywhere. The pieces
@@ -543,6 +544,19 @@ live in one place, `internal/core/agent/overlay.go`; another setting for
 every session is one more piece there and its test. The notices folder
 goes when lazychat quits, and one a crash left behind is cleared at the
 next start.
+
+The status line — model, effort, folder, branch, a context bar, cost,
+cache, time, the 5-hour and weekly limits, dropping the optional ones to
+fit — is a script lazychat carries and writes to
+`~/.lazychat/claude/statusline.sh`. A session gets it only when none of
+the settings it reads names a status line: yours (`~/.claude/settings.json`,
+or `$CLAUDE_CONFIG_DIR`'s), the project's `.claude/settings.json` and its
+`.claude/settings.local.json`. A status line is one setting, not a list, so
+the command line's would replace yours; when you have one, lazychat adds
+none. It needs `jq` (macOS has it in `/usr/bin` since 15; without it none is
+added). With a status line, claude hides most of its footer hints — `esc to
+interrupt`, `? for shortcuts`; Settings' `status line` row hides lazychat's
+to bring them back.
 
 ## Menu bar
 

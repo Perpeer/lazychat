@@ -178,3 +178,31 @@ func TestSettingsMenuBar(t *testing.T) {
 	d.until("showing it again did not start the helper", func() bool { return starts == 1 })
 	d.quitApp()
 }
+
+// The status line row keeps lazychat's status line from claude sessions:
+// hidden, core offers none; shown, the script is written to lazychat's
+// folder and offered again.
+func TestSettingsStatusLine(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 120, 32)
+	d.core.Settings.Home = t.TempDir()
+	if d.core.StatusLine() == "" {
+		t.Fatal("no status line offered by default")
+	}
+	d.tab(4)
+	for range 7 {
+		d.key("down")
+	}
+	d.expect("status line", "lazychat's status line in claude sessions")
+	d.key("enter", "down", "enter")
+	d.expect("  hidden", "(enter) change")
+	if !d.core.Settings.NoStatusLine || d.core.StatusLine() != "" {
+		t.Fatalf("hidden: saved %v, still offered %q", d.core.Settings.NoStatusLine, d.core.StatusLine())
+	}
+	d.key("enter", "up", "enter")
+	d.expect("(enter) change")
+	if d.core.Settings.NoStatusLine || d.core.StatusLine() == "" {
+		t.Fatal("shown again, yet not offered")
+	}
+	d.quitApp()
+}

@@ -5,10 +5,14 @@ import (
 	"strings"
 )
 
-// Extras is what lazychat gives one session to report through: where its
-// tool writes a notice when it asks the user something.
+// Extras is what lazychat gives one session: where its tool writes a
+// notice when it asks the user something, and the status line script it
+// offers. Dir and Home, the session's project and the tool's home, are
+// filled in by the tool.
 type Extras struct {
 	NoticeFile string
+	StatusLine string
+	Dir, Home  string
 }
 
 // A piece is one thing lazychat adds to a Claude Code session's settings;
@@ -20,7 +24,7 @@ type piece func(Extras) map[string]any
 // claude session starts with. They live only in that session's command
 // line: no file of the user's is written, and Claude merges them with the
 // user's own settings, lists added to, never replaced.
-var claudePieces = []piece{questionHook}
+var claudePieces = []piece{questionHook, statuslinePiece}
 
 // askMatcher is the notices that mean claude waits on an answer: a
 // permission prompt (AskUserQuestion and plan approval come as one too), an

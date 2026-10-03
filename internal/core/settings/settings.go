@@ -38,6 +38,9 @@ type Settings struct {
 	// NoMenuBar hides the macOS menu bar helper's icon; the helper reads
 	// this file itself.
 	NoMenuBar bool `json:"no_menu_bar,omitempty"`
+	// NoStatusLine keeps lazychat's status line from claude sessions whose
+	// own settings have none.
+	NoStatusLine bool `json:"no_status_line,omitempty"`
 
 	// Home is lazychat's folder of this machine, where the file lives.
 	Home string `json:"-"`
