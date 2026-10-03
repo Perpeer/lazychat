@@ -3,8 +3,9 @@
 // this app reads that folder, shows the mascot's news as its own face,
 // lists the sessions, and brings a lazychat's terminal window forward on a
 // click: a click on the icon opens the lazychat with news, a right-click
-// (or ⌥-click) shows the menu. Settings' "menu bar" row (no_menu_bar in
-// settings.json) hides it.
+// (or ⌥-click) shows the menu. With no lazychat running, either click offers
+// the installed terminals to open one in. Settings' "menu bar" row
+// (no_menu_bar in settings.json) hides it.
 import AppKit
 
 struct SessionState: Decodable {
@@ -103,10 +104,11 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // clicked is a click on the icon: the left button opens the lazychat with
-    // news at once; the right one, or ⌥ with the left, shows the menu.
+    // news at once; the right one, or ⌥ with the left, shows the menu, and so
+    // does any click while no lazychat runs, since there is nothing to open.
     @objc func clicked() {
         let e = NSApp.currentEvent
-        if e?.type == .rightMouseUp || e?.modifierFlags.contains(.option) == true {
+        if snapshots.isEmpty || e?.type == .rightMouseUp || e?.modifierFlags.contains(.option) == true {
             let menu = NSMenu()
             menuNeedsUpdate(menu)
             item.menu = menu
@@ -123,6 +125,18 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         if snapshots.isEmpty {
             menu.addItem(withTitle: "no lazychat open", action: nil, keyEquivalent: "")
+            menu.addItem(withTitle: "Open lazychat in", action: nil, keyEquivalent: "")
+            for t in installedTerminals() {
+                let entry = menu.addItem(withTitle: "    \(t.name)", action: #selector(openIn(_:)), keyEquivalent: "")
+                entry.target = self
+                entry.representedObject = t.bundleID
+                if let url = t.url {
+                    let icon = NSWorkspace.shared.icon(forFile: url.path)
+                    icon.size = NSSize(width: 16, height: 16)
+                    entry.image = icon
+                }
+            }
+            menu.addItem(.separator())
         }
         for s in snapshots {
             let head = menu.addItem(withTitle: s.workspace, action: #selector(open(_:)), keyEquivalent: "")
@@ -143,6 +157,21 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func open(_ sender: NSMenuItem) { focus(pid: Int32(sender.tag)) }
+
+    // openIn starts lazychat in the terminal picked from the menu; a failure
+    // is shown, since nothing else would say why no window came.
+    @objc func openIn(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let t = terminals.first(where: { $0.bundleID == id }) else { return }
+        do {
+            try openLazychat(in: t)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "lazychat could not open in \(t.name)"
+            alert.informativeText = "\(error)"
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+    }
 
     // focus brings forward the terminal tab lazychat pid runs in, found by
     // its tty; macOS asks once to let this app control the terminal.
@@ -229,7 +258,9 @@ func target(_ snapshots: [Snapshot], _ written: [Int32: Date]) -> Int32? {
 // --icon <dir> and --frames <dir> render the drawing instead of running:
 // install.sh makes the app icon from it, and the frames are for looking at.
 // --status says what the menu bar would show now and which lazychats it
-// sees, for when the mascot does not move as it should.
+// sees, for when the mascot does not move as it should. --terminals lists the
+// terminals a click offers while no lazychat runs; --open <name> opens
+// lazychat in one, as picking it does.
 let args = CommandLine.arguments
 if args.count == 3, args[1] == "--icon" || args[1] == "--frames" {
     exit(render(args[1], into: args[2]))
@@ -250,6 +281,24 @@ if args.count == 2, args[1] == "--status" {
         for x in s.sessions { print("  \(x.state) \(x.name) · \(x.project)") }
     }
     exit(0)
+}
+if args.count == 2, args[1] == "--terminals" {
+    for t in installedTerminals() { print("\(t.name)\t\(t.bundleID)\t\(t.url?.path ?? "")") }
+    exit(0)
+}
+if args.count == 3, args[1] == "--open" {
+    guard let t = installedTerminals().first(where: { $0.name.lowercased() == args[2].lowercased() }) else {
+        print("not installed: \(args[2]); installed: \(installedTerminals().map(\.name).joined(separator: ", "))")
+        exit(1)
+    }
+    do {
+        try openLazychat(in: t)
+        print("opened lazychat (\(lazychatPath())) in \(t.name)")
+        exit(0)
+    } catch {
+        print("could not open lazychat in \(t.name): \(error)")
+        exit(1)
+    }
 }
 let app = NSApplication.shared
 let bar = Bar()

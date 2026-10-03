@@ -547,6 +547,21 @@ A right-click, or ⌥ with a click, shows its menu instead: each lazychat's
 workspace and running sessions with their states (`◐` working, `✦` done,
 `✓` done and looked at, `?` asks), a click on one opening that lazychat.
 
+With no lazychat running, either click shows the menu, and it offers the
+terminals installed on the Mac under "Open lazychat in", each with its
+icon: Terminal, iTerm, Warp, Ghostty, kitty, WezTerm and Alacritty, the ones
+that are there. A click on one opens a new window of it running lazychat,
+which shows its start screen. Terminal and iTerm are told through
+AppleScript (macOS asks once to let the helper control them); Warp, which
+has none, gets a launch configuration at
+`~/.warp/launch_configurations/lazychat.yaml`, opened as
+`warp://launch/lazychat.yaml`; the others are started with `open -na <app>
+--args …` running lazychat in your login shell. The window runs
+`~/.local/bin/lazychat` when it is there (`LAZYCHAT_BIN` names another), so
+a terminal whose PATH lacks `~/.local/bin` still finds it. `LazychatBar
+--terminals` lists what the menu would offer, and `LazychatBar --open
+<name>` opens lazychat in one as a click does.
+
 The mascot is drawn once, in code (`macos/LazychatBar/mascot.swift`): the
 menu bar draws its frames live, and `install.sh` renders the app's icon
 from the same drawing (`LazychatBar --icon`, then `iconutil`), so Finder,
@@ -637,7 +652,7 @@ internal/ui/vm            shared plain-Go state: the list cursor
 internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
 internal/core             agent, api, files, git, history, keylayout, presence, settings, state, workspace — no terminal packages; api runs no subprocess
-macos/LazychatBar         the menu bar helper, Swift, built by install.sh: main.swift the app, mascot.swift the one drawing of the mascot
+macos/LazychatBar         the menu bar helper, Swift, built by install.sh: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal
 assets                    the mascot as images: icon-1024.png (`LazychatBar --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
 ```
 
