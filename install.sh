@@ -96,7 +96,18 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
     echo "ok    up to date  Lazy, the menu bar mascot, at ${bar/#$HOME/~}"
   else
     mkdir -p "$bar/Contents/MacOS" "$bar/Contents/Resources"
-    swiftc -O -o "$bar/Contents/MacOS/Lazy" macos/Lazy/*.swift
+    # Built for macOS 13 and later, against an SDK no newer than this Mac's
+    # macOS: Finder marks an app built with a newer SDK (an Xcode beta's) as
+    # one this Mac cannot open.
+    os_major="$(sw_vers -productVersion | cut -d. -f1)"
+    sdk_args=()
+    if [ "$(xcrun --show-sdk-version 2>/dev/null | cut -d. -f1)" -gt "$os_major" ] 2>/dev/null; then
+      sdk="$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*.sdk "$(xcode-select -p 2>/dev/null)"/Platforms/MacOSX.platform/Developer/SDKs/MacOSX[0-9]*.sdk 2>/dev/null \
+        | awk -v os="$os_major" '{ v = $0; sub(/.*MacOSX/, "", v); sub(/\.sdk$/, "", v); split(v, p, "."); if (p[1] + 0 <= os + 0) print v "\t" $0 }' \
+        | sort -t. -k1,1n -k2,2n | tail -1 | cut -f2)"
+      [ -n "$sdk" ] && sdk_args=(-sdk "$sdk")
+    fi
+    swiftc -O ${sdk_args[@]+"${sdk_args[@]}"} -target "$(uname -m)-apple-macos13.0" -o "$bar/Contents/MacOS/Lazy" macos/Lazy/*.swift
     # install -m, not cp: a checkout's own modes (iCloud leaves some files
     # 600) must not reach the bundle, or Finder marks it as one it cannot open.
     install -m 644 macos/Lazy/Info.plist "$bar/Contents/Info.plist"
