@@ -81,7 +81,7 @@ func HeadLabel(h git.Head, ok bool) string {
 
 // ListWidth is the projects column's width in a tab cols wide, the same in
 // every tab so the column does not jump when the tab changes.
-func ListWidth(cols int) int { return Clamp(cols*32/100, 36, 56) }
+func ListWidth(cols int) int { return Clamp(cols*28/100, 32, 40) }
 
 // dirRows breaks a path into rows of w columns, character by character —
 // paths have no spaces to break at — keeping the last rows when it is longer.

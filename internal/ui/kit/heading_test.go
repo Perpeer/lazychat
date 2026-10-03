@@ -43,7 +43,7 @@ func TestProjectHeading(t *testing.T) {
 
 // The projects column narrows with the terminal between its two bounds.
 func TestListWidth(t *testing.T) {
-	for cols, want := range map[int]int{80: 36, 120: 38, 135: 43, 160: 51, 200: 56, 240: 56} {
+	for cols, want := range map[int]int{80: 32, 114: 32, 134: 37, 154: 40, 200: 40} {
 		if got := ListWidth(cols); got != want {
 			t.Errorf("ListWidth(%d) = %d, want %d", cols, got, want)
 		}

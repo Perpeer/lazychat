@@ -278,7 +278,7 @@ func TestLongTitles(t *testing.T) {
 	gitIn(t, dir, "commit", "-qm", "first")
 
 	d := start(t, e, 120, 36)
-	d.expect("○ TASK-7130 the core data", "redesign follow up", "⎇ core-data-redesign/…/TASK-7130")
+	d.expect("○ TASK-7130 the core", "data redesign follow", "⎇ core-data-redes…/TASK-7130")
 	d.tab(2)
 	d.expect("…/TASK-7130")
 	for _, r := range strings.Split(d.screen(), "\n") {

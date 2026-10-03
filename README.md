@@ -323,8 +323,8 @@ its footer belong to the selected one, and only the window that has the
 keys is framed in the accent. Every tab that lists the projects shows them
 in the same order and keeps one choice between them: the project the
 cursor was last on, in any tab, is the one the next tab comes into view on.
-The projects column is as wide in Chat, Git and Terminal (32 % of the tab,
-36 to 56 columns), so it stays put when the tab changes.
+The projects column is as wide in Chat, Git and Terminal (28 % of the tab,
+32 to 40 columns), so it stays put when the tab changes.
 
 A project's heading is the same in every tab: its name in bold (wrapped to
 two rows), its folder dim under it (wrapped to three rows, a longer one
