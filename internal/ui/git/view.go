@@ -129,9 +129,11 @@ func (g *Git) section(w int) []string {
 // A branch takes one row under its project: a long one is cut in its
 // middle (text.FitMiddle), its end kept, rather than wrapped.
 
-// shownStatus is a row's status once it has one to draw.
+// shownStatus is a row's status once it has one to draw; a read under
+// way keeps the last result, a failure too, so a slow checkout says why
+// instead of going back to "…" every few seconds.
 func (g *Git) shownStatus(key string) *project {
-	if s := g.status[key]; s != nil && !s.loading || s != nil && s.st.Root != "" {
+	if s := g.status[key]; s != nil && (!s.loading || s.st.Root != "" || s.err != nil) {
 		return s
 	}
 	return nil
@@ -267,6 +269,13 @@ func problem(p *project) string {
 		return "not a git repository"
 	case errors.Is(p.err, git.ErrNoGit):
 		return "git is not installed"
+	}
+	var cloud git.ErrInICloud
+	switch {
+	case errors.As(p.err, &cloud):
+		return fmt.Sprintf("%d files of .git still in iCloud · (i) download", len(cloud.Files))
+	case errors.Is(p.err, git.ErrSlow):
+		return "git took over 10 s to answer"
 	}
 	return "git failed"
 }

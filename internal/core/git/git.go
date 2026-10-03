@@ -64,6 +64,9 @@ func runFor(limit time.Duration, dir string, ok []int, args ...string) ([]byte, 
 	if err == nil {
 		return out, nil
 	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return nil, ErrSlow
+	}
 	if errors.Is(err, exec.ErrNotFound) {
 		return nil, ErrNoGit
 	}

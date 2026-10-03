@@ -925,6 +925,15 @@ behaviour change comes with a screen-test step.
 
 ## Troubleshooting
 
+**A Git row that says git took too long.** git has 10 seconds to answer.
+A repository in iCloud Drive can have files of its `.git` that iCloud has
+named on this Mac but not brought here yet ("dataless"); git then waits
+on each one it touches. The row says how many (`3 files of .git still in
+iCloud · (i) download`), and `i` there asks iCloud for them (`brctl
+download`) and reads the row again. A row that only says `git took over
+10 s to answer` has every file here: git itself is slow there. Either way
+the row keeps saying so while it is read again.
+
 **A key that does nothing.** The footer's right end shows the last key
 lazychat was given and what came of it, dim: `[ 5b → typed`,
 `unknown CSI 1b5b39313b3375`. The name is Bubble Tea's, the hex the bytes

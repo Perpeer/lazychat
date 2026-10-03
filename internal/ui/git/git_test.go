@@ -21,6 +21,7 @@ func TestKeymap(t *testing.T) {
 		want string
 	}{
 		"branch":  {branchKeys, "c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
+		"icloud":  {cloudKeys, "i download · c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
 		"project": {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		"changes": {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
 		"commits": {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
@@ -42,7 +43,7 @@ func TestKeymap(t *testing.T) {
 	if hidden := kit.Unlisted(append(append([]binding(nil), branchKeys...), projectKeys...)); len(hidden) > 0 {
 		t.Errorf("branch and project rows: keys that work unnamed: %q", hidden)
 	}
-	for _, b := range append(append(append(branchKeys, projectKeys...), changeKeys...), moveKeys...) {
+	for _, b := range append(append(append(cloudKeys, projectKeys...), changeKeys...), moveKeys...) {
 		if d := b.Does(); d != "" && !strings.Contains(help, d) {
 			t.Errorf("help lacks %q", d)
 		}
@@ -134,5 +135,31 @@ func TestForeignAnswers(t *testing.T) {
 	g.Update(owned{by: g, msg: statusMsg{name: "demo", st: st}})
 	if p := g.status["demo"]; p == nil || p.st.Branch != "elsewhere" {
 		t.Fatalf("its own status was not taken: %+v", p)
+	}
+}
+
+// A checkout git could not read keeps saying why while it is read again,
+// not "…"; files still in iCloud are named with the key that fetches them,
+// offered on that row only, and a timeout says it took too long.
+func TestSlowCheckout(t *testing.T) {
+	core := &api.Core{Store: &state.Store{State: state.State{Projects: []state.Project{{Name: "demo", Path: t.TempDir()}}}}}
+	g := &Git{core: core, status: map[string]*project{}, boxes: map[string]*kit.CommitBox{}}
+	g.status["demo"] = &project{err: coregit.ErrInICloud{Files: []string{"a", "b", "c"}}, loading: true}
+	p := g.shownStatus("demo")
+	if p == nil {
+		t.Fatal("a failed row went back to … while read again")
+	}
+	if got := problem(p); got != "3 files of .git still in iCloud · (i) download" {
+		t.Errorf("problem = %q", got)
+	}
+	if top, _ := g.tables(); len(top) == 0 || top[0].Hint.Key != "i" {
+		t.Errorf("the row does not offer i first: %+v", top[0].Hint)
+	}
+	g.status["demo"] = &project{err: coregit.ErrSlow}
+	if got := problem(g.shownStatus("demo")); got != "git took over 10 s to answer" {
+		t.Errorf("problem = %q", got)
+	}
+	if top, _ := g.tables(); top[0].Hint.Key == "i" {
+		t.Error("i offered where nothing is in iCloud")
 	}
 }

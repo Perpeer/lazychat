@@ -2,6 +2,7 @@ package git
 
 import (
 	"bytes"
+	"errors"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,6 +32,9 @@ type Status struct {
 // repository: only the paths under it are listed.
 func StatusOf(dir string) (Status, error) {
 	root, err := Root(dir)
+	if errors.Is(err, ErrSlow) {
+		return Status{}, slow(dir)
+	}
 	if err != nil {
 		return Status{}, err
 	}
@@ -44,6 +48,9 @@ func StatusOf(dir string) (Status, error) {
 		args = append(args, "--", rel)
 	}
 	out, err := run(root, nil, args...)
+	if errors.Is(err, ErrSlow) {
+		return Status{}, slow(dir)
+	}
 	if err != nil {
 		return Status{}, err
 	}
