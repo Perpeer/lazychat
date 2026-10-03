@@ -37,9 +37,12 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var snapshots: [Snapshot] = []
     var written: [Int32: Date] = [:] // when each lazychat last wrote its snapshot
     var mood: Mood = .rest
-    var many = false
-    var news = false // a finished session not looked at while another works
+    var busy = 0 // sessions at work: one badge each, up to maxBadges
     var frame = 0
+    // A session that finished while others still work cheers until then;
+    // lastWorking is which worked at the last read, to see one finish.
+    var cheerUntil = Date.distantPast
+    var lastWorking: Set<String> = []
     var beat: Timer?
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -57,7 +60,15 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let settings = (try? Data(contentsOf: home.appendingPathComponent("settings.json"))).flatMap { try? JSONDecoder().decode(Settings.self, from: $0) }
         item.isVisible = !(settings?.no_menu_bar ?? false)
         let was = mood
-        (mood, many, news) = weigh(snapshots)
+        let now = working(snapshots)
+        (mood, busy) = weigh(snapshots)
+        if !lastWorking.subtracting(now).isEmpty && !now.isEmpty {
+            cheerUntil = Date().addingTimeInterval(cheerTime)
+        }
+        lastWorking = now
+        if mood == .working && Date() < cheerUntil {
+            mood = .done
+        }
         if mood != was {
             frame = 0
         }
@@ -99,7 +110,7 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func draw() {
-        item.button?.image = menuBarImage(mood, frame: frame, many: many, news: news)
+        item.button?.image = menuBarImage(mood, frame: frame, badges: busy)
         item.button?.title = ""
     }
 
@@ -230,17 +241,24 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 }
 
+// cheerTime is how long the mascot parties for a session that finished
+// while others still work, as the app's does.
+let cheerTime: TimeInterval = 2
+
+// working is every session at work now, across the lazychats.
+func working(_ snapshots: [Snapshot]) -> Set<String> {
+    Set(snapshots.flatMap { s in s.sessions.filter { $0.state == "working" }.map { "\(s.pid)/\($0.key)" } })
+}
+
 // weigh is the mood for every session at once, as the app's mascot weighs
-// them: a question over work over a finished session not looked at over
-// rest; whether more than one works; and whether a finished one waits to be
-// looked at while another works, the ✦ on the face's corner.
-func weigh(_ snapshots: [Snapshot]) -> (Mood, Bool, Bool) {
+// them — a question over work over a finished session not looked at over
+// rest — and how many work, for the badges.
+func weigh(_ snapshots: [Snapshot]) -> (Mood, Int) {
     let all = snapshots.flatMap { $0.sessions }
-    let working = all.filter { $0.state == "working" }.count
-    let done = all.contains { $0.state == "done" }
-    if all.contains(where: { $0.state == "asks" }) { return (.asks, false, false) }
-    if working > 0 { return (.working, working > 1, done) }
-    return (done ? .done : .rest, false, false)
+    let busy = all.filter { $0.state == "working" }.count
+    if all.contains(where: { $0.state == "asks" }) { return (.asks, busy) }
+    if busy > 0 { return (.working, busy) }
+    return (all.contains { $0.state == "done" } ? .done : .rest, 0)
 }
 
 // target is the lazychat a click opens: the one with a question up, else
@@ -268,8 +286,8 @@ if args.count == 3, args[1] == "--icon" || args[1] == "--frames" {
 if args.count == 2, args[1] == "--status" {
     let b = Bar()
     b.load()
-    let (m, many, news) = weigh(b.snapshots)
-    print("mood \(m.rawValue)\(many ? " +" : "")\(news ? " ✦" : "") from \(b.home.appendingPathComponent("state").path)")
+    let (m, busy) = weigh(b.snapshots)
+    print("mood \(m.rawValue), \(busy) at work (\(min(busy, maxBadges)) badges) from \(b.home.appendingPathComponent("state").path)")
     if let pid = target(b.snapshots, b.written) {
         print("a click opens pid \(pid)")
     }

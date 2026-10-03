@@ -3,6 +3,8 @@ package kit
 import (
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"lazychat/internal/ui/text"
 )
 
@@ -27,9 +29,12 @@ type MascotState struct {
 	// Finished is how many sessions finished their work and have had no
 	// prompt since: the mascot parties while there is one.
 	Finished int
-	// Busy is how many sessions work now; more than one puts a + on the
-	// face's corner.
+	// Busy is how many sessions work now: one badge each on the face, up
+	// to MaxBadges.
 	Busy int
+	// Cheer is a session that finished a moment ago while others still
+	// work: the mascot parties briefly, then types on.
+	Cheer bool
 	// Sessions is every running session and what it is doing, for the
 	// macOS menu bar.
 	Sessions []SessionNews
@@ -151,27 +156,23 @@ func keyboardBare(lit, n int) string {
 	return b.String()
 }
 
-// MascotMany marks a face of mood w wide with a + on its top-right corner:
-// more than one session works.
-func MascotMany(face []string, m Mood, w int) []string {
-	if len(face) == 0 || w < 3 {
-		return face
-	}
-	out := append([]string(nil), face...)
-	paint := m.style()
-	out[0] = paint("╭"+strings.Repeat("─", w-3)) + StyleAccent.Render("+") + paint("╮")
-	return out
-}
+// MaxBadges is the most badges the mascot wears: past three, a count is no
+// longer read at a glance.
+const MaxBadges = 3
 
-// MascotNews marks a face w wide with a ✦ on its top-right corner: a
-// finished session waits to be looked at while another works.
-func MascotNews(face []string, m Mood, w int) []string {
-	if len(face) == 0 || w < 3 {
+// MascotBadges puts one dot per session at work, up to MaxBadges, on the
+// face's top edge, right-aligned before its corner — and before the keep
+// cells already there, the question's mark — the first at the right, so how
+// many work is seen at a glance; the rest of the edge, its animation
+// included, is kept.
+func MascotBadges(face []string, n, keep, w int) []string {
+	n = min(n, MaxBadges, w-3-keep)
+	if len(face) == 0 || n <= 0 {
 		return face
 	}
 	out := append([]string(nil), face...)
-	paint := m.style()
-	out[0] = paint("╭"+strings.Repeat("─", w-3)) + StyleAccent.Render("✦") + paint("╮")
+	end := w - 1 - keep
+	out[0] = ansi.Cut(face[0], 0, end-n) + StyleAccent.Render(strings.Repeat("●", n)) + ansi.Cut(face[0], end, w)
 	return out
 }
 
@@ -202,15 +203,16 @@ func MascotParty(frame, w int) []string {
 }
 
 // MascotAsk is the mascot with a question up, in its own three rows: a
-// "?" hops along its top edge, its eyes glance one way and the other, and
-// its frame pulses between the accent and bold.
+// "?" on its top edge by the right corner, where every mark on that edge
+// sits, its eyes glancing one way and the other, and its frame pulsing
+// between the accent and bold.
 func MascotAsk(frame, w int) []string {
 	in := w - 2
 	paint := StyleAccent.Render
 	if frame%4 >= 2 {
 		paint = StyleBold.Render
 	}
-	at := []int{1, 2, 1, 0}[frame%4] % in
+	at := in - 1
 	mark := StyleAccent.Bold(true).Render("?")
 	eyes := []string{"oO", "Oo"}[(frame/2)%2]
 	pad := (in - 2) / 2

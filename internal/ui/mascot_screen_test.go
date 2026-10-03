@@ -213,23 +213,48 @@ func TestMascotQuestionOnScreen(t *testing.T) {
 	d.quitApp()
 }
 
-// With more than one session at work the mascot wears a + on its corner;
-// with one, none.
+// The mascot wears one badge on its top edge per session at work: one for
+// one, two for two; as they finish the badges go one by one.
 func TestMascotMany(t *testing.T) {
 	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
 	d := start(t, e, 120, 32)
+	top := func() string { return strings.Split(d.mascot(), "\n")[0] }
 	d.session("ivy", "work long")
 	d.expect("ivy working")
-	d.expectNot("╭───+╮")
+	d.until("no badge for ivy", func() bool { return strings.HasPrefix(top(), "╭───●╮") })
 	d.session("oak", "work long")
-	d.expect("2 working", "╭───+╮")
+	d.expect("2 working")
+	d.until("no second badge for oak", func() bool { return strings.HasPrefix(top(), "╭──●●╮") })
+	d.untilIn(3*waitFor, "the badges did not go once both were done", func() bool { return !strings.Contains(top(), "●") && strings.Contains(d.screen(), "waits") })
+	d.quitApp()
+}
+
+// When one session finishes while another still works, the mascot parties
+// for a moment, the other's badge still on, then types on; when the last
+// one finishes it parties until a new prompt.
+func TestMascotCheer(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	d := start(t, e, 120, 32)
+	d.session("oak", "work long")
+	d.session("ivy", "work")
+	party := func() bool { m := d.mascot(); return strings.Contains(m, "^^") && !strings.Contains(m, "▪") }
+	d.until("no cheer when ivy was done with oak at work", func() bool {
+		return party() && strings.HasSuffix(strings.Split(d.mascot(), "\n")[0], "●╮") && strings.Count(strings.Split(d.mascot(), "\n")[0], "●") == 1 && strings.Contains(d.screen(), "oak working")
+	})
+	d.until("the cheer did not give way to typing for oak", func() bool {
+		m := d.mascot()
+		return strings.Contains(m, "▪") && strings.Contains(d.screen(), "oak working")
+	})
+	d.untilIn(3*waitFor, "no party once oak was done too", func() bool { return party() && !strings.Contains(d.mascot(), "●") })
+	d.holds(2500*time.Millisecond, "the last party did not go on", party)
 	d.quitApp()
 }
 
 // With two sessions: both done, both blink and the mascot parties. Looking
 // at one stops its call — a steady ✓ — while the other's goes on. Given a
-// prompt, the first works and the mascot types again, a ✦ on its corner
-// for the other one not looked at yet; a click on the mascot goes there.
+// prompt, the first works and the mascot types again with its badge, the
+// footer naming the other one not looked at yet; a click on the mascot
+// goes there.
 func TestMascotTwoSessions(t *testing.T) {
 	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
 	d := start(t, e, 120, 32)
@@ -248,14 +273,15 @@ func TestMascotTwoSessions(t *testing.T) {
 	d.expect("oak waits")
 	d.expectNot("ivy waits")
 
-	// A prompt in ivy: typing comes back, oak's news a ✦ on the corner.
+	// A prompt in ivy: typing comes back with ivy's badge; the footer names
+	// oak, which still waits.
 	d.key("enter")
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("work long\r")
 	d.leave()
-	d.until("the mascot does not type with oak's ✦ on its corner", func() bool {
+	d.until("the mascot does not type with ivy's badge", func() bool {
 		m := d.mascot()
-		return strings.Contains(m, "▪") && strings.HasPrefix(strings.Split(m, "\n")[0], "╭") && strings.Contains(strings.Split(m, "\n")[0], "✦")
+		return strings.Contains(m, "▪") && strings.HasPrefix(strings.Split(m, "\n")[0], "╭───●╮")
 	})
 	d.expect("ivy working · oak waits")
 

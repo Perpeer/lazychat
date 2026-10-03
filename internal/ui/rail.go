@@ -58,8 +58,10 @@ func (a *App) rail(h int) []string {
 	// it types on, kept whether used or not, so nothing it does moves the
 	// tabs. Its news plays inside its own frame: a question's call until it
 	// is answered, a finished session's party until it works again — a new
-	// prompt. With too little room
-	// it takes one row.
+	// prompt — or, while others still work, for a moment before it types on.
+	// One badge on its top edge per session at work, up to three, right-
+	// aligned as the question's mark is. With too little room it takes one
+	// row, without badges.
 	free := h - len(top) - len(bottom)
 	var mascot []string
 	if st, ok := a.mascotState(); ok && a.mascotOn() {
@@ -69,7 +71,7 @@ func (a *App) rail(h int) []string {
 		switch {
 		case free >= mascotRows && asking:
 			face = append(kit.MascotAsk(a.anim, railW), blank)
-		case free >= mascotRows && a.celebrating(st):
+		case free >= mascotRows && (a.celebrating(st) || st.Cheer):
 			face = append(kit.MascotParty(a.anim, railW), blank)
 		case free >= mascotRows && st.Mood == kit.Working:
 			face = kit.MascotTyping(a.anim, railW)
@@ -80,12 +82,12 @@ func (a *App) rail(h int) []string {
 		case free >= 1:
 			face = []string{kit.MascotLine(st.Mood, a.tick, railW)}
 		}
-		switch {
-		case asking || len(face) < 2:
-		case st.Mood == kit.Working && st.Finished > 0:
-			face = kit.MascotNews(face, kit.Working, railW)
-		case st.Busy > 1:
-			face = kit.MascotMany(face, kit.Working, railW)
+		if len(face) >= 2 {
+			keep := 0
+			if asking {
+				keep = 1 // the question's mark, by the corner
+			}
+			face = kit.MascotBadges(face, st.Busy, keep, railW)
 		}
 		mascot = kit.ZoneBlock(mascotZone, face, railW)
 	}

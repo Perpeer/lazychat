@@ -2,7 +2,7 @@
 // frames, live, and the app's icon, rendered by install.sh. It follows the
 // app's own mascot (internal/ui/kit/mascot.go): a rounded face with two
 // eyes, typing on a keyboard while a session works, a star running round
-// it when one is done, a "?" hopping on its top edge when one asks.
+// it when one is done, a "?" by its top edge's right corner when one asks.
 import AppKit
 
 enum Mood: String, CaseIterable {
@@ -19,10 +19,12 @@ func framesPer(_ m: Mood) -> Int {
     }
 }
 
-// drawMascot draws the mascot in rect in ink, in mood at frame; many puts
-// the + on the face's corner, news a ✦ there instead (a finished session
-// waits to be looked at while another works).
-func drawMascot(_ m: Mood, frame f: Int, many: Bool, news: Bool = false, in rect: NSRect, ink: NSColor) {
+// maxBadges is the most badges the mascot wears, as in the app.
+let maxBadges = 3
+
+// drawMascot draws the mascot in rect in ink, in mood at frame, with one
+// badge on its top edge per session at work, up to maxBadges.
+func drawMascot(_ m: Mood, frame f: Int, badges: Int, in rect: NSRect, ink: NSColor) {
     let u = rect.height / 18 // the drawing is laid out on an 18-unit grid
     func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
         NSRect(x: rect.minX + x * u, y: rect.minY + y * u, width: w * u, height: h * u)
@@ -77,24 +79,18 @@ func drawMascot(_ m: Mood, frame f: Int, many: Bool, news: Bool = false, in rect
             star(at: NSPoint(x: rect.minX + 5.5 * u, y: rect.minY + 14 * u), size: 1.6 * u)
             star(at: NSPoint(x: rect.minX + 18.5 * u, y: rect.minY + 14 * u), size: 1.6 * u)
         }
-    case .asks: // a ? hopping along the top edge
-        let xs: [CGFloat] = [6, 9, 12, 15, 18, 12]
+    case .asks: // a ? by the top edge's right corner, bobbing
         let q = NSAttributedString(string: "?", attributes: [.font: NSFont.boldSystemFont(ofSize: 7 * u), .foregroundColor: ink])
-        q.draw(at: NSPoint(x: rect.minX + (xs[f % xs.count] - 1.8) * u, y: rect.minY + 12.4 * u))
+        q.draw(at: NSPoint(x: rect.minX + (16.8 - 1.8) * u, y: rect.minY + (f % 2 == 0 ? 12.4 : 13.2) * u))
     case .rest:
         break
     }
 
-    if news {
-        star(at: NSPoint(x: rect.minX + 21.5 * u, y: rect.minY + 17.5 * u), size: 2.6 * u)
-    } else if many { // a + on the face's top-right corner
-        let p = NSBezierPath()
-        p.lineWidth = 1.4 * u
-        p.move(to: NSPoint(x: rect.minX + 19.5 * u, y: rect.minY + 17.5 * u))
-        p.line(to: NSPoint(x: rect.minX + 23.5 * u, y: rect.minY + 17.5 * u))
-        p.move(to: NSPoint(x: rect.minX + 21.5 * u, y: rect.minY + 15.5 * u))
-        p.line(to: NSPoint(x: rect.minX + 21.5 * u, y: rect.minY + 19.5 * u))
-        p.stroke()
+    // The badges: filled dots on the top edge, the first by its right
+    // corner — or left of the question's mark — the next ones leftwards.
+    let first: CGFloat = m == .asks ? 13.2 : 16.8
+    for k in 0..<min(max(badges, 0), maxBadges) {
+        NSBezierPath(ovalIn: r(first - CGFloat(k) * 3.6 - 1.5, 17 - 1.5, 3, 3)).fill()
     }
 }
 
@@ -115,10 +111,10 @@ func star(at c: NSPoint, size s: CGFloat) {
 
 // menuBarImage is one frame for the menu bar: a template image, drawn by
 // the system in the menu bar's own colour, light or dark.
-func menuBarImage(_ m: Mood, frame: Int, many: Bool, news: Bool) -> NSImage {
+func menuBarImage(_ m: Mood, frame: Int, badges: Int) -> NSImage {
     let size = NSSize(width: 25, height: 18)
     let img = NSImage(size: size, flipped: false) { rect in
-        drawMascot(m, frame: frame, many: many, news: news, in: NSRect(x: 0, y: 0, width: rect.width, height: rect.height), ink: .black)
+        drawMascot(m, frame: frame, badges: badges, in: NSRect(x: 0, y: 0, width: rect.width, height: rect.height), ink: .black)
         return true
     }
     img.isTemplate = true
@@ -145,7 +141,7 @@ func appIcon(in rect: NSRect) {
     let h = tile.height * 0.55
     let w = h * 25 / 18
     let face = NSRect(x: tile.midX - w / 2, y: tile.midY - h / 2 - tile.height * 0.04, width: w, height: h)
-    drawMascot(.rest, frame: 0, many: false, in: face, ink: NSColor(srgbRed: 0x28 / 255, green: 0x28 / 255, blue: 0x28 / 255, alpha: 1))
+    drawMascot(.rest, frame: 0, badges: 0, in: face, ink: NSColor(srgbRed: 0x28 / 255, green: 0x28 / 255, blue: 0x28 / 255, alpha: 1))
 }
 
 // render writes, for install.sh and for review, the app icon's iconset or
@@ -168,7 +164,7 @@ func render(_ what: String, into dir: String) -> Int32 {
                 let data = png(side: 100) { rect in
                     NSColor.white.setFill()
                     rect.fill()
-                    drawMascot(m, frame: f, many: m == .working && f == 0, in: NSRect(x: 0, y: 14, width: 100, height: 72), ink: .black)
+                    drawMascot(m, frame: f, badges: m == .working || m == .asks ? f % maxBadges + 1 : 0, in: NSRect(x: 0, y: 14, width: 100, height: 72), ink: .black)
                 }
                 if !save("\(m.rawValue)-\(f).png", data) { return 1 }
             }

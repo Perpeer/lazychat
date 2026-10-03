@@ -42,6 +42,11 @@ func (w *watcher) news(key string) bool {
 	return ok && !w.seen[key]
 }
 
+// cheerTime is how long the mascot parties for a session that finished
+// while others still work, before it types on: about two runs of the star
+// round its frame.
+const cheerTime = 2 * time.Second
+
 // stopGrace is how long a session that stopped working is watched before
 // it counts as done: claude's title stops spinning a moment before its
 // question is drawn, and a question is no finished answer.
@@ -170,6 +175,13 @@ func (c *Chat) workingRecords() []state.Session {
 func (c *Chat) MascotState() kit.MascotState {
 	st := c.mascotMood()
 	st.Finished, st.Busy = len(c.waitingRecords()), len(c.workingRecords())
+	if st.Busy > 0 {
+		for _, at := range c.watch.waiting {
+			if time.Since(at) < cheerTime {
+				st.Cheer = true
+			}
+		}
+	}
 	for _, r := range c.core.Store.Sessions {
 		if !c.act.Live.Running(r.Key) {
 			continue
@@ -183,8 +195,8 @@ func (c *Chat) MascotState() kit.MascotState {
 
 // mascotMood is asking over working over a finished session not looked at
 // over rest, what it points at, and every question. Work is drawn over a
-// finished session (a ✦ on the face's corner says one waits), so typing
-// into a session shows at once even while another one's news is up.
+// finished session, so typing into a session shows at once even while
+// another one's news is up; the footer still names the one that waits.
 func (c *Chat) mascotMood() kit.MascotState {
 	if as := c.askingRecords(); len(as) > 0 {
 		st := kit.MascotState{Mood: kit.Waiting, Say: as[0].Name + " asks"}

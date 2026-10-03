@@ -498,26 +498,30 @@ a tab: only a click lands on it. It keeps four rows whatever it does, so the
 tabs never move; on a short terminal (80×24) it shrinks to one.
 
 ```
-╭────╮  ╭────╮  ╭───+╮  ╭───✦╮  ╭─✦──╮  ╭─?──╮
+╭────╮  ╭───●╮  ╭──●●╮  ╭─●●●╮  ╭─✦──╮  ╭───?╮
 │ ^^ │  │ •◦ │  │ •◦ │  │ •◦ │  │✦^^✦│  │ oO │
 ╰────╯  ╰─┬┬─╯  ╰─┬┬─╯  ╰─┬┬─╯  ╰────╯  ╰────╯
         [▫▫▪▫]  [▪▫▫▫]  [▫▪▫▫]
- rest   typing  2+ at   typing,  done:   a question
-                work    one done a party
+ rest   one at  two at  three or done:   a question
+        work    work    more     a party
 ```
 
 - **typing** while a session works (claude leads its window title with ◐ ◑;
   a program that sets no title, codex, counts as working while output came
-  in the last two seconds); a `+` on its corner with more than one at work.
+  in the last two seconds). One badge `●` on its top edge per session at
+  work, the first by the right corner, three at most: as sessions finish
+  their badges go one by one, and it types until none works.
 - **a party** when a session is done and you have not looked at it yet: a
   star runs round it, its frame turns from green to the accent and back,
   and the session's name blinks in Chat's list (`✓ ivy`). Looking at it —
   one click on its row, `Enter`, a click on its pane or the mascot's click
-  — ends its call: the ✓ stays, steady, until its next prompt. While another
-  session works the mascot types instead, a `✦` on its corner saying one is
-  done and waiting to be looked at; the party plays when nothing works.
-- **a question** when a session asks: a `?` hops along its top edge and
-  its eyes glance about, and the session blinks in Chat's list, `?` before
+  — ends its call: the ✓ stays, steady, until its next prompt. When one
+  finishes while another still works, the party plays for two seconds, the
+  others' badges on, then the typing goes on; the footer names the one that
+  waits. When the last one finishes the party plays until a new prompt.
+- **a question** when a session asks: a `?` on its top edge by the right
+  corner — every mark on that edge sits at the right, the badges left of
+  the `?` — and its eyes glance about, and the session blinks in Chat's list, `?` before
   its name, until the question is answered — the session works again — or
   leaves its screen.
 
@@ -563,10 +567,11 @@ to bring them back.
 `LazychatBar.app`, which `install.sh` builds on macOS, puts the mascot in
 the menu bar as an icon, for every lazychat open at once, and moves as the
 app's mascot does, by the same rules: at rest, typing on its keyboard while
-a session works (a `+` on its corner with more than one, a `✦` when another
-is done and not looked at yet), a star running round it when one is done
-and not looked at while nothing works, a `?` hopping on its top edge while
-one asks. It is drawn like the system's own icons, in the menu bar's
+a session works (one dot on its top edge per session at work, from the
+right corner, three at most), a star running round it when one is done and
+not looked at while nothing works — and for two seconds when one finishes
+while others still work — a `?` by its top edge's right corner
+while one asks, the badges left of it. It is drawn like the system's own icons, in the menu bar's
 colour, light or dark, and it moves on a 150 ms beat only while there is
 news. A click on it brings a lazychat's terminal window and tab to the
 front at once: the one with a question up, else one with a finished session

@@ -65,12 +65,24 @@ func TestMascotTyping(t *testing.T) {
 	}
 }
 
-// More than one session at work puts a + on the face's top-right corner,
-// the face as wide as before.
-func TestMascotMany(t *testing.T) {
-	rows := MascotMany(MascotTyping(0, 6), Working, 6)
-	if top := ansi.Strip(rows[0]); top != "╭───+╮" || text.Width(rows[0]) != 6 || len(rows) != 4 {
-		t.Errorf("top %q, %d rows", top, len(rows))
+// One badge per session at work on the face's top edge, from its right
+// corner leftwards, three at most, none with none; the face keeps its width, and an animated edge — the
+// party's star, the question's mark — keeps the cells the badges leave.
+func TestMascotBadges(t *testing.T) {
+	for n, want := range []string{"╭────╮", "╭───●╮", "╭──●●╮", "╭─●●●╮", "╭─●●●╮", "╭─●●●╮"} {
+		rows := MascotBadges(MascotTyping(0, 6), n, 0, 6)
+		if top := ansi.Strip(rows[0]); top != want || text.Width(rows[0]) != 6 || len(rows) != 4 {
+			t.Errorf("%d at work: top %q, %d rows", n, top, len(rows))
+		}
+	}
+	for f := range 8 {
+		for name, face := range map[string][]string{"party": MascotParty(f, 6)} {
+			rows := MascotBadges(face, 2, 0, 6)
+			top, was := []rune(ansi.Strip(rows[0])), []rune(ansi.Strip(face[0]))
+			if text.Width(rows[0]) != 6 || string(top[3:5]) != "●●" || string(top[:3]) != string(was[:3]) || top[5] != was[5] {
+				t.Errorf("%s frame %d: %q from %q", name, f, string(top), string(was))
+			}
+		}
 	}
 }
 
@@ -98,10 +110,11 @@ func TestMascotParty(t *testing.T) {
 	}
 }
 
-// With a question up, the mascot's "?" hops along its top edge and its
-// eyes glance, in its own three rows.
+// With a question up, the mascot's "?" sits on its top edge by the right
+// corner and its eyes glance, in its own three rows; badges line up left of
+// the mark.
 func TestMascotAsk(t *testing.T) {
-	tops, eyes := map[string]bool{}, map[string]bool{}
+	eyes := map[string]bool{}
 	for f := range 8 {
 		rows := MascotAsk(f, 6)
 		for _, r := range rows {
@@ -109,13 +122,15 @@ func TestMascotAsk(t *testing.T) {
 				t.Errorf("frame %d: row %q is %d wide", f, ansi.Strip(r), w)
 			}
 		}
-		top := ansi.Strip(rows[0])
-		if !strings.Contains(top, "?") {
-			t.Errorf("frame %d: no ? on %q", f, top)
+		if top := ansi.Strip(rows[0]); top != "╭───?╮" {
+			t.Errorf("frame %d: top %q", f, top)
 		}
-		tops[top], eyes[strings.TrimSpace(strings.Trim(ansi.Strip(rows[1]), "│"))] = true, true
+		eyes[strings.TrimSpace(strings.Trim(ansi.Strip(rows[1]), "│"))] = true
 	}
-	if len(tops) < 2 || len(eyes) != 2 {
-		t.Errorf("the mascot did not move: %v %v", tops, eyes)
+	if len(eyes) != 2 {
+		t.Errorf("the eyes did not glance: %v", eyes)
+	}
+	if top := ansi.Strip(MascotBadges(MascotAsk(0, 6), 2, 1, 6)[0]); top != "╭─●●?╮" {
+		t.Errorf("badges with a question: %q", top)
 	}
 }
