@@ -88,9 +88,15 @@ func drawMascot(_ m: Mood, frame f: Int, badges: Int, in rect: NSRect, ink: NSCo
 
     // The badges: filled dots on the top edge, the first by its right
     // corner — or left of the question's mark — the next ones leftwards.
-    let first: CGFloat = m == .asks ? 13.2 : 16.8
+    // Each sits a little below the edge, so none is cut off at the image's
+    // top, in a clear ring that parts it from the face's line.
+    let first: CGFloat = m == .asks ? 11 : 16.4
     for k in 0..<min(max(badges, 0), maxBadges) {
-        NSBezierPath(ovalIn: r(first - CGFloat(k) * 3.6 - 1.5, 17 - 1.5, 3, 3)).fill()
+        let cx = first - CGFloat(k) * 5.2, cy: CGFloat = 16
+        NSGraphicsContext.current?.compositingOperation = .clear
+        NSBezierPath(ovalIn: r(cx - 3.2, cy - 3.2, 6.4, 6.4)).fill()
+        NSGraphicsContext.current?.compositingOperation = .sourceOver
+        NSBezierPath(ovalIn: r(cx - 2.3, cy - 2.3, 4.6, 4.6)).fill()
     }
 }
 
@@ -110,9 +116,11 @@ func star(at c: NSPoint, size s: CGFloat) {
 }
 
 // menuBarImage is one frame for the menu bar: a template image, drawn by
-// the system in the menu bar's own colour, light or dark.
+// the system in the menu bar's own colour, light or dark, as tall as the
+// menu bar's item, so it fills the highlight a click draws.
 func menuBarImage(_ m: Mood, frame: Int, badges: Int) -> NSImage {
-    let size = NSSize(width: 25, height: 18)
+    let h = NSStatusBar.system.thickness
+    let size = NSSize(width: 25 * h / 18, height: h)
     let img = NSImage(size: size, flipped: false) { rect in
         drawMascot(m, frame: frame, badges: badges, in: NSRect(x: 0, y: 0, width: rect.width, height: rect.height), ink: .black)
         return true
