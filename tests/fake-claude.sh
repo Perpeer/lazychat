@@ -94,11 +94,26 @@ while IFS= read -r line; do
     printf '\033]0;\342\234\263 fake\007'
     printf 'Tea or coffee?\n  1. Tea\n  2. Coffee\nEnter to select · Esc to cancel\n'
   fi
+  # "choose long" works two seconds first, so time is spent before the question.
+  if [ "$line" = "choose long" ]; then
+    printf '\033]0;\342\227\220 fake\007'
+    sleep 2
+    printf '\033]0;\342\234\263 fake\007'
+    printf 'Tea or coffee?\n  1. Tea\n  2. Coffee\nEnter to select · Esc to cancel\n'
+  fi
   # "work long" keeps the spinner for a few seconds, so two sessions can
   # be at work at once.
   if [ "$line" = "work long" ]; then
     printf '\033]0;\342\227\220 fake\007'
     sleep 4
+    printf '\033]0;\342\234\263 fake\007'
+    printf 'done working\n'
+  fi
+  # "answer" is the choice list answered: claude redraws without it and
+  # works on, here for two seconds.
+  if [ "$line" = answer ]; then
+    printf '\033[2J\033[H\033]0;\342\227\220 fake\007'
+    sleep 2
     printf '\033]0;\342\234\263 fake\007'
     printf 'done working\n'
   fi

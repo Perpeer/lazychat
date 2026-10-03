@@ -100,7 +100,8 @@ func (c *Chat) projectPanel(project string, w, h int) string {
 			}
 			lines = append(lines, lead+kit.StyleBold.Render(n))
 		}
-		lines = append(lines, "   "+kit.ToolBadge(tool)+kit.StyleDim.Render(" · "+text.Ago(s.LastUsed)), "")
+		foot, _ := turnFoot(c.turnTime(s.Key))
+		lines = append(lines, "   "+kit.ToolBadge(tool)+foot, "")
 	}
 	return kit.Box(kit.PanelTitle(2, fmt.Sprintf("%s · running (%d)", project, len(running))), append([]string{""}, lines...), w, h, false, false)
 }

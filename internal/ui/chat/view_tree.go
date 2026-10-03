@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"time"
 
 	"lazychat/internal/core/state"
 	"lazychat/internal/ui/chat/actions"
@@ -15,17 +16,18 @@ import (
 type treeView struct {
 	tree   *model.Tree
 	live   *actions.Live
-	asking func(key string) bool    // the session has a question up; nil for none
-	done   func(key string) bool    // the session finished and was not looked at since
-	seen   func(key string) bool    // the session finished and was looked at, waiting for a prompt
-	branch func(path string) string // what the project's folder is on; nil for none
+	asking func(key string) bool                             // the session has a question up; nil for none
+	done   func(key string) bool                             // the session finished and was not looked at since
+	seen   func(key string) bool                             // the session finished and was looked at, waiting for a prompt
+	branch func(path string) string                          // what the project's folder is on; nil for none
+	turn   func(key string) (time.Duration, model.TurnState) // the session's turn time; nil for none
 	tick   int
 	scroll kit.Scroller
 	follow kit.Follow
 }
 
 // nameLines is how many rows a session's name may wrap to under its
-// project's connector line; its age is the row after.
+// project's connector line; its tool and turn time are the row after.
 const nameLines = 3
 
 func (t *treeView) title() string {
@@ -72,17 +74,39 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 		glyph, plainGlyph, nameStyle = kit.StyleBusy.Bold(true).Render("✓"), "✓", kit.StyleBusy.Bold(true)
 	}
 	out := kit.TitleRows(first, rest, glyph+" ", plainGlyph+" ", s.Name, nameStyle, w-2, nameLines)
-	// The tool leads the age line, in its colour, so sessions of different
-	// tools tell apart down the list.
+	// The tool leads the row under the name, in its colour, so sessions of
+	// different tools tell apart down the list; the turn time follows.
 	tool := s.Tool
-	foot := " · " + text.Ago(s.LastUsed)
+	styled, plain := "", ""
 	if orphan {
-		foot = " · " + s.Project + foot
+		styled, plain = kit.StyleDim.Render(" · "+s.Project), " · "+s.Project
+	}
+	if t.turn != nil {
+		ts, tp := turnFoot(t.turn(s.Key))
+		styled, plain = styled+ts, plain+tp
 	}
 	if s.Key == t.tree.Shown {
-		foot += " •"
+		styled, plain = styled+kit.StyleDim.Render(" •"), plain+" •"
 	}
-	return append(out, kit.TreeLine{Prefix: rest, Styled: "  " + kit.ToolBadge(tool) + kit.StyleDim.Render(foot), Plain: "  " + tool + foot})
+	return append(out, kit.TreeLine{Prefix: rest, Styled: "  " + kit.ToolBadge(tool) + styled, Plain: "  " + tool + plain})
+}
+
+// turnFoot is a session's turn time after its tool: counting while it
+// works, held in the accent while a question waits, dim once done, and
+// nothing before its first prompt.
+func turnFoot(d time.Duration, st model.TurnState) (styled, plain string) {
+	switch st {
+	case model.TurnRunning:
+		p := " · ◷ " + text.Span(d)
+		return kit.StyleDim.Render(" · ") + "◷ " + text.Span(d), p
+	case model.TurnHeld:
+		p := " · ⏸ " + text.Span(d)
+		return kit.StyleDim.Render(" · ") + kit.StyleAccent.Render("⏸ "+text.Span(d)), p
+	case model.TurnDone:
+		p := " · " + text.Span(d)
+		return kit.StyleDim.Render(p), p
+	}
+	return "", ""
 }
 
 func (t *treeView) view(w, h int, focused bool) []string {

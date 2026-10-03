@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -334,4 +336,77 @@ func TestStartWorkIsNoNews(t *testing.T) {
 	d.leave()
 	d.expect("ivy waits")
 	d.quitApp()
+}
+
+// A session's row shows its turn's time: nothing before a prompt, ◷
+// counting while it works, ⏸ held while a question is up and going on
+// after the answer, the total once done, and from zero on the next prompt.
+func TestTurnTime(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	d := start(t, e, 120, 32)
+	row := func() string {
+		for _, l := range strings.Split(d.screen(), "\n") {
+			if i := strings.Index(l, "claude"); i >= 0 && strings.Contains(l, "│") {
+				if seg := l[i:]; strings.Contains(seg, "◷") || strings.Contains(seg, "⏸") || strings.Contains(seg, "s ") || strings.HasPrefix(strings.TrimSpace(seg), "claude") {
+					return seg
+				}
+			}
+		}
+		return ""
+	}
+	d.session("ivy", "")
+	d.expect("FAKE CLAUDE READY")
+	d.holds(1500*time.Millisecond, "a time before any prompt", func() bool {
+		return !strings.Contains(d.screen(), "◷") && !strings.Contains(d.screen(), "⏸")
+	})
+	d.key("enter")
+	d.expect("(ctrl+q) back to lazychat")
+	d.raw("choose long\r")
+	d.leave()
+	d.until("no ◷ while it works", func() bool { return strings.Contains(d.screen(), "◷") })
+	d.until("no ⏸ while the question is up", func() bool { return strings.Contains(d.screen(), "⏸") })
+	held := row()
+	if secs(held) < 1 {
+		t.Fatalf("no time spent before the question: %q", held)
+	}
+	d.holds(2*time.Second, "the time ran on while the question was up", func() bool { return row() == held })
+	d.key("enter")
+	d.expect("(ctrl+q) back to lazychat")
+	d.raw("answer\r")
+	d.leave()
+	d.until("the answer did not set it counting again", func() bool { return strings.Contains(d.screen(), "◷") })
+	if secs(row()) < secs(held) {
+		t.Fatalf("the answer started the turn over: held %q, then %q", held, row())
+	}
+	d.untilIn(3*waitFor, "the time did not stop when done", func() bool {
+		return !strings.Contains(d.screen(), "◷") && !strings.Contains(d.screen(), "⏸") && strings.Contains(d.screen(), "ivy waits")
+	})
+	done := row()
+	if !strings.Contains(done, "s") {
+		t.Fatalf("no total once done: %q", done)
+	}
+	d.holds(1500*time.Millisecond, "the total moved after the turn ended", func() bool { return row() == done })
+	d.key("enter")
+	d.expect("(ctrl+q) back to lazychat")
+	d.raw("work long\r")
+	d.leave()
+	d.until("the new prompt did not start from zero", func() bool {
+		r := row()
+		return strings.Contains(r, "◷ 0s") || strings.Contains(r, "◷ 1s")
+	})
+	d.quitApp()
+}
+
+// secs reads the seconds of a row's turn time, "◷ 1m 05s" → 65.
+func secs(row string) int {
+	m := regexp.MustCompile(`(?:(\d+)m )?(\d+)s`).FindStringSubmatch(row)
+	if m == nil {
+		return -1
+	}
+	n, _ := strconv.Atoi(m[2])
+	if m[1] != "" {
+		mins, _ := strconv.Atoi(m[1])
+		n += 60 * mins
+	}
+	return n
 }

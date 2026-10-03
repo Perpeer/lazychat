@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"lazychat/internal/core/state"
+	"lazychat/internal/term"
+	"lazychat/internal/ui/chat/model"
 	"lazychat/internal/ui/kit"
 )
 
@@ -21,6 +23,25 @@ type watcher struct {
 	seen    map[string]bool
 	asking  map[string]time.Time
 	stopped map[string]time.Time // stopped working, not yet called done
+	// turns times each session's turn for its row; inputs is the user's
+	// input count when a turn last began or ended, so a new prompt shows;
+	// procs is the process a turn belongs to: a new one starts with none.
+	turns  map[string]*model.Turn
+	inputs map[string]int64
+	procs  map[string]*term.Session
+}
+
+// turn is a session's turn timer, made on first use.
+func (w *watcher) turn(key string) *model.Turn {
+	if w.turns == nil {
+		w.turns, w.inputs, w.procs = map[string]*model.Turn{}, map[string]int64{}, map[string]*term.Session{}
+	}
+	t, ok := w.turns[key]
+	if !ok {
+		t = &model.Turn{}
+		w.turns[key] = t
+	}
+	return t
 }
 
 // see marks a waiting session as looked at: it stops calling.
@@ -70,6 +91,25 @@ func (c *Chat) watchSessions() {
 		alive[r.Key] = true
 		working := s.Working()
 		onScreen := !working && c.act.ScreenAsks(r)
+		q, hooked := c.act.Asked(r.Key)
+		turn := w.turn(r.Key)
+		if w.procs[r.Key] != s {
+			w.procs[r.Key], w.inputs[r.Key] = s, 0
+			*turn = model.Turn{}
+		}
+		now := time.Now()
+		switch {
+		case working && turn.State() == model.TurnHeld:
+			turn.Go(now)
+			w.inputs[r.Key] = s.Inputs()
+		case working && s.Inputs() != w.inputs[r.Key]:
+			turn.Start(now)
+			w.inputs[r.Key] = s.Inputs()
+		case working:
+			turn.Go(now)
+		case onScreen || hooked:
+			turn.Hold(now)
+		}
 		switch {
 		case working:
 			w.working[r.Key] = true
@@ -87,6 +127,10 @@ func (c *Chat) watchSessions() {
 			if w.stopped[r.Key].IsZero() {
 				w.stopped[r.Key] = time.Now()
 			} else if time.Since(w.stopped[r.Key]) >= stopGrace {
+				if !hooked {
+					turn.Stop(w.stopped[r.Key])
+					w.inputs[r.Key] = s.Inputs()
+				}
 				delete(w.working, r.Key)
 				delete(w.stopped, r.Key)
 				// Work before the user gave any input is claude starting or a
@@ -102,7 +146,6 @@ func (c *Chat) watchSessions() {
 				w.seen[r.Key] = true
 			}
 		}
-		q, hooked := c.act.Asked(r.Key)
 		switch {
 		case (hooked || onScreen) && working:
 			c.answered(r.Key)
@@ -255,4 +298,13 @@ func (c *Chat) OpenMascot() {
 		return
 	}
 	c.act.Open(target)
+}
+
+// turnTime is a session's turn for its row: how long, and what it does.
+func (c *Chat) turnTime(key string) (time.Duration, model.TurnState) {
+	t, ok := c.watch.turns[key]
+	if !ok {
+		return 0, model.TurnNone
+	}
+	return t.Elapsed(time.Now()), t.State()
 }

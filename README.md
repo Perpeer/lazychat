@@ -291,10 +291,10 @@ Nothing lazychat does leaves a workspace half written or written over:
       │ ⎇ main                           ││ …                                                        │
 ╔════╗│   │                              ││                                                          │
 ║chat║│   ├─ ◐ fix-12 search box         ││                                                          │
-╚════╝│   │    claude · 42s ago •        ││                                                          │
+╚════╝│   │    claude · ◷ 42s •          ││                                                          │
 ┌────┐│   │                              ││                                                          │
 │git ││   └─ ○ fix-8 settings page       ││ ❯ hello▏                                                 │
-└────┘│        claude · 2h 16m ago       ││                                                          │
+└────┘│        claude · 3m 18s           ││                                                          │
 ┌────┐│                                  ││                                                          │
 │term││ web                            0 ││                                                          │
 └────┘│ ~/code/web                       ││                                                          │
@@ -392,8 +392,13 @@ selection replaces it; `Tab` types two spaces.
 The left side is one tree of the projects, each with every session
 lazychat started or resumed in it, remembered across runs: a glyph
 (spinner running, `○` saved, `•` the one shown), the name wrapped to three
-rows, and its tool and age under it in two units (`claude · 42s ago`,
-`codex · 2h 16m ago`), the tool in its colour. A session whose project was
+rows, and under it its tool, in its colour, and its turn's time in two
+units: from the prompt that set it working, `◷ 42s` counting while it works,
+`⏸ 1m 05s` held in the accent while a question waits for you and going on
+after the answer, the total dim once it is done (`3m 18s`); the next prompt
+starts it from zero. Work before your first input — claude starting, a resume
+loading — counts no time, and a session with no prompt since it started shows
+the tool alone. The time is kept while lazychat runs. A session whose project was
 removed is listed at the end under "no longer registered". The AI tools
 are listed under the tree, ready or not and why. The right side is the
 shown session's terminal, its size the pty's; under 80 columns it takes the

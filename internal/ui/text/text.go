@@ -200,18 +200,22 @@ func splitWord(word string, room int, hard bool) (head, tail string) {
 // moves, then hours and minutes, then days and hours.
 func Ago(t time.Time) string { return agoAt(t, time.Now()) }
 
-func agoAt(t, now time.Time) string {
-	d := max(0, now.Sub(t))
+func agoAt(t, now time.Time) string { return Span(now.Sub(t)) + " ago" }
+
+// Span is a length of time in its two largest units, as Ago gives it:
+// "42s", "16m 42s", "2h 05m", "3d 4h".
+func Span(d time.Duration) string {
+	d = max(0, d)
 	s := int(d / time.Second)
 	switch {
 	case d < time.Minute:
-		return fmt.Sprintf("%ds ago", s)
+		return fmt.Sprintf("%ds", s)
 	case d < time.Hour:
-		return fmt.Sprintf("%dm %02ds ago", s/60, s%60)
+		return fmt.Sprintf("%dm %02ds", s/60, s%60)
 	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh %02dm ago", s/3600, s%3600/60)
+		return fmt.Sprintf("%dh %02dm", s/3600, s%3600/60)
 	}
-	return fmt.Sprintf("%dd %dh ago", s/86400, s%86400/3600)
+	return fmt.Sprintf("%dd %dh", s/86400, s%86400/3600)
 }
 
 // ShortHome writes the home directory as ~.

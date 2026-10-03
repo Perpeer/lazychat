@@ -17,7 +17,7 @@ import (
 )
 
 // A session is one click target over all its rows, not only its title: a
-// click on the age line under a long name still picks it.
+// click on the tool line under a long name still picks it.
 func TestSessionClickTarget(t *testing.T) {
 	store, err := state.Load(filepath.Join(t.TempDir(), "state.json"))
 	if err != nil {
@@ -32,20 +32,20 @@ func TestSessionClickTarget(t *testing.T) {
 	tr := treeView{tree: &model.Tree{Store: store}, live: actions.New(&api.Core{Store: store}, nil, nil).Live}
 	zone.NewGlobal()
 	out := zone.Scan(strings.Join(tr.view(34, 20, true), "\n"))
-	var age int
+	var line int
 	for i, l := range strings.Split(ansi.Strip(out), "\n") {
-		if strings.Contains(l, "s ago") {
-			age = i
+		if strings.TrimSpace(l) == "claude" {
+			line = i
 		}
 	}
-	if age == 0 {
-		t.Fatalf("no age line in\n%s", ansi.Strip(out))
+	if line == 0 {
+		t.Fatalf("no tool line in\n%s", ansi.Strip(out))
 	}
-	click := tea.MouseMsg{X: 20, Y: age, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft}
+	click := tea.MouseMsg{X: 20, Y: line, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft}
 	deadline := time.Now().Add(time.Second) // zones are recorded off the caller's goroutine
 	for !zone.Get("row-0").InBounds(click) {
 		if time.Now().After(deadline) {
-			t.Fatalf("a click on the age line (row %d) misses the session", age)
+			t.Fatalf("a click on the tool line (row %d) misses the session", line)
 		}
 		time.Sleep(10 * time.Millisecond)
 	}

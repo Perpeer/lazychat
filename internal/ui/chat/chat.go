@@ -47,6 +47,7 @@ func New(core *api.Core, screen kit.Screen) *Chat {
 		seen:   func(key string) bool { _, ok := c.watch.waiting[key]; return ok && c.watch.seen[key] },
 		branch: func(path string) string { return kit.HeadLabel(core.Head(path)) },
 	}
+	c.list.turn = c.turnTime
 	c.capture = kit.NewCapture(screen, &c.pane, c.paneRect)
 	c.capture.HeldNewline = true
 	// Leaving the terminal lands on what was just in use, and on a narrow

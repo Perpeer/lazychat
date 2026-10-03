@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"regexp"
 	"testing"
 
 	"lazychat/internal/core/agent"
@@ -38,7 +39,8 @@ func TestNewToolEverywhere(t *testing.T) {
 	d.key("enter")
 	d.expect("demo2 · hello · running")
 	d.leave()
-	d.expect("echo · ")
+	// The session's row names its tool; no time yet, as nothing was asked.
+	d.until("no echo row under the session", func() bool { return regexp.MustCompile(`│ +echo( •)? +│`).MatchString(d.screen()) })
 	d.tab(4)
 	d.key("down", "enter")
 	d.expect("○ echo")

@@ -69,6 +69,9 @@ type Session struct {
 	// given is the user having sent the program anything — a key, a paste —
 	// since it started; focus reports lazychat sends on its own do not count.
 	given atomic.Bool
+	// inputs counts the user's writes, so a new prompt can be told from no
+	// input at all since some moment.
+	inputs atomic.Int64
 	// focusMode is the program asking to be told when it gains and loses
 	// the keys (?1004), as a terminal tells it of its window's focus.
 	focusMode atomic.Bool
@@ -433,8 +436,12 @@ func (s *Session) Write(b []byte) error {
 		return err
 	}
 	s.given.Store(true)
+	s.inputs.Add(1)
 	return nil
 }
+
+// Inputs is how many times the user has written to the program.
+func (s *Session) Inputs() int64 { return s.inputs.Load() }
 
 // Given says the user has sent the program input since it started: work
 // before that is the program starting or a resume loading, not an answer.

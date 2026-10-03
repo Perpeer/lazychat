@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -219,7 +220,7 @@ func TestScrollAndCopy(t *testing.T) {
 }
 
 // Codex is picked in the popup, started in the project, and its record and
-// age line name it.
+// tool line name it.
 func TestCodexSession(t *testing.T) {
 	e, _ := seeded(t)
 	d := start(t, e, 120, 32)
@@ -228,7 +229,8 @@ func TestCodexSession(t *testing.T) {
 	d.key("tab")
 	d.typ("cx")
 	d.key("enter")
-	d.expect("FAKE CODEX READY in", "codex · ")
+	d.expect("FAKE CODEX READY in")
+	d.until("no codex row under the session", func() bool { return regexp.MustCompile(`│ +codex( •)? +│`).MatchString(d.screen()) })
 	if s := d.sessions(); len(s) != 1 || s[0].Tool != "codex" {
 		t.Errorf("records %+v, want one of codex", s)
 	}
