@@ -320,7 +320,7 @@ func TestStartScreenOpens(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Kill() })
 	p := &ptyApp{t: t, s: s}
-	p.expectWithin(20*time.Second, "workspaces", "▸ good", "(x) delete")
+	p.expectWithin(20*time.Second, "workspaces", "▸ good", "(d) delete")
 	if strings.Contains(p.screen(), "archive") {
 		t.Errorf("a workspace whose folder is gone is listed:\n%s", p.screen())
 	}
@@ -352,8 +352,8 @@ func TestDeleteWorkspace(t *testing.T) {
 	p := &ptyApp{t: t, s: s}
 	p.expectWithin(20*time.Second, "workspace (ctrl+w)", " doomed ")
 	p.send("\x17") // Ctrl+W
-	p.expect("(x) delete")
-	p.send("x")
+	p.expect("(d) delete")
+	p.send("d")
 	p.expect("delete workspace doomed?")
 	p.send("y")
 	p.expect("Workspace doomed was deleted; it is in the Trash", "create workspace", "> main")

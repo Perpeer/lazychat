@@ -8,11 +8,12 @@ import "github.com/charmbracelet/lipgloss"
 // The styles every tab draws with. The coloured ones come from the theme
 // (theme.go) and are built again when it changes; dim and bold have no colour.
 var (
-	StyleAccent lipgloss.Style
-	StyleBusy   lipgloss.Style
-	StyleHeader lipgloss.Style
-	StyleSel    lipgloss.Style
-	StyleCursor lipgloss.Style
+	StyleAccent   lipgloss.Style
+	StyleBusy     lipgloss.Style
+	StyleWorktree lipgloss.Style
+	StyleHeader   lipgloss.Style
+	StyleSel      lipgloss.Style
+	StyleCursor   lipgloss.Style
 	// A diff's rows and the conflict mark (theme.go).
 	StyleRemoved, StyleRemovedWord lipgloss.Style
 	StyleAdded, StyleAddedWord     lipgloss.Style

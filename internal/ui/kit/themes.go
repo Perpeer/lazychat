@@ -19,8 +19,11 @@ func Themes() []Theme {
 		out = append(out, Theme{
 			Name: p.name, Background: c(p.bg), Foreground: c(p.fg),
 			Accent: c(p.accent), Cursor: c(p.accent), OnFill: c(p.bg), Busy: c(p.busy),
-			Tools:   map[string]lipgloss.Color{"claude": c(p.claude), "codex": c(p.codex)},
-			Removed: c(p.removed), RemovedWord: c(p.removedWord),
+			// The renamed badge's colour: each palette's blue or cyan, apart
+			// from its accent.
+			Worktree: c(p.renamed),
+			Tools:    map[string]lipgloss.Color{"claude": c(p.claude), "codex": c(p.codex)},
+			Removed:  c(p.removed), RemovedWord: c(p.removedWord),
 			Added: c(p.added), AddedWord: c(p.addedWord), Conflict: c(p.conflict),
 			BadgeModified: c(p.modified), BadgeAdded: c(p.newFile),
 			BadgeRemoved: c(p.deleted), BadgeRenamed: c(p.renamed),

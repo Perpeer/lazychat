@@ -140,7 +140,7 @@ func startKeys() []startBinding {
 		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "open"}, Run: (*setupModel).continueHere},
 		{Keys: []string{"n"}, Hint: kit.Hint{Key: "n", Does: "new"}, Run: kit.Act((*setupModel).newForm)},
 		{Keys: []string{"e"}, Hint: kit.Hint{Key: "e", Does: "rename"}, Run: kit.Act(func(m *setupModel) { m.renameForm(m.recent()[m.cursor]) })},
-		{Keys: []string{"x"}, Hint: kit.Hint{Key: "x", Does: "delete"}, Run: kit.Act(func(m *setupModel) { m.askDelete(m.recent()[m.cursor]) })},
+		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "delete"}, Run: kit.Act(func(m *setupModel) { m.askDelete(m.recent()[m.cursor]) })},
 		{Keys: []string{"esc", "q"}, Hint: kit.Hint{Key: "esc", Does: "quit"}, Run: func(*setupModel) tea.Cmd { return tea.Quit }},
 	}
 }

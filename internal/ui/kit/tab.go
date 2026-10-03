@@ -53,6 +53,10 @@ type FooterLead interface {
 	Lead() string
 }
 
+// CmdEnter is Cmd+Enter pressed while no session has the keys; Bubble Tea
+// v1 cannot say Cmd, so the input router sends this to every tab instead.
+type CmdEnter struct{}
+
 // ProjectAction asks Chat, which owns the projects' sessions, to open a
 // project, or edit or remove the one named, from any tab's project row.
 type ProjectAction struct {

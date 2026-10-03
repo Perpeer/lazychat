@@ -149,6 +149,7 @@ func Run(core *api.Core, opts Options) (exit Exit, err error) {
 		a.news = &presence.Writer{Home: core.Registry.Home()}
 	}
 	router := kit.NewInputRouter(in, func(n int) { a.Send(tabMsg(n)) })
+	router.CmdEnter = func() { a.Send(kit.CmdEnter{}) }
 	a.input = router
 	p := tea.NewProgram(a, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithInput(router))
 	a.send = p.Send

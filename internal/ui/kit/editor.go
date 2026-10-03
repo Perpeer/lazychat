@@ -194,6 +194,9 @@ func (e *Editor) Drag(x, y int) {
 	e.cur = p
 }
 
+// Dragging says a press started a selection the mouse still extends.
+func (e *Editor) Dragging() bool { return e.drag }
+
 // Release ends a drag; true when it left a selection.
 func (e *Editor) Release() bool {
 	was := e.drag

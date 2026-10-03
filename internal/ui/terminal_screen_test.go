@@ -4,12 +4,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
+
+	"lazychat/internal/ui/kit"
 )
 
 // The Terminal tab, under Git on the rail: n opens a shell in the project's
 // folder under a name of its own, it takes the keys and runs on after
 // Ctrl+Q; a second one is numbered after it; one is renamed and moved above
-// the other; x closes one, asked; exit ends the other and it leaves the list.
+// the other; d closes one, asked; exit ends the other and it leaves the list.
 func TestTerminalTab(t *testing.T) {
 	e, dir := seeded(t)
 	e.vars = map[string]string{"SHELL": "/bin/sh"}
@@ -19,13 +22,13 @@ func TestTerminalTab(t *testing.T) {
 		t.Fatalf("the Terminal box is not under Git's:\n%s", d.screen())
 	}
 	d.tab(3)
-	d.expect("[1] projects", "demo2 · terminals (0)", "└─ no terminals yet", "(enter/n) new · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("[1] projects", "demo2 · terminals (0)", "└─ no terminals yet", "(enter/n) new · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("n")
 	d.expect("sh 1", "(ctrl+q) back to lazychat")
 	d.raw("pwd\r")
 	d.expect(filepath.Base(dir))
 	d.leave()
-	d.expect("(enter) continue · (n) new · (e) rename · (m) move · (x) close · (v) copy")
+	d.expect("(enter) continue · (n) new · (e) rename · (m) move · (d) close · (v) copy")
 	d.key("n")
 	d.expect("sh 2")
 	d.leave()
@@ -42,7 +45,7 @@ func TestTerminalTab(t *testing.T) {
 	if a, b := strings.Index(s, "server"), strings.Index(s, "sh 1"); a < 0 || b < 0 || a > b {
 		t.Fatalf("server was not moved above sh 1:\n%s", s)
 	}
-	d.key("x")
+	d.key("d")
 	d.expect("close server (demo2)?")
 	d.key("y")
 	d.expect("closed server", "1 running")
@@ -53,5 +56,41 @@ func TestTerminalTab(t *testing.T) {
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("exit\r")
 	d.expect("demo2 · terminals (0)", "└─ no terminals yet")
+	d.quitApp()
+}
+
+// A drag over a shell's output selects it and the release copies it, as a
+// plain terminal lets one do; the pane's title says how much was copied,
+// and typing goes back to following the shell.
+func TestTerminalSelect(t *testing.T) {
+	e, _ := seeded(t)
+	e.vars = map[string]string{"SHELL": "/bin/sh"}
+	var copied string
+	kit.CopyToClipboard = func(s string) error { copied = s; return nil }
+	defer func() { kit.CopyToClipboard = func(string) error { return nil } }()
+	d := start(t, e, 120, 32)
+	d.tab(3)
+	d.key("n")
+	d.expect("sh 1", "(ctrl+q) back to lazychat")
+	d.raw("echo $((6*7))xyz\r")
+	d.expect("42xyz")
+	rows := strings.Split(d.screen(), "\n")
+	y := lineOf(d.screen(), "42xyz")
+	x := utf8.RuneCountInString(rows[y][:strings.Index(rows[y], "42xyz")])
+	d.focus.mu.Lock()
+	mouse := d.focus.mouse
+	d.focus.mu.Unlock()
+	mouse(0, x+1, y+1, false)
+	mouse(32, x+5, y+1, false)
+	mouse(0, x+5, y+1, true)
+	d.until("the drag copied nothing", func() bool { return copied != "" })
+	if copied != "42xyz" {
+		t.Fatalf("copied %q, want 42xyz", copied)
+	}
+	d.expect("copied 5")
+	d.raw("echo more\r")
+	d.expect("more")
+	d.expectNot("copied 5")
+	d.leave()
 	d.quitApp()
 }

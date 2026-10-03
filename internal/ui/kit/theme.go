@@ -14,6 +14,7 @@ type Theme struct {
 	Cursor                 lipgloss.Color // the block cursor, in the editor and in a session's pane
 	OnFill                 lipgloss.Color // text drawn on the accent or the cursor
 	Busy                   lipgloss.Color // a running session's spinner
+	Worktree               lipgloss.Color // a worktree project's heading, told from the main checkout by colour alone
 	// Tools overrides an AI tool's own colour, by its id, where the tool's
 	// does not sit well on the theme's background.
 	Tools map[string]lipgloss.Color
@@ -40,6 +41,8 @@ func DefaultTheme() Theme {
 		Cursor: lipgloss.Color("178"),
 		OnFill: lipgloss.Color("0"),
 		Busy:   lipgloss.Color("2"),
+		// A blue that neither the accent nor the spinner uses.
+		Worktree: lipgloss.Color("75"),
 		// Dark reds and greens, as delta's dark theme, so the row's own text
 		// stays readable on them.
 		Removed:       lipgloss.Color("52"),
@@ -63,6 +66,7 @@ func SetTheme(t Theme) {
 	theme = t
 	StyleAccent = lipgloss.NewStyle().Foreground(t.Accent)
 	StyleBusy = lipgloss.NewStyle().Foreground(t.Busy)
+	StyleWorktree = lipgloss.NewStyle().Foreground(t.Worktree).Bold(true)
 	StyleHeader = lipgloss.NewStyle().Foreground(t.OnFill).Background(t.Accent)
 	StyleSel = lipgloss.NewStyle().Foreground(t.OnFill).Background(t.Accent)
 	StyleCursor = lipgloss.NewStyle().Foreground(t.OnFill).Background(t.Cursor)

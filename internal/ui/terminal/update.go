@@ -117,7 +117,8 @@ func (t *Terminal) selectProject(n int) {
 
 // Mouse: the wheel scrolls the shell over the pane and the list elsewhere; a
 // click on a row puts the cursor there, and on the row already under it
-// opens it; a click on the pane gives the shown shell the keys.
+// opens it; a click on the pane gives the shown shell the keys, and a drag
+// there selects its text, copied on release.
 func (t *Terminal) Mouse(msg tea.MouseMsg) tea.Cmd {
 	hit := hits.At(msg, len(t.shellRows()), len(t.core.Store.Projects))
 	if d := kit.Wheel(msg); d != 0 {
@@ -154,6 +155,11 @@ func (t *Terminal) Mouse(msg tea.MouseMsg) tea.Cmd {
 		t.pane.StopCopy()
 		if !t.tree.OnProject() && t.pane.Session != nil {
 			t.capture.Take()
+			// The click that takes the keys also starts a selection: its
+			// drag and release arrive as the shell's raw mouse after it.
+			if r := t.paneRect(); hit.Kind == kit.HitPane {
+				t.pane.Press(r, msg.X-r.X0, msg.Y-r.Y0)
+			}
 		}
 	}
 	return nil

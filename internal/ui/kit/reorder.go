@@ -48,7 +48,7 @@ func ProjectRow[T any](project func(T) string, move func(T)) []Binding[T] {
 		{Keys: []string{"O"}, Hint: Hint{Key: "shift+o", Does: "open"}, Help: "open a project: a directory, listed under a name, in Chat; nothing starts in it until asked", Run: ask("open")},
 		{Keys: []string{"E"}, Hint: Hint{Key: "shift+e", Does: "edit"}, Help: "edit the cursor's project: its name and its directory, both prefilled", Run: ask("edit")},
 		{Keys: []string{"M"}, Hint: Hint{Key: "shift+m", Does: "move"}, Help: "move mode for the whole project (↕ on its heading); ↑↓ j k carry it among the projects, Enter puts it down", Run: Act(move)},
-		{Keys: []string{"X"}, Hint: Hint{Key: "shift+x", Does: "remove"}, Help: "remove the cursor's project from the list, asked, closing its sessions and shells; the directory and Claude Code's transcripts stay", Run: ask("remove")},
+		{Keys: []string{"D"}, Hint: Hint{Key: "shift+d", Does: "remove"}, Help: "remove the cursor's project from the list, asked, closing its sessions and shells; the directory and Claude Code's transcripts stay", Run: ask("remove")},
 	}
 }
 

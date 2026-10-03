@@ -2,6 +2,7 @@ package chat
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -9,13 +10,15 @@ import (
 	"lazychat/internal/core/state"
 	"lazychat/internal/term"
 	"lazychat/internal/ui/kit"
+	"lazychat/internal/ui/text"
 )
 
 // A session's draft is the next prompt written while the agent works, in a
 // box under its pane: kept apart from the tool's own input, an answer the
 // agent asks for never takes its place, and it is pasted into the session
-// once that is free, where the user gives it a last look and sends it. The box shows only while it has the keys, so the sessions' ptys are
-// not resized as the cursor walks the tree.
+// once that is free, where the user gives it a last look and sends it. The
+// box covers the pane's lower rows and resizes no pty: a resize makes
+// claude redraw its whole screen, which looked like the session freezing.
 
 // draftSentMsg is a draft's paste ending.
 type draftSentMsg struct {
@@ -68,14 +71,12 @@ func (c *Chat) openDraft() {
 	}
 	c.capture.Drop()
 	c.drafting = true
-	c.act.Live.ResizeAll(c.PaneSize())
 }
 
 // closeDraft keeps what was written and gives the tree the keys back.
 func (c *Chat) closeDraft() {
 	c.saveDraft()
 	c.drafting = false
-	c.act.Live.ResizeAll(c.PaneSize())
 }
 
 // saveDraft writes the box's text to the session's record when it changed.
@@ -93,8 +94,12 @@ func (c *Chat) saveDraft() {
 	}
 }
 
-// draftKey is a key while the box has them: Esc leaves, Ctrl+S sends,
-// everything else edits.
+// pasteKeys paste the draft into the prompt: Cmd+Enter where the terminal
+// reports it, Option+Enter everywhere (Terminal.app keeps Cmd+Enter).
+var pasteKeys = map[string]bool{"cmd+enter": true, "alt+enter": true}
+
+// draftKey is a key while the box has them: Esc leaves, Cmd or Option+Enter
+// pastes it into the prompt, Ctrl+U clears it, asked; the rest edits.
 func (c *Chat) draftKey(msg tea.KeyMsg) tea.Cmd {
 	r, ok := c.draftRecord()
 	if !ok {
@@ -105,7 +110,19 @@ func (c *Chat) draftKey(msg tea.KeyMsg) tea.Cmd {
 	case "esc", leaveLabel:
 		c.closeDraft()
 		return nil
-	case "ctrl+s":
+	case "ctrl+u":
+		e := c.draftEditor(r)
+		if e.Value() == "" {
+			return nil
+		}
+		c.screen.Push(&kit.Confirm{Question: "clear the draft for " + r.Name + "? it is not kept anywhere else", Yes: func() {
+			c.drafts[r.Key] = kit.NewEditor("")
+			c.drafts[r.Key].Plain = true
+			c.saveDraft()
+		}})
+		return nil
+	}
+	if pasteKeys[msg.String()] {
 		return c.sendDraft()
 	}
 	c.draftEditor(r).Key(msg)
@@ -129,7 +146,7 @@ func (c *Chat) sendDraft() tea.Cmd {
 	asks := c.board.Asking(r.Key) || hooked || (live && c.act.ScreenAsks(r))
 	switch {
 	case text == "":
-		c.screen.Note("%s has no draft: d writes one", r.Name)
+		c.screen.Note("%s has no draft: w writes one", r.Name)
 		return nil
 	case !live || !s.Alive():
 		c.screen.Note("%s does not run: Enter resumes it, then the draft can go", r.Name)
@@ -144,9 +161,20 @@ func (c *Chat) sendDraft() tea.Cmd {
 		return nil
 	}
 	c.saveDraft()
+	text = promptText(text)
 	return func() tea.Msg {
 		return draftSentMsg{key: r.Key, err: <-s.PasteWhenReady(text, pasteLimit)}
 	}
+}
+
+// promptText is what a draft pastes: one starting with / on a single line,
+// its newlines turned into spaces, since claude runs a slash command only
+// from one line and sends a longer one to the model as a message.
+func promptText(text string) string {
+	if !strings.HasPrefix(strings.TrimSpace(text), "/") {
+		return text
+	}
+	return strings.Join(strings.Fields(text), " ")
 }
 
 // draftSent clears a draft that reached its session's input and gives the
@@ -174,7 +202,8 @@ func (c *Chat) draftSent(msg draftSentMsg) {
 	c.screen.Note("draft pasted: edit it if need be, Enter sends it")
 }
 
-// draftView is the box under the pane while it has the keys.
+// draftView is the box over the pane's lower rows while it has the keys;
+// the cursor blinks in it even while it is empty.
 func (c *Chat) draftView(w, h int) string {
 	r, ok := c.draftRecord()
 	if !ok {
@@ -182,9 +211,58 @@ func (c *Chat) draftView(w, h int) string {
 	}
 	e := c.draftEditor(r)
 	e.SetSize(w-2, h-2)
-	lines := e.View(c.tick%2 == 0)
+	on := c.tick%2 == 0
+	lines := e.View(on)
 	if e.Value() == "" {
-		lines = []string{kit.StyleDim.Render("the next prompt for " + r.Name + ", written while it works; Ctrl+S pastes it in once it is free")}
+		cursor := " "
+		if on {
+			cursor = kit.StyleCursor.Render(" ")
+		}
+		lines[0] = cursor + kit.StyleDim.Render(text.Fit(" the next prompt for "+r.Name+", written while it works; Cmd/Option+Enter pastes it in once it is free", w-3))
 	}
 	return hits.Panel(3, kit.Box(kit.PanelTitle(3, "draft · "+r.Name), lines, w, h, true, false))
+}
+
+// draftRect is where the draft's text is on the screen, inside its box.
+func (c *Chat) draftRect() kit.Rect {
+	g := c.geometry()
+	dh := c.draftH(g.bodyH)
+	x0, w := c.rect.X0+g.leftW+1, g.rightW-2
+	if c.narrow() {
+		x0, w = c.rect.X0+1, c.rect.Cols-2
+	}
+	return kit.Rect{X0: x0, Y0: c.rect.Y0 + g.bodyH - dh + 1, Cols: w, Rows: dh - 2}
+}
+
+// draftMouse is the mouse over the open draft: a press puts the cursor
+// there and starts a selection, a drag extends it, and the release copies
+// what it selected, so it can be sent by hand. False when the event is not
+// the draft's.
+func (c *Chat) draftMouse(msg tea.MouseMsg) bool {
+	r, ok := c.draftRecord()
+	if !ok || !c.drafting {
+		return false
+	}
+	e := c.draftEditor(r)
+	rc := c.draftRect()
+	x, y := msg.X-rc.X0, msg.Y-rc.Y0
+	inside := x >= 0 && y >= 0 && x < rc.Cols && y < rc.Rows
+	switch {
+	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft && inside:
+		e.Press(x, y)
+		return true
+	case msg.Action == tea.MouseActionMotion && e.Dragging():
+		e.Drag(x, y)
+		return true
+	case msg.Action == tea.MouseActionRelease && e.Dragging():
+		if e.Release() {
+			if err := kit.CopyToClipboard(e.Selection()); err != nil {
+				c.screen.Note("copy: %v", err)
+			} else {
+				c.screen.Note("copied from the draft")
+			}
+		}
+		return true
+	}
+	return false
 }

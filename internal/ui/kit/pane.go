@@ -20,7 +20,8 @@ type TermPane struct {
 	Live    bool   // following the bottom
 	Top     int
 
-	Sel CopyMode
+	Sel  CopyMode
+	Drag Drag
 }
 
 // Rect is where the pane's inner area sits on the screen, zero-based: the
@@ -33,7 +34,7 @@ type Rect struct {
 // Point makes the pane show a session and sizes its pty to the pane.
 func (p *TermPane) Point(key string, s *term.Session, cols, rows int) {
 	if p.Key != key {
-		p.Live, p.Sel.Active = true, false
+		p.Live, p.Sel.Active, p.Drag = true, false, Drag{}
 	}
 	p.Session, p.Key = s, key
 	if s != nil && s.Alive() {
@@ -41,7 +42,9 @@ func (p *TermPane) Point(key string, s *term.Session, cols, rows int) {
 	}
 }
 
-func (p *TermPane) Clear() { p.Session, p.Key, p.Live, p.Sel.Active = nil, "", true, false }
+func (p *TermPane) Clear() {
+	p.Session, p.Key, p.Live, p.Sel.Active, p.Drag = nil, "", true, false, Drag{}
+}
 
 func (p *TermPane) Title() string {
 	if p.Session == nil {
@@ -57,6 +60,8 @@ func (p *TermPane) Title() string {
 	t := p.Session.Project + " · " + p.Session.Name + " · " + state
 	if p.Sel.Active {
 		t += " · copy"
+	} else if p.Drag.Active && p.Drag.copied > 0 {
+		t += fmt.Sprintf(" · copied %d", p.Drag.copied)
 	} else if !p.Live {
 		_, rows := p.Session.Size()
 		t += fmt.Sprintf(" · ↑ %d", max(0, p.Session.Total()-rows-p.Top))
@@ -99,7 +104,7 @@ func (p *TermPane) Scrollbar(h int) (from, length int) {
 }
 
 // ToLive is what typing into the session does: back to the bottom.
-func (p *TermPane) ToLive() { p.Live, p.Sel.Active = true, false }
+func (p *TermPane) ToLive() { p.Live, p.Sel.Active, p.Drag = true, false, Drag{} }
 
 // View is the session's screen, row for row; the pane's inner size is the
 // pty's size, so nothing needs wrapping. The program's cursor is drawn as a
@@ -108,7 +113,7 @@ func (p *TermPane) View(w, h int, focused, blinkOn bool) []string {
 	if p.Session == nil {
 		return []string{"", StyleDim.Render(text.Fit(" no session shown — Enter on a project starts one, Enter on a session shows it", w))}
 	}
-	if p.Live && !p.Sel.Active {
+	if p.Live && !p.Sel.Active && !p.Drag.Active {
 		rows := strings.Split(p.Session.Render(), "\n")
 		if len(rows) > h {
 			rows = rows[:h]
@@ -117,6 +122,9 @@ func (p *TermPane) View(w, h int, focused, blinkOn bool) []string {
 			rows[y] = withCursor(rows[y], x, w, focused)
 		}
 		return ZoneBlock("term", rows, w)
+	}
+	if p.Drag.Active {
+		return ZoneBlock("term", p.dragRows(w, h), w)
 	}
 	if p.Live {
 		p.Top = p.Session.Total() - h
@@ -149,6 +157,18 @@ func (p *TermPane) Mouse(r Rect, code, x, y int, release bool) {
 	}
 	if s.AltScreen() {
 		s.Mouse(code, px, py, release)
+		return
+	}
+	// A left press, a drag with it held, its release: a selection, copied.
+	switch {
+	case release && p.Drag.dragging:
+		p.Release()
+		return
+	case code&32 != 0 && p.Drag.dragging:
+		p.DragTo(r, px, py)
+		return
+	case code&^(4|8|16) == 0 && !release:
+		p.Press(r, px, py)
 		return
 	}
 	switch code &^ (4 | 8 | 16) {

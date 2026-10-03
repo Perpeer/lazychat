@@ -21,7 +21,7 @@ func TestKeymap(t *testing.T) {
 		want string
 	}{
 		"branch":  {branchKeys, "c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
-		"project": {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+x remove"},
+		"project": {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		"changes": {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
 		"commits": {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
 		"diff":    {diffKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},

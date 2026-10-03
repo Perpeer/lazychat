@@ -51,10 +51,16 @@ func TitleRows(first, rest string, lead, plainLead, title string, style lipgloss
 // Every tab draws projects this way, so a project looks the same wherever
 // it is.
 func ProjectHeading(name, path, branch string, w int) []TreeLine {
+	// A worktree's name already says which one it is: its branch row goes
+	// and the heading takes the worktree colour, ⑂ before it.
+	style := StyleBold
+	if strings.HasPrefix(branch, "⑂ ") {
+		style, branch, name = StyleWorktree, "", "⑂ "+name
+	}
 	names := text.WrapTitle(name, w-2, nameLines)
-	out := []TreeLine{{Styled: StyleBold.Render(" " + names[0]), Plain: " " + names[0]}}
+	out := []TreeLine{{Styled: style.Render(" " + names[0]), Plain: " " + names[0]}}
 	for _, n := range names[1:] {
-		out = append(out, TreeLine{Styled: StyleBold.Render(" " + n), Plain: " " + n})
+		out = append(out, TreeLine{Styled: style.Render(" " + n), Plain: " " + n})
 	}
 	// The folder starts where the name does.
 	for _, d := range dirRows(text.ShortHome(path), w-2) {

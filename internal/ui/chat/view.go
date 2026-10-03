@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"strings"
 
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/text"
@@ -33,9 +34,9 @@ func (c *Chat) narrow() bool { return c.rect.Cols < narrowWidth }
 func (c *Chat) paneRect() kit.Rect {
 	g := c.geometry()
 	if c.narrow() {
-		return kit.Rect{X0: c.rect.X0 + 1, Y0: c.rect.Y0 + 1, Cols: c.rect.Cols - 2, Rows: g.bodyH - c.draftH(g.bodyH) - 2}
+		return kit.Rect{X0: c.rect.X0 + 1, Y0: c.rect.Y0 + 1, Cols: c.rect.Cols - 2, Rows: g.bodyH - 2}
 	}
-	return kit.Rect{X0: c.rect.X0 + g.leftW + 1, Y0: c.rect.Y0 + 1, Cols: g.rightW - 2, Rows: g.bodyH - c.draftH(g.bodyH) - 2}
+	return kit.Rect{X0: c.rect.X0 + g.leftW + 1, Y0: c.rect.Y0 + 1, Cols: g.rightW - 2, Rows: g.bodyH - 2}
 }
 
 func (c *Chat) PaneSize() (cols, rows int) {
@@ -53,7 +54,7 @@ func (c *Chat) View() string {
 	}
 	pane := func(w int) string {
 		dh := c.draftH(g.bodyH)
-		h := g.bodyH - dh
+		h := g.bodyH
 		var right string
 		if r, ok := c.tree.Current(); ok && r.Session == nil {
 			right = c.projectPanel(r.Project.Name, w, h)
@@ -65,7 +66,11 @@ func (c *Chat) View() string {
 		}
 		right = hits.Panel(2, right)
 		if dh > 0 {
-			right += "\n" + c.draftView(w, dh)
+			// Over the pane's lower rows, so the session keeps its size.
+			rows := strings.Split(right, "\n")
+			if cut := len(rows) - dh; cut >= 0 {
+				right = strings.Join(append(rows[:cut], c.draftView(w, dh)), "\n")
+			}
 		}
 		return right
 	}

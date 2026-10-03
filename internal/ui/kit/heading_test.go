@@ -81,3 +81,21 @@ func TestChildGap(t *testing.T) {
 		t.Errorf("ChildGap() = %q", got)
 	}
 }
+
+// A worktree's heading drops its branch row and marks its name with ⑂ in
+// the worktree colour; the main checkout's keeps ⎇ and the branch.
+func TestWorktreeHeading(t *testing.T) {
+	wt := ProjectHeading("garden · blue-door", "/tmp/garden/.worktrees/blue-door", "⑂ blue-door", 40)
+	for _, l := range wt {
+		if strings.Contains(l.Plain, "⑂ blue-door") && !strings.Contains(l.Plain, "garden") {
+			t.Errorf("a worktree heading kept its branch row: %q", l.Plain)
+		}
+	}
+	if wt[0].Plain != " ⑂ garden · blue-door" || wt[0].Styled != StyleWorktree.Render(" ⑂ garden · blue-door") {
+		t.Errorf("worktree name row: %q", wt[0].Plain)
+	}
+	main := ProjectHeading("garden", "/tmp/garden", "⎇ main", 40)
+	if last := main[len(main)-1].Plain; last != " ⎇ main" {
+		t.Errorf("main checkout's branch row: %q", last)
+	}
+}

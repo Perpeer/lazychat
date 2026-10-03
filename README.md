@@ -242,7 +242,7 @@ are only read.
 
 lazychat opens on the start screen every time: the workspaces, the one
 opened last under the cursor. `Enter` opens it, `n` makes a new one (a
-name), `e` renames one, `x` deletes one — its folder to the Trash, where
+name), `e` renames one, `d` deletes one — its folder to the Trash, where
 Finder can put it back, asked first. With none it is the form for a new
 one. `--workspace <name>` skips the screen.
 
@@ -255,7 +255,7 @@ goes back to the tab's list. Its keys:
 | `n` | a new workspace — a name; it opens in place |
 | `s` | switch to another — the others, the one used before this first; with none it says `n` makes one |
 | `e` | rename it; its folder takes the new name, sessions keep running |
-| `x` | delete it, asked: once what runs is stopped, its folder goes to the Trash and the start screen follows; the projects' folders stay |
+| `d` | delete it, asked: once what runs is stopped, its folder goes to the Trash and the start screen follows; the projects' folders stay |
 
 Switching happens in the program: the tabs move onto the other workspace
 and the screen stays. The sessions and shells of the one left are stopped,
@@ -301,8 +301,8 @@ Nothing lazychat does leaves a workspace half written or written over:
 ┌────┐│ AI tools                         ││                                                          │
 │set ││ ● claude  2.1.0                  ││ Opus · high · main · ctx 28%                             │
 └────┘└──────────────────────────────────┘└──────────────────────────────────────────────────────────┘
-      session: (enter) continue · (n) new · (r) resume · (e) rename · (m) move · (x) close    v1.0(52)
-      project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove
+      session: (enter) continue · (n) new · (r) resume · (e) rename · (m) move · (d) close    v1.0(52)
+      project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove
 ```
 
 The rail holds one box per tab — chat, git and term, and set at its foot
@@ -325,7 +325,7 @@ The projects column is as wide in Chat, Git and Terminal (28 % of the tab,
 
 A project's heading is the same in every tab: its name in bold (wrapped to
 two rows), its folder dim under it (wrapped to three rows, a longer one
-keeping its tail) and the branch the folder is on in the accent: `⎇ main`, `⑂ feature` when the folder is a worktree, nothing
+keeping its tail) and the branch the folder is on in the accent: `⎇ main`; a worktree's heading has no branch row — its name already says which one it is — and is drawn in the theme's worktree colour, `⑂` before it; nothing
 outside a repository. A branch always takes one row: one too long is cut
 in its middle, its last part kept — `core-data-redesign/…/TASK-7130` — since
 that part tells branches apart. It is read from the HEAD file at most every three
@@ -372,7 +372,7 @@ Questions — add a project, create a session, close, quit — are popups:
 | `ctrl+q` | out of the pane: the one key lazychat keeps, and the only one that leaves, in every terminal and keyboard layout; also back to `[1]` from any panel. A left click beside the pane leaves too, as a click on the row it landed on |
 | `Ctrl+W` | the workspace box |
 | `shift+o` (`o` with no project yet) | open a project: a name (empty = the folder's) and a folder — the git top level is registered — walked in columns as Finder's column view walks them: `↑↓` highlight a folder, `→` steps in, `./` is the folder itself, a typed path lays the columns out, the line under them says `the project's directory: …`. Nothing starts in it |
-| `shift+e` / `shift+x` | edit the cursor's project, name and folder prefilled / remove it from the list, asked: its sessions and shells close with it, the folder stays and Claude Code keeps the transcripts |
+| `shift+e` / `shift+d` | edit the cursor's project, name and folder prefilled / remove it from the list, asked: its sessions and shells close with it, the folder stays and Claude Code keeps the transcripts |
 | `m` / `shift+m` | move mode: `m` picks up the row under the cursor, `shift+m` its project (marked `↕`); `↑↓` `j k` carry it and `Enter`, `ctrl+q`, `m` or `M` put it down. Every step is saved; a click or another tab puts it down too. New sessions and shells go first under their project, new projects last |
 | the wheel | over a list, scroll it — the cursor and the right side stay, the next key brings the list back; over a pane or a diff, scroll that |
 | `?` / `q` / `Ctrl+C` | help / quit, asked when something runs; nothing survives lazychat. `Ctrl+C` quits only on a list: in a pane it is the program's, in a text field it copies |
@@ -411,9 +411,9 @@ whole screen while shown and `Esc` brings the tree back.
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
-| `d` | write the session's next prompt while it works: a box opens under its pane (`[3] draft · ivy`); `Enter` is a new line, `Ctrl+S` pastes it in, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
+| `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`[3] draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
 | `shift+s` | paste the draft into the session's input and go into it, the draft then cleared: `Enter` is yours, after a last edit — only while the session runs, does not work and asks nothing (a question is answered first); otherwise the footer says why and the draft waits |
-| `x` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
+| `d` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |
 
 In the pane every byte the terminal sends goes to the session exactly as it
@@ -510,8 +510,11 @@ The projects again, and under each the shells opened in it: `n` starts
 `zsh 1`, `zsh 2` … (the lowest number free), any number per project. The one
 under the cursor is on the right; `Enter` or a click gives it every key and
 `ctrl+q` comes back while it runs on. `e` renames a shell, `m` moves it
-among its project's, `x` closes it (asked while it runs), and `exit` in it
-takes it off the list. `v` is copy mode over the shown shell: `↑↓` (Fn+↑↓ a
+among its project's, `d` closes it (asked while it runs), and `exit` in it
+takes it off the list. A drag over a shell's text selects it and the release
+copies it, as in a plain terminal (a program on the alternate screen, vim or
+less, keeps the mouse for itself); the pane's title says how much was
+copied until the next key. `v` is copy mode over the shown shell: `↑↓` (Fn+↑↓ a
 page) move a row cursor, `space` marks where the selection starts, `y` or
 `Enter` copies the rows, `ctrl+q`, `q`, `v` or `1` leave. Shells live while
 lazychat runs; a project removed in Chat stops its shells, a renamed one

@@ -6,8 +6,10 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"lazychat/internal/core/state"
+	"lazychat/internal/ui/kit"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -46,8 +48,8 @@ func TestChatFlow(t *testing.T) {
 	d.expectCount(1, 1)
 	d.leave()
 
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help",
-		"project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help",
+		"project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("p", "s", "K", "J", "ctrl+k", "ctrl+j") // no menus, no second way to move: nothing happens
 	d.expectNot("project · demo")
 	d.expectNot("┌ session · ")
@@ -75,7 +77,7 @@ func TestChatFlow(t *testing.T) {
 	d.raw("hello\r")
 	d.expect("got: hello")
 	d.leave()
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help", "ivy")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help", "ivy")
 	d.key("ctrl+c")
 	d.expect("stop 2 running session(s) and quit?")
 	d.key("n")
@@ -101,20 +103,20 @@ func TestChatFlow(t *testing.T) {
 	d.key("tab", "tab") // Chat → Git → Terminal
 	d.expect("demo2 · terminals (0)")
 	d.key("tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help")
 	d.key("shift+tab") // back around the rail: Chat → Terminal, then Terminal → Git
 	d.expect("demo2 · terminals (0)")
 	d.key("shift+tab")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees")
 	d.key("tab", "tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (shift+s) paste draft · (m) move · (d) close · (wheel) scroll · (?) help")
 	d.click(79, 14)
 	d.expect("(ctrl+q) back to lazychat")
 	d.click(9, 4) // the project's heading, beside the pane: its first session
 	d.expect("(enter) continue · (n) new", "project: (shift+o) open")
 	d.expectNot("(ctrl+q) back to lazychat")
 
-	d.key("x")
+	d.key("d")
 	d.expect("confirm", "close ivy (demo2)?", "in progress", "transcript")
 	d.key("y")
 	d.expect("[1] projects", "closed ivy (demo2)")
@@ -410,29 +412,61 @@ func TestResumeAtStart(t *testing.T) {
 	d.quitApp()
 }
 
-// A draft of the next prompt is written under the pane while the session
-// works, survives the answer to its question, and is pasted into the session
-// once it is free, with the keys, so Enter is the user's after a last edit;
-// it is refused while the session works or asks.
+// A draft of the next prompt is written in a box over the pane's lower rows
+// while the session works — the session keeps its size — with a blinking
+// cursor; a drag selects and copies its text; it survives the answer to a
+// question, is refused while the session works or asks, and Option+Enter
+// pastes it into the session with the keys, Enter left to the user; a
+// draft starting with / goes on one line; Ctrl+U clears one, asked.
 func TestDraft(t *testing.T) {
 	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
 	e.vars = map[string]string{"FAKE_CLAUDE_BRACKETS": "1"}
+	var copied string
+	kit.CopyToClipboard = func(s string) error { copied = s; return nil }
+	defer func() { kit.CopyToClipboard = func(string) error { return nil } }()
 	d := start(t, e, 120, 36)
+	paste := func() { d.deliver(tea.KeyMsg{Type: tea.KeyEnter, Alt: true}); d.pump(0) }
 	d.key("n", "tab", "tab")
 	d.typ("ivy")
 	d.key("enter")
 	d.expect("FAKE CLAUDE READY", "(ctrl+q) back to lazychat")
+	d.raw("size\r")
+	d.expect("size: ")
+	size := regexp.MustCompile(`(size|later): (\d+ \d+)`)
+	before := size.FindStringSubmatch(d.screen())[2]
+	d.raw("size later\r")
+	d.leave()
+	d.key("w") // the size is read while the draft covers the pane
+	d.expect("[3] draft · ivy")
+	d.key("esc")
+	d.until("no later size", func() bool { return regexp.MustCompile(`later: \d+ \d+`).MatchString(d.screen()) })
+	if after := regexp.MustCompile(`later: (\d+ \d+)`).FindStringSubmatch(d.screen())[1]; after != before {
+		t.Fatalf("the draft resized the session: %q, then %q", before, after)
+	}
+	d.key("enter")
+	d.expect("(ctrl+q) back to lazychat")
 	d.raw("choose long\r")
 	d.leave()
 
-	d.key("d")
-	d.expect("[3] draft · ivy", "(ctrl+s) paste in · (esc) back")
+	d.key("w")
+	d.expect("[3] draft · ivy", "(cmd/opt+enter) paste in prompt", "(ctrl+u) clear")
 	d.typ("next: the README")
-	d.key("ctrl+s")
+	paste()
 	d.expect("ivy is working: the draft can go once it is done")
 	d.expect("Tea or coffee?")
-	d.key("ctrl+s")
+	paste()
 	d.expect("ivy asks something: answer it first, the draft waits")
+
+	// A drag over the draft's first row selects it; the release copies.
+	y := lineOf(d.screen(), "[3] draft · ivy") + 1
+	x := utf8.RuneCountInString(strings.Split(d.screen(), "\n")[y][:strings.Index(strings.Split(d.screen(), "\n")[y], "next:")])
+	d.deliver(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
+	d.deliver(tea.MouseMsg{X: x + 4, Y: y, Action: tea.MouseActionMotion, Button: tea.MouseButtonLeft})
+	d.deliver(tea.MouseMsg{X: x + 4, Y: y, Action: tea.MouseActionRelease, Button: tea.MouseButtonLeft})
+	d.pump(0)
+	if copied != "next" {
+		t.Fatalf("the drag copied %q, want %q", copied, "next")
+	}
 	d.key("esc")
 	d.expectNot("[3] draft · ivy")
 	d.expect("✎")
@@ -441,7 +475,7 @@ func TestDraft(t *testing.T) {
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("answer\r")
 	d.leave()
-	d.untilIn(3*waitFor, "the answer did not finish", func() bool { return strings.Contains(d.screen(), "ivy waits") })
+	d.untilIn(3*waitFor, "the session did not settle", func() bool { return strings.Contains(d.screen(), "ivy waits") })
 	st, err := state.Load(d.state)
 	if err != nil {
 		t.Fatal(err)
@@ -460,5 +494,33 @@ func TestDraft(t *testing.T) {
 	d.raw(" now\r")
 	d.expect("got: next: the README now")
 	d.leave()
+
+	d.key("w")
+	d.typ("/pilot one")
+	d.key("enter")
+	d.typ("two")
+	paste()
+	d.expect("(ctrl+q) back to lazychat")
+	d.raw("\r")
+	d.expect("got: /pilot one two")
+	d.leave()
+
+	d.key("w")
+	d.typ("throwaway")
+	d.key("ctrl+u")
+	d.expect("clear the draft for ivy?")
+	d.key("y")
+	d.expectNot("throwaway")
+	d.key("esc")
 	d.quitApp()
+}
+
+// lineWith is the first screen row holding needle, trimmed; "" when none.
+func lineWith(screen, needle string) string {
+	for _, l := range strings.Split(screen, "\n") {
+		if i := strings.Index(l, needle); i >= 0 {
+			return strings.TrimSpace(l[i:])
+		}
+	}
+	return ""
 }

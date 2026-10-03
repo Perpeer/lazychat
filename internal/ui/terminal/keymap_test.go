@@ -14,11 +14,11 @@ func TestKeymap(t *testing.T) {
 		keys []binding
 		want string
 	}{
-		"terminal":    {shellKeys, "enter continue · n new · e rename · m move · x close · v copy · ? help"},
+		"terminal":    {shellKeys, "enter continue · n new · e rename · m move · d close · v copy · ? help"},
 		"no terminal": {emptyRowKeys, "enter/n new · ? help"},
-		"project":     {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+x remove"},
+		"project":     {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		"none":        {emptyKeys, "o open · ? help"},
-		"shell":       {termKeys, "ctrl+q back to lazychat · click the list: back there · other keys go to the shell"},
+		"shell":       {termKeys, "ctrl+q back to lazychat · click the list: back there · drag select · copy · other keys go to the shell"},
 	} {
 		var parts []string
 		for _, h := range kit.FooterHints(c.keys) {

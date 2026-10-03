@@ -38,7 +38,7 @@ func (d setupDriver) expect(needles ...string) {
 }
 
 // The start screen lists the workspaces still there, the cursor on the
-// newest; one whose folder is gone is not listed. e renames one, x deletes
+// newest; one whose folder is gone is not listed. e renames one, d deletes
 // one to the Trash, and with the last one deleted the form for a new one
 // comes up, asking a name only. Enter on a workspace opens it.
 func TestStartScreen(t *testing.T) {
@@ -58,7 +58,7 @@ func TestStartScreen(t *testing.T) {
 	trash := t.TempDir()
 	d := setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: trash, Name: "main"})}
 	d.m.width, d.m.height = 120, 32
-	d.expect("workspaces", "▸ second", "primary", "(enter) open · (n) new · (e) rename · (x) delete", "(esc) quit")
+	d.expect("workspaces", "▸ second", "primary", "(enter) open · (n) new · (e) rename · (d) delete", "(esc) quit")
 	if s := d.m.View(); strings.Contains(s, "archive") || strings.Contains(s, home) {
 		t.Fatalf("a gone workspace or a folder is listed:\n%s", s)
 	}
@@ -78,10 +78,10 @@ func TestStartScreen(t *testing.T) {
 		t.Fatalf("after the rename: %+v", reg.Workspaces)
 	}
 
-	d.key("x")
+	d.key("d")
 	d.expect("delete workspace third?", "Trash")
 	d.key("n")
-	d.key("x", "y")
+	d.key("d", "y")
 	d.expect("deleted third; it is in the Trash", "▸ primary")
 	if got, _ := os.ReadDir(trash); len(got) != 1 {
 		t.Errorf("the trash holds %v", got)
@@ -101,7 +101,7 @@ func TestStartScreen(t *testing.T) {
 
 	// The last one deleted: the form for a new one takes the screen.
 	d = setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: trash, Name: "main"})}
-	d.key("x", "y")
+	d.key("d", "y")
 	d.expect("create workspace", "name", "deleted primary")
 	d.key("enter")
 	if !d.m.ok || d.m.ans.Name != "main" {

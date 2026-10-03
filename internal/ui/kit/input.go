@@ -73,6 +73,9 @@ type InputRouter struct {
 	pending []byte // an unfinished mouse report, completed by the next read
 	last    atomic.Pointer[[]byte]
 	option  func(rune) (rune, bool) // what Option types on the key that types a rune
+	// CmdEnter runs when Cmd+Enter arrives while no session has the keys:
+	// Bubble Tea v1 has no Cmd modifier, so it never sees the key itself.
+	CmdEnter func()
 }
 
 // LastBytes is the last chunk read for Bubble Tea, as the terminal sent
@@ -121,6 +124,19 @@ func tabAt(data []byte, i int) (n, length int) {
 	return c - '0', end + 1
 }
 
+// cmdEnterAt is the length of a Cmd+Enter report at data[i:], 0 when there
+// is none: CSI 13;9u in the kitty protocol (Enter with Super held), which a
+// terminal that speaks it, or an iTerm key mapping, sends; Terminal.app
+// keeps the key for itself.
+func cmdEnterAt(data []byte, i int) int {
+	for _, seq := range []string{"\x1b[13;9u", "\x1b[13;9:1u"} {
+		if bytes.HasPrefix(data[i:], []byte(seq)) {
+			return len(seq)
+		}
+	}
+	return 0
+}
+
 // takeTabs calls the tab callback for every tab key in chunk and returns the
 // rest, so Bubble Tea never sees them; a kitty report of a typed character,
 // and Option sent as Meta, are passed on as the character typed.
@@ -131,6 +147,11 @@ func (r *InputRouter) takeTabs(chunk []byte) []byte {
 			if r.tab != nil {
 				r.tab(n)
 			}
+			i += l
+			continue
+		}
+		if l := cmdEnterAt(chunk, i); l > 0 && r.CmdEnter != nil {
+			r.CmdEnter()
 			i += l
 			continue
 		}

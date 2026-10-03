@@ -47,7 +47,7 @@ func init() {
 			}
 		})},
 		keyMove,
-		{Keys: []string{"x"}, Hint: kit.Hint{Key: "x", Does: "close"}, Help: "close the terminal, asked while its shell runs: the shell and what runs in it are stopped", Run: act(func(t *Terminal) {
+		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "close"}, Help: "close the terminal, asked while its shell runs: the shell and what runs in it are stopped", Run: act(func(t *Terminal) {
 			if sh, ok := t.tree.Shell(); ok {
 				t.act.Close(asShell(sh))
 			}
@@ -71,6 +71,7 @@ func init() {
 	termKeys = []binding{
 		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the list, in every terminal; the shell runs on"},
 		{Hint: kit.Hint{Key: "click", Does: "the list: back there"}, Help: "a click beside the pane leaves the shell and puts the cursor where it landed"},
+		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the shell's text to select it, the release copies it, as a plain terminal does; a program on the alternate screen (vim, less) keeps the mouse for itself"},
 		{Hint: kit.Hint{Key: "other keys", Does: "go to the shell"}, Help: "every other key, exactly as typed, goes to the shell"},
 	}
 }

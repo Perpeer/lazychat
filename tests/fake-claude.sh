@@ -112,6 +112,15 @@ while IFS= read -r line; do
     printf '\033]0;\342\234\263 fake\007'
     printf 'done working\n'
   fi
+  # "size" prints the terminal's size, so a test sees whether it changed.
+  if [ "$line" = size ]; then
+    printf 'size: %s\n' "$(stty size)"
+  fi
+  # "size later" prints it in a second and a half, while the test has
+  # opened something over the pane.
+  if [ "$line" = "size later" ]; then
+    (sleep 1.5; printf 'later: %s\n' "$(stty size < /dev/tty)") &
+  fi
   # "answer" is the choice list answered: claude redraws without it and
   # works on, here for two seconds.
   if [ "$line" = answer ]; then

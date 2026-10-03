@@ -39,6 +39,10 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		c.projectAction(msg)
 	case draftSentMsg:
 		c.draftSent(msg)
+	case kit.CmdEnter:
+		if c.drafting {
+			return c.sendDraft()
+		}
 	}
 	return nil
 }
@@ -198,6 +202,9 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 		} else {
 			c.list.scroll.Wheel(d / kit.WheelRows)
 		}
+		return nil
+	}
+	if c.draftMouse(msg) {
 		return nil
 	}
 	if !kit.LeftClick(msg) {

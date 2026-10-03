@@ -28,7 +28,7 @@ func workspaceKeys() []wsBinding {
 		{Keys: []string{"n"}, Hint: kit.Hint{Key: "n", Does: "new"}, Help: "a new workspace: a name, kept under ~/.lazychat; it opens", Run: kit.Act((*App).newWorkspace)},
 		{Keys: []string{"s"}, Hint: kit.Hint{Key: "s", Does: "switch"}, Help: "switch to another workspace: the others, the one used before this first; lazychat starts again on it", Run: kit.Act((*App).switchWorkspace)},
 		{Keys: []string{"e"}, Hint: kit.Hint{Key: "e", Does: "edit"}, Help: "rename the workspace", Run: kit.Act((*App).editWorkspace)},
-		{Keys: []string{"x"}, Hint: kit.Hint{Key: "x", Does: "delete"}, Help: "delete the workspace, asked: its list of projects and sessions goes to the Trash; the projects' folders stay; then the start screen", Run: kit.Act((*App).deleteWorkspace)},
+		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "delete"}, Help: "delete the workspace, asked: its list of projects and sessions goes to the Trash; the projects' folders stay; then the start screen", Run: kit.Act((*App).deleteWorkspace)},
 		{Keys: []string{"down", "j", "esc"}, Name: "↓ Esc", Help: "back to the tab's list", Run: kit.Act(func(a *App) { a.wsSel = false })},
 		{Keys: []string{"?"}, Hint: kit.Hint{Key: "?", Does: "help"}, Run: kit.Act(func(a *App) {
 			a.Push(kit.NewPager("keys", workspaceHelp(), a.Header, a.FooterLine))

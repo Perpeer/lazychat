@@ -55,10 +55,10 @@ func init() {
 				c.act.RenameSession(r)
 			}
 		})},
-		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "draft"}, Help: "write the session's next prompt in a box under its pane while it works; an answer it asks for never takes its place, and it is kept across runs (✎ on the row)", Run: act(func(c *Chat) { c.openDraft() })},
+		{Keys: []string{"w"}, Hint: kit.Hint{Key: "w", Does: "draft"}, Help: "write the session's next prompt in a box under its pane while it works; an answer it asks for never takes its place, and it is kept across runs (✎ on the row)", Run: act(func(c *Chat) { c.openDraft() })},
 		{Keys: []string{"S"}, Hint: kit.Hint{Key: "shift+s", Does: "paste draft"}, Help: "paste the session's draft into its input and go into it, once it runs, does not work and asks nothing; Enter is yours, after a last edit", Run: func(c *Chat) tea.Cmd { return c.sendDraft() }},
 		keyMove,
-		{Keys: []string{"x"}, Hint: kit.Hint{Key: "x", Does: "close"}, Help: "close the session, asked: a running one is stopped, the record leaves the tree; the transcript stays and r brings it back", Run: act(func(c *Chat) {
+		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "close"}, Help: "close the session, asked: a running one is stopped, the record leaves the tree; the transcript stays and r brings it back", Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {
 				c.act.Close(r)
 			}
@@ -74,9 +74,10 @@ func init() {
 	emptyKeys = []binding{keyAdd, keyHelp, keyQuit, keyBack}
 	moveKeys = kit.ReorderKeys(func(c *Chat, d int) { c.carry(d) }, func(c *Chat) { c.tree.Moving = false })
 	draftKeys = []binding{
-		{Hint: kit.Hint{Key: "ctrl+s", Does: "paste in"}, Help: "paste the draft into the session's input and go into it, once it runs, does not work and asks nothing; the draft is then cleared and Enter is yours"},
+		{Hint: kit.Hint{Key: "cmd/opt+enter", Does: "paste in prompt"}, Help: "paste the draft into the session's input and go into it, once it runs, does not work and asks nothing; Enter is yours after a last edit. Cmd+Enter where the terminal passes it on (kitty-protocol terminals, an iTerm mapping), Option+Enter everywhere with Option as Meta; a draft starting with / goes on one line, so claude runs it as a command"},
+		{Hint: kit.Hint{Key: "ctrl+u", Does: "clear"}, Help: "clear the draft, asked"},
 		{Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the tree, the draft kept; " + leaveLabel + " too, and a click outside the box"},
-		{Hint: kit.Hint{Key: "enter", Does: "new line"}, Help: "a new line in the draft; the arrows, Home, End, Option+←→ and a paste work as in any text field"},
+		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the draft to select, the release copies it; a click puts the cursor there; Enter is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field"},
 	}
 	termKeys = []binding{
 		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the tree, in every terminal; the session runs on, and Esc is claude's, which stops its answer"},
