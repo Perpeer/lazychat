@@ -423,7 +423,7 @@ func TestGitWorktrees(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main", "main checkout · clean", "⑂ feature", "worktree wt-feature · 1")
+	d.expect("● main  current", "  clean", "⑂ feature", "1 changed · wt-feature")
 	d.key("j") // the worktree's row
 	d.expect("vs main", "wt.txt", "loose.txt")
 	d.key("3") // the lower box: what the branch changed
@@ -552,8 +552,8 @@ func TestGitCommits(t *testing.T) {
 }
 
 // A project registered on a worktree's folder works in that worktree: its
-// own row says so, with ⑂, and the main checkout hangs under it with the
-// other worktrees, named as such.
+// own row says so, ⑂ and current, and the main checkout hangs under it with
+// the other worktrees.
 func TestGitHereInWorktree(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -575,7 +575,7 @@ func TestGitHereInWorktree(t *testing.T) {
 	}
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("⑂ feature", "worktree wt-feature · clean", "○ main", "main checkout")
+	d.expect("⑂ feature  current", "clean · wt-feature", "○ main")
 	if here, other := lineOf(d.screen(), "⑂ feature"), lineOf(d.screen(), "○ main"); here > other {
 		t.Errorf("the worktree it works in is not first:\n%s", d.screen())
 	}
@@ -863,10 +863,11 @@ func TestGitDelete(t *testing.T) {
 	d.quitApp()
 }
 
-// Where a session works is never a guess: over Chat's pane a line names the
-// repository, the worktree — "main checkout" or ⑂ and its name — and the
-// branch; a session in a worktree carries ⑂ on its row; and Git's rows say
-// which checkout each is, with the sessions running in it.
+// Where a session works is never a guess: a worktree project's heading
+// names the worktree beside its branch, a session in it carries ⑂ on its
+// row, and Git marks the checkout each project works in "current", with
+// the counts under every checkout and the sessions running in it. No line
+// over the pane repeats it.
 func TestWhereYouWork(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -889,17 +890,19 @@ func TestWhereYouWork(t *testing.T) {
 
 	d := start(t, e, 140, 36)
 	d.key("n", "enter", "enter", "enter") // a session in the main checkout
-	d.expect("FAKE CLAUDE READY", "worktree main checkout · branch ⎇ main")
-	d.expectNot("worktree ⑂")
+	d.expect("FAKE CLAUDE READY", "⎇ main", "⎇ blue-door  ⑂ blue-door")
+	d.expectNot("repository ")
 	d.leave()
 	d.key("j") // the worktree project's row
 	d.key("n", "enter", "enter", "enter")
-	d.expect("FAKE CLAUDE READY", "worktree ⑂ blue-door · branch blue-door")
+	d.expect("FAKE CLAUDE READY")
 	d.leave()
 	d.expect("· ⑂ blue-door") // on the session's own row
 
 	d.tab(2)
-	d.expect("main checkout · clean", "worktree blue-door · clean")
+	d.expect("● main  current", "⑂ blue-door  current", "○ main")
+	d.expectNot("repository ")
+	d.expectNot("main checkout")
 	if n := strings.Count(d.screen(), "◐ "); n < 2 {
 		t.Errorf("the checkouts do not list their running sessions (%d):\n%s", n, d.screen())
 	}

@@ -429,34 +429,34 @@ a diff with the commit box under it.
 ```
 │ lazychat
 │ ~/code/lazychat
-│   ├─ ● main
-│   │    main checkout · clean
+│   ├─ ● main  current
+│   │    ↑1 · clean
 │   │    ◐ fix the search box
 │   └─ ⑂ feature
-│        worktree wt-feature · from main · 1 changed
+│        1 changed · wt-feature · from main
 ```
 
 Under each project hangs the checkout it works in — its folder, where
 Chat's sessions and Terminal's shells start — marked `●` in the accent
-(`⑂` when the folder is itself a worktree), with which checkout it is —
-`main checkout` for the repository's own folder, `worktree <folder>` for
-an added one — `↑` `↓` ahead and behind its upstream, how many files
-changed, and a row of the sessions running in that folder (`◐ name`); or
-why there is nothing (not a git repository, git not installed). Under it
-hang the repository's other checkouts (`git worktree list`): `⑂` and the
-branch (`○` for the main checkout), `worktree <folder>` or `main
-checkout`, the sessions running there, `locked` or `gone` where git says so, and `from dev`
+(`⑂` and the branch in the worktree colour when the folder is itself a
+worktree), `current` beside it in the worktree colour when the
+repository has other checkouts, so where you work reads off the row; under
+it `↑` `↓` ahead and behind its upstream and how many files changed, and a
+row of the sessions running in that folder (`◐ name`); or why there is
+nothing (not a git repository, git not installed). Under it hang the
+repository's other checkouts (`git worktree list`): `⑂` and the branch
+(`○` for the main checkout), the same counts, the folder when it is not
+named after the branch, the sessions running there, `locked` or `gone` where git says so, and `from dev`
 when git noted the branch it was made from — `git worktree add -b feat
 ../feat dev` writes "Created from dev" first in the branch's reflog; a
 branch made from `HEAD`, from a commit, or whose note expired (90 days by
 default) says nothing. The cursor stands on these rows, not on headings.
 
-Over the diff a line names the cursor's checkout the way GitHub Desktop's
-toolbar does — `repository lazychat · worktree main checkout · branch ⎇
-main`, or `worktree ⑂ feature · branch feature` in the worktree colour —
-so a commit is never made in the other checkout by mistake. Chat has the
-same line over the session pane, for the cursor's project, and a session
-in a worktree carries `· ⑂ <worktree>` on its own row.
+The middle column and the diff are the cursor's checkout's: a worktree's
+own changes on its row, the main checkout's on its. In every tab a project
+whose folder is a worktree says so under its name — `⎇ feature  ⑂
+wt-feature`, the worktree in its colour — and in Chat a session in it
+carries `· ⑂ <worktree>` on its own row.
 
 The panels, numbered as their titles show them:
 

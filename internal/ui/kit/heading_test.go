@@ -33,7 +33,7 @@ func TestProjectHeading(t *testing.T) {
 	if got := plain(on); len(got) != 3 || got[2] != "⎇ main" || on[2].Plain != " ⎇ main" {
 		t.Errorf("with a branch: %q", got)
 	}
-	if got := HeadLabel(git.Head{Branch: "feature", Linked: true}, true); got != "⑂ feature" {
+	if got := HeadLabel(git.Head{Branch: "feature", Linked: true, Worktree: "wt"}, true); got != "⎇ feature  ⑂ wt" {
 		t.Errorf("a worktree's label: %q", got)
 	}
 	if got := HeadLabel(git.Head{}, false); got != "" {
@@ -82,17 +82,18 @@ func TestChildGap(t *testing.T) {
 	}
 }
 
-// A worktree's heading drops its branch row and marks its name with ⑂ in
-// the worktree colour; the main checkout's keeps ⎇ and the branch.
+// A worktree's heading keeps ⎇ and its branch, the worktree's name beside
+// them with ⑂ in the worktree colour, and its own name plain; the main
+// checkout's has the branch alone.
 func TestWorktreeHeading(t *testing.T) {
-	wt := ProjectHeading("garden · blue-door", "/tmp/garden/.worktrees/blue-door", "⑂ blue-door", 40)
-	for _, l := range wt {
-		if strings.Contains(l.Plain, "⑂ blue-door") && !strings.Contains(l.Plain, "garden") {
-			t.Errorf("a worktree heading kept its branch row: %q", l.Plain)
-		}
-	}
-	if wt[0].Plain != " ⑂ garden · blue-door" || wt[0].Styled != StyleWorktree.Render(" ⑂ garden · blue-door") {
+	label := HeadLabel(git.Head{Branch: "blue-door", Linked: true, Worktree: "door"}, true)
+	wt := ProjectHeading("garden · door", "/tmp/garden/.worktrees/door", label, 40)
+	if wt[0].Plain != " garden · door" || wt[0].Styled != StyleBold.Render(" garden · door") {
 		t.Errorf("worktree name row: %q", wt[0].Plain)
+	}
+	last := wt[len(wt)-1]
+	if last.Plain != " ⎇ blue-door  ⑂ door" || !strings.Contains(last.Styled, StyleWorktree.Render("  ⑂ door")) {
+		t.Errorf("worktree branch row: %q %q", last.Plain, last.Styled)
 	}
 	main := ProjectHeading("garden", "/tmp/garden", "⎇ main", 40)
 	if last := main[len(main)-1].Plain; last != " ⎇ main" {

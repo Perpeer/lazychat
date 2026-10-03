@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
 
 	"lazychat/internal/core/git"
 	"lazychat/internal/ui/text"
@@ -52,12 +51,7 @@ func TitleRows(first, rest string, lead, plainLead, title string, style lipgloss
 // Every tab draws projects this way, so a project looks the same wherever
 // it is.
 func ProjectHeading(name, path, branch string, w int) []TreeLine {
-	// A worktree's name already says which one it is: its branch row goes
-	// and the heading takes the worktree colour, ⑂ before it.
 	style := StyleBold
-	if strings.HasPrefix(branch, "⑂ ") {
-		style, branch, name = StyleWorktree, "", "⑂ "+name
-	}
 	names := text.WrapTitle(name, w-2, nameLines)
 	out := []TreeLine{{Styled: style.Render(" " + names[0]), Plain: " " + names[0]}}
 	for _, n := range names[1:] {
@@ -68,41 +62,33 @@ func ProjectHeading(name, path, branch string, w int) []TreeLine {
 		out = append(out, TreeLine{Styled: StyleDim.Render(" " + d), Plain: " " + d})
 	}
 	if branch != "" {
-		b := text.FitMiddle(branch, w-2)
-		out = append(out, TreeLine{Styled: " " + StyleAccent.Render(b), Plain: " " + b})
+		// A worktree's name follows the branch in the worktree colour, so
+		// working in one is seen at a glance.
+		br, wt, linked := strings.Cut(branch, worktreeMark)
+		plain := text.FitMiddle(branch, w-2)
+		styled := StyleAccent.Render(plain)
+		if linked && text.Width(branch) <= w-2 {
+			styled = StyleAccent.Render(br) + StyleWorktree.Render(worktreeMark+wt)
+		}
+		out = append(out, TreeLine{Styled: " " + styled, Plain: " " + plain})
 	}
 	return out
 }
 
-// HeadLabel is a project heading's branch: ⎇ and the branch, ⑂ when the
-// folder is a worktree; "" outside a repository.
+// worktreeMark parts a heading's branch from the worktree it is in.
+const worktreeMark = "  ⑂ "
+
+// HeadLabel is a project heading's branch: ⎇ and the branch, and ⑂ with
+// the worktree's name when the folder is an added worktree; "" outside a
+// repository.
 func HeadLabel(h git.Head, ok bool) string {
 	switch {
 	case !ok:
 		return ""
 	case h.Linked:
-		return "⑂ " + h.Branch
+		return "⎇ " + h.Branch + worktreeMark + h.Worktree
 	}
 	return "⎇ " + h.Branch
-}
-
-// WhereLine says, in one row w wide, which checkout a folder is: its
-// repository, the worktree — "main checkout" for the repository's own
-// folder, ⑂ and its name in the worktree colour for an added one — and the
-// branch, so what is changed there is never taken for the other.
-func WhereLine(h git.Head, ok bool, w int) string {
-	if !ok {
-		return StyleDim.Render(text.Fit(" not in a git repository", w))
-	}
-	wt, br := StyleBold.Render("main checkout"), StyleAccent.Render("⎇ "+h.Branch)
-	if h.Linked {
-		wt, br = StyleWorktree.Render("⑂ "+h.Worktree), StyleWorktree.Render(h.Branch)
-	}
-	line := StyleDim.Render(" repository ") + StyleBold.Render(h.Repo) + StyleDim.Render(" · worktree ") + wt + StyleDim.Render(" · branch ") + br
-	if text.Width(line) > w {
-		line = ansi.Truncate(line, w-1, "…")
-	}
-	return line
 }
 
 // ListWidth is the projects column's width in a tab cols wide, the same in

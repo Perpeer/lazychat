@@ -39,27 +39,12 @@ func (g *Git) widths() (projects, changes, diffW int) {
 	return list, 0, cols - list
 }
 
-// diffH is the diff box's height: the right column less the where line
-// over it and the commit box under it while that shows.
+// diffH is the diff box's height: the tab's, less the commit box under it.
 func (g *Git) diffH() int {
 	if g.boxShown() {
-		return max(3, g.bodyH()-whereRows-kit.CommitBoxHeight)
+		return max(3, g.bodyH()-kit.CommitBoxHeight)
 	}
-	return g.bodyH() - whereRows
-}
-
-// whereRows is the line over the right side naming the cursor's checkout.
-const whereRows = 1
-
-// where is that line: which repository, worktree and branch the cursor's
-// row is, so a commit is never made in the other checkout by mistake.
-func (g *Git) where(w int) string {
-	at, ok := g.cursorRow()
-	if !ok {
-		return text.Pad("", w)
-	}
-	h, inRepo := g.core.Head(at.path)
-	return text.Pad(kit.WhereLine(h, inRepo, w), w)
+	return g.bodyH()
 }
 
 func (g *Git) diffRows() int { return max(1, g.diffH()-2) }
@@ -75,7 +60,7 @@ func (g *Git) View() string {
 	if cw > 0 {
 		parts = append(parts, g.changesBox(cw, h))
 	}
-	right := g.where(dw) + "\n" + hits.Panel(int(panelDiff), g.diffBox(dw, g.diffH()))
+	right := hits.Panel(int(panelDiff), g.diffBox(dw, g.diffH()))
 	if g.boxShown() {
 		right += "\n" + hits.Panel(int(panelCommit), g.box().View(panelCommit.title("commit"), dw, g.focus == panelCommit, g.box().Enabled(g.staged()), g.tick%2 == 0))
 	}
@@ -153,48 +138,64 @@ func (g *Git) shownStatus(key string) *project {
 }
 
 // branchEntry hangs a project's branch off its heading the way Chat hangs a
-// session: the branch on the connector row, which checkout it is, how far it
-// is from its upstream and how much changed on the row under it, then the
-// sessions running in it. It is the checkout the project works in — Chat's
-// sessions and Terminal's shells start in its folder — named "main checkout"
-// for the repository's own folder and "worktree" with ⑂ for an added one, so
-// where a change lands is never a guess. A project still loading (nil) or
-// one git can not read shows that on the connector row instead; last says
-// no worktree follows it.
+// session: the branch on the connector row, how far it is from its upstream
+// and how much changed on the row under it, then the sessions running in
+// it. It is the checkout the project works in — Chat's sessions and
+// Terminal's shells start in its folder — so beside other checkouts it says
+// "current", and when its folder is an added worktree its branch takes the
+// worktree colour too, ⑂ before it. A project still loading (nil) or one
+// git can not read shows that on the connector row instead; last says no
+// worktree follows it.
 func branchEntry(p *project, path string, sessions []string, w int, last bool) []kit.TreeLine {
+	current := p != nil && len(p.wts) > 0
 	if p != nil && p.linked {
-		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, "worktree "+filepath.Base(path), sessions)
+		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, current, folderNote(path, p.st.Branch), sessions)
 	}
-	return checkoutEntry(p, w, last, "●", kit.StyleAccent, "main checkout", sessions)
+	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, current, "", sessions)
 }
 
 // worktreeEntry is one of the repository's other checkouts under the
-// project's branch: its branch after ⑂ (○ for the main checkout) and its
-// folder, its counts under it.
+// project's branch: its branch after ⑂ (○ for the main checkout), the same
+// counts, and its folder only where the branch does not already say it.
 func worktreeEntry(r row, p *project, sessions []string, w int, last bool) []kit.TreeLine {
-	where := "worktree " + filepath.Base(r.path)
-	if r.wt.Main {
-		where = "main checkout"
+	var notes []string
+	if p != nil && !r.wt.Main {
+		if f := folderNote(r.path, p.st.Branch); f != "" {
+			notes = append(notes, f)
+		}
 	}
 	switch {
 	case r.wt.Prunable:
-		where += " · gone"
+		notes = append(notes, "gone")
 	case r.wt.Locked:
-		where += " · locked"
+		notes = append(notes, "locked")
 	}
 	if p != nil && p.from != "" {
-		where += " · from " + p.from
+		notes = append(notes, "from "+p.from)
 	}
 	glyph := "⑂"
 	if r.wt.Main {
 		glyph = "○"
 	}
-	return checkoutEntry(p, w, last, glyph, kit.StyleDim, where, sessions)
+	return checkoutEntry(p, w, last, glyph, kit.StyleDim, kit.StyleBold, false, strings.Join(notes, " · "), sessions)
 }
 
-// checkoutEntry is a checkout's row: glyph and branch, which checkout it is
-// and the counts under, and a row of the sessions running in its folder.
-func checkoutEntry(p *project, w int, last bool, glyph string, mark lipgloss.Style, where string, sessions []string) []kit.TreeLine {
+// folderNote is a worktree's folder when it is not named after its branch,
+// so two worktrees on look-alike branches still tell apart.
+func folderNote(path, branch string) string {
+	if f := filepath.Base(path); f != strings.ReplaceAll(branch, "/", "-") {
+		return f
+	}
+	return ""
+}
+
+// currentMark is said beside the branch of the checkout a project works in.
+const currentMark = "  current"
+
+// checkoutEntry is a checkout's row: glyph and branch, "current" beside it
+// on the one the project works in, then ↑ ahead, ↓ behind and what changed
+// with any note, and a row of the sessions running in its folder.
+func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, current bool, note string, sessions []string) []kit.TreeLine {
 	first, rest := "   └─ ", "      "
 	if !last {
 		first, rest = "   ├─ ", "   │  "
@@ -217,12 +218,19 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark lipgloss.Sty
 	if n := model.Changed(p.st); n > 0 {
 		changed = fmt.Sprintf("%d changed", n)
 	}
-	foot := "  " + strings.Join(append(counts, changed), " · ")
-	if where != "" {
-		foot = "  " + where + " ·" + foot[1:]
+	counts = append(counts, changed)
+	if note != "" {
+		counts = append(counts, note)
 	}
-	branch := text.FitMiddle(p.st.Branch, w-text.Width(first)-text.Width(glyph+" "))
-	out := kit.TitleRows(first, rest, mark.Render(glyph)+" ", glyph+" ", branch, kit.StyleBold, w, 1)
+	foot := "  " + strings.Join(counts, " · ")
+	room := w - text.Width(first) - text.Width(glyph+" ")
+	tail, plainTail := "", ""
+	if current {
+		room -= text.Width(currentMark)
+		tail, plainTail = kit.StyleWorktree.Render(currentMark), currentMark
+	}
+	branch := text.FitMiddle(p.st.Branch, room)
+	out := []kit.TreeLine{{Prefix: first, Styled: mark.Render(glyph) + " " + name.Render(branch) + tail, Plain: glyph + " " + branch + plainTail}}
 	out = append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
 	if len(sessions) > 0 {
 		run := "  ◐ " + strings.Join(sessions, " · ◐ ")

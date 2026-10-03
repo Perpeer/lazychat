@@ -18,7 +18,7 @@ type Theme struct {
 	Cursor                 lipgloss.Color // the block cursor, in the editor and in a session's pane
 	OnFill                 lipgloss.Color // text drawn on the accent or the cursor
 	Busy                   lipgloss.Color // a running session's spinner
-	Worktree               lipgloss.Color // a worktree project's heading, told from the main checkout by colour alone
+	Worktree               lipgloss.Color // a worktree's name beside a heading's branch, and "current" on Git's rows
 	// Tools overrides an AI tool's own colour, by its id, where the tool's
 	// does not sit well on the theme's background.
 	Tools map[string]lipgloss.Color

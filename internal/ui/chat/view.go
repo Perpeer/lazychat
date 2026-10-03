@@ -30,30 +30,13 @@ func (c *Chat) geometry() geometry {
 func (c *Chat) narrow() bool { return c.rect.Cols < narrowWidth }
 
 // paneRect is where the terminal pane's inner area is on the screen: its
-// size is what the sessions' ptys get. The where line takes the right
-// side's top row.
+// size is what the sessions' ptys get.
 func (c *Chat) paneRect() kit.Rect {
 	g := c.geometry()
 	if c.narrow() {
-		return kit.Rect{X0: c.rect.X0 + 1, Y0: c.rect.Y0 + 1 + whereRows, Cols: c.rect.Cols - 2, Rows: g.bodyH - 2 - whereRows}
+		return kit.Rect{X0: c.rect.X0 + 1, Y0: c.rect.Y0 + 1, Cols: c.rect.Cols - 2, Rows: g.bodyH - 2}
 	}
-	return kit.Rect{X0: c.rect.X0 + g.leftW + 1, Y0: c.rect.Y0 + 1 + whereRows, Cols: g.rightW - 2, Rows: g.bodyH - 2 - whereRows}
-}
-
-// whereRows is the line over the right side naming the checkout its
-// session works in.
-const whereRows = 1
-
-// where is that line for the cursor's project — which repository,
-// worktree and branch — so a session's changes are never taken for the
-// other checkout's.
-func (c *Chat) where(w int) string {
-	r, ok := c.tree.Current()
-	if !ok || r.Project == nil {
-		return text.Pad("", w)
-	}
-	h, inRepo := c.core.Head(r.Project.Path)
-	return text.Pad(kit.WhereLine(h, inRepo, w), w)
+	return kit.Rect{X0: c.rect.X0 + g.leftW + 1, Y0: c.rect.Y0 + 1, Cols: g.rightW - 2, Rows: g.bodyH - 2}
 }
 
 func (c *Chat) PaneSize() (cols, rows int) {
@@ -71,7 +54,7 @@ func (c *Chat) View() string {
 	}
 	pane := func(w int) string {
 		dh := c.draftH(g.bodyH)
-		h := g.bodyH - whereRows
+		h := g.bodyH
 		var right string
 		if r, ok := c.tree.Current(); ok && r.Session == nil {
 			right = c.projectPanel(r.Project.Name, w, h)
@@ -81,7 +64,7 @@ func (c *Chat) View() string {
 			from, length := c.pane.Scrollbar(h - 2)
 			right = kit.WithScrollbar(term, from, length)
 		}
-		right = c.where(w) + "\n" + hits.Panel(2, right)
+		right = hits.Panel(2, right)
 		if dh > 0 {
 			// Over the pane's lower rows, so the session keeps its size.
 			rows := strings.Split(right, "\n")
