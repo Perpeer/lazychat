@@ -91,24 +91,27 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
   for other in "/Applications/Lazy.app" "$HOME/Applications/Lazy.app"; do
     [ "$other" != "$bar" ] && [ -e "$other" ] && [ -w "$(dirname "$other")" ] && rm -rf "$other"
   done
-  barsum="$(cat macos/Lazy/*.swift macos/Lazy/Info.plist | shasum | cut -c1-12)"
+  # Built for macOS 13 and later, against an SDK no newer than this Mac's
+  # macOS: Finder marks an app built with a newer SDK (an Xcode beta's) as
+  # one this Mac cannot open.
+  os_major="$(sw_vers -productVersion | cut -d. -f1)"
+  sdk=""
+  if [ "$(xcrun --show-sdk-version 2>/dev/null | cut -d. -f1)" -gt "$os_major" ] 2>/dev/null; then
+    sdk="$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*.sdk "$(xcode-select -p 2>/dev/null)"/Platforms/MacOSX.platform/Developer/SDKs/MacOSX[0-9]*.sdk 2>/dev/null \
+      | awk -v os="$os_major" '{ v = $0; sub(/.*MacOSX/, "", v); sub(/\.sdk$/, "", v); split(v, p, "."); if (p[1] + 0 <= os + 0) print v "\t" $0 }' \
+      | sort -t. -k1,1n -k2,2n | tail -1 | cut -f2)"
+  fi
+  target="$(uname -m)-apple-macos13.0"
+  # The sum covers what the app is built from and with — its files, the SDK
+  # and the target — so a change to any of them rebuilds it.
+  barsum="$( { cat macos/Lazy/*.swift macos/Lazy/Info.plist; echo "$sdk $target"; } | shasum | cut -c1-12)"
   if [ -f "$bar/Contents/Resources/source.sum" ] && [ "$(cat "$bar/Contents/Resources/source.sum")" = "$barsum" ]; then
     echo "ok    up to date  Lazy, the menu bar mascot, at ${bar/#$HOME/~}"
   else
     mkdir -p "$bar/Contents/MacOS" "$bar/Contents/Resources"
-    # Built for macOS 13 and later, against an SDK no newer than this Mac's
-    # macOS: Finder marks an app built with a newer SDK (an Xcode beta's) as
-    # one this Mac cannot open.
-    os_major="$(sw_vers -productVersion | cut -d. -f1)"
-    sdk=""
-    if [ "$(xcrun --show-sdk-version 2>/dev/null | cut -d. -f1)" -gt "$os_major" ] 2>/dev/null; then
-      sdk="$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*.sdk "$(xcode-select -p 2>/dev/null)"/Platforms/MacOSX.platform/Developer/SDKs/MacOSX[0-9]*.sdk 2>/dev/null \
-        | awk -v os="$os_major" '{ v = $0; sub(/.*MacOSX/, "", v); sub(/\.sdk$/, "", v); split(v, p, "."); if (p[1] + 0 <= os + 0) print v "\t" $0 }' \
-        | sort -t. -k1,1n -k2,2n | tail -1 | cut -f2)"
-    fi
     # SDKROOT, not -sdk: the SDK version the linker writes into the app
     # comes from SDKROOT; -sdk alone still left the newer one there.
-    SDKROOT="${sdk:-${SDKROOT:-}}" swiftc -O -target "$(uname -m)-apple-macos13.0" -o "$bar/Contents/MacOS/Lazy" macos/Lazy/*.swift
+    SDKROOT="${sdk:-${SDKROOT:-}}" swiftc -O -target "$target" -o "$bar/Contents/MacOS/Lazy" macos/Lazy/*.swift
     # install -m, not cp: a checkout's own modes (iCloud leaves some files
     # 600) must not reach the bundle, or Finder marks it as one it cannot open.
     install -m 644 macos/Lazy/Info.plist "$bar/Contents/Info.plist"
