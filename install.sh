@@ -109,7 +109,7 @@ if [ "$iterm_keys" = 1 ]; then
     defaults write com.googlecode.iterm2 GlobalKeyMap -dict-add "0x3$n-0x100000" \
       "<dict><key>Action</key><integer>10</integer><key>Text</key><string>[$((48 + n));9u</string></dict>"
   done
-  echo "iTerm now sends ⌘1–⌘4 to lazychat; they no longer switch iTerm's own tabs"
+  echo "iTerm now sends ⌘1–⌘4 to lazychat; they no longer switch iTerm's own tabs, and your other keys are kept"
 fi
 
 # A lazychat that is open keeps running the code it started with; one

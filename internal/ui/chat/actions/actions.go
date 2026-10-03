@@ -5,6 +5,7 @@
 package actions
 
 import (
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -65,7 +66,7 @@ type Actions struct {
 	resumes map[string]resumeAttempt // by record key: launches that were plain resumes
 	closing map[string]bool          // record keys closed by x: their exit is "closed", never a popup
 	nextID  int
-	// questions is the folder the sessions' tools write their questions to.
+	// questions is the folder the sessions' tools write their notices to.
 	questions string
 	// leaving is set once lazychat stops every session, to quit or to open
 	// another workspace: their exits then keep the running marks.
@@ -77,9 +78,11 @@ type Actions struct {
 func (a *Actions) StopAll(timeout time.Duration) {
 	a.leaving.Store(true)
 	term.StopAll(a.Live.Alive(), timeout)
+	a.dropNotices()
 }
 
 func New(core *api.Core, host Host, onOutput func()) *Actions {
+	clearStaleNotices(os.TempDir())
 	return &Actions{core: core, host: host, onOutput: onOutput, Live: newLive(), resumes: map[string]resumeAttempt{}, closing: map[string]bool{}}
 }
 

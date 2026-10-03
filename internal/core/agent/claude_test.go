@@ -115,12 +115,12 @@ func TestClaudeSessionID(t *testing.T) {
 	}
 }
 
-// Ask hands claude a Notification hook for its questions that writes the
-// notice to the file, the path quoted for the shell; an attach keeps the
+// Overlay hands claude a Notification hook for its questions that writes
+// the notice to the file, the path quoted for the shell; an attach keeps the
 // command as it was, and so does a claude without --settings.
-func TestClaudeAsk(t *testing.T) {
+func TestClaudeOverlay(t *testing.T) {
 	c := &Claude{}
-	e := c.Ask(c.Resume("/p", "abc-1"), "/tmp/it's q/1")
+	e := c.Overlay(c.Resume("/p", "abc-1"), Extras{NoticeFile: "/tmp/it's q/1"})
 	if len(e.Args) != 5 || e.Args[3] != "--settings" {
 		t.Fatalf("args %q", e.Args)
 	}
@@ -143,11 +143,11 @@ func TestClaudeAsk(t *testing.T) {
 	if strings.Contains(e.Args[4], "\\u003e") {
 		t.Errorf("the settings escape >: %q", e.Args[4])
 	}
-	if a := c.Ask(c.Attach("/p", "abc"), "/q"); len(a.Args) != 3 {
+	if a := c.Overlay(c.Attach("/p", "abc"), Extras{NoticeFile: "/q"}); len(a.Args) != 3 {
 		t.Errorf("attach %q", a.Args)
 	}
 	c.unsettled.Store(true)
-	if a := c.Ask(c.Start("/p", ""), "/q"); len(a.Args) != 1 {
+	if a := c.Overlay(c.Start("/p", ""), Extras{NoticeFile: "/q"}); len(a.Args) != 1 {
 		t.Errorf("without --settings %q", a.Args)
 	}
 }

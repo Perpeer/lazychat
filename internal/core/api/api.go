@@ -116,14 +116,14 @@ func (c *Core) Fork(p state.Project, tool, sessionID string) (agent.Exec, error)
 	return f.Fork(p.Path, sessionID), nil
 }
 
-// Ask is the command with the tool's notice of a question going to file; a
-// tool that gives none runs as it was.
-func (c *Core) Ask(tool string, e agent.Exec, file string) agent.Exec {
-	a, err := capability[agent.Asker](c, tool, "")
+// Overlay is the command with what lazychat adds to the tool's sessions; a
+// tool that takes nothing runs as it was.
+func (c *Core) Overlay(tool string, e agent.Exec, x agent.Extras) agent.Exec {
+	o, err := capability[agent.Overlayer](c, tool, "")
 	if err != nil {
 		return e
 	}
-	return a.Ask(e, file)
+	return o.Overlay(e, x)
 }
 
 func (c *Core) Attach(p state.Project, tool, short string) (agent.Exec, error) {

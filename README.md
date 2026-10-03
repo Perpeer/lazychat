@@ -147,9 +147,14 @@ the mascot as its icon, signs it for this Mac only (`codesign -s -`, no
 Apple account needed) and starts it again when its source changed.
 
 `./install.sh --iterm-keys` also makes iTerm send `⌘1`–`⌘4` as lazychat's
-tab keys, taking them from iTerm's own tab switching; quit iTerm first,
-since it writes its settings back when it quits, and it reads the keys
-when it starts.
+tab keys, taking them from iTerm's own tab switching; your other iTerm keys
+are kept. Quit iTerm first, since it writes its settings back when it
+quits, and it reads the keys when it starts.
+
+`install.sh` writes nothing of Claude Code's or Codex's: your
+`~/.claude/settings.json`, hooks and status line stay as they are. What
+lazychat adds to a session (see How a session works) goes on that
+session's command line only.
 
 The version is `1.0(N)`, N the number of commits on the checked-out
 branch. `install.sh` stamps it into the binary with the short hash
@@ -524,10 +529,20 @@ one at work — so a click after a click leads through every finished one.
 
 lazychat sees a question the moment claude draws it — a choice list ending
 in `Esc to cancel`, or `Do you want to proceed?` — so it is never taken for
-a finished answer; claude's Notification hook, which lazychat adds to each
-session with `--settings` beside your own hooks, confirms it some six
-seconds later. The question goes when the session works again. Codex has
-no such hook and only waits.
+a finished answer; claude's Notification hook confirms it some six seconds
+later. The question goes when the session works again. Codex has no such
+hook and only waits.
+
+What lazychat adds to a claude session — today only that hook, which
+writes a notice to a file in `$TMPDIR/lazychat-notices-<pid>-…` — is
+built in memory for that session and passed as one `claude --settings
+<json>`. No settings file of yours is written: Claude Code merges the
+flag's settings with yours, lists added to, never replaced, so your own
+hooks and status line run in lazychat's sessions as anywhere. The pieces
+live in one place, `internal/core/agent/overlay.go`; another setting for
+every session is one more piece there and its test. The notices folder
+goes when lazychat quits, and one a crash left behind is cleared at the
+next start.
 
 ## Menu bar
 
@@ -712,7 +727,7 @@ fails when they part:
 | open elsewhere | ✓ |   |
 | session id | ✓ |   |
 | question on screen | ✓ |   |
-| question hook | ✓ |   |
+| settings per session | ✓ |   |
 | commit message | ✓ | ✓ |
 <!-- /capabilities -->
 

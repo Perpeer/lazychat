@@ -41,7 +41,7 @@ var (
 	_ BusyReader = (*Claude)(nil)
 	_ AskReader  = (*Claude)(nil)
 	_ IDLearner  = (*Claude)(nil)
-	_ Asker      = (*Claude)(nil)
+	_ Overlayer  = (*Claude)(nil)
 	_ Suggester  = (*Claude)(nil)
 	_ Historian  = (*Claude)(nil)
 )
@@ -108,28 +108,18 @@ func (c *Claude) Attach(dir, short string) Exec {
 	return c.cmd(dir, "attach", short)
 }
 
-// askMatcher is the notices that mean claude waits on an answer: a
-// permission prompt (AskUserQuestion and plan approval come as one too), an
-// MCP server's question, a teammate's setup question. idle_prompt is left
-// out: it only says an answer ended a minute ago.
-const askMatcher = "permission_prompt|elicitation_dialog|elicitation_url_dialog|agent_needs_input"
-
-// Ask adds a Notification hook that writes each notice to file. Hooks given
-// with --settings run beside the user's own. An attached session was started
-// elsewhere and keeps the settings it had.
-func (c *Claude) Ask(e Exec, file string) Exec {
+// Overlay starts the session with lazychat's pieces as one --settings JSON.
+// An attached session was started elsewhere and keeps the settings it had;
+// a claude without --settings gets nothing.
+func (c *Claude) Overlay(e Exec, x Extras) Exec {
 	if c.unsettled.Load() || len(e.Args) > 1 && e.Args[1] == "attach" {
 		return e
 	}
-	hook := map[string]any{"hooks": map[string]any{"Notification": []any{map[string]any{
-		"matcher": askMatcher,
-		"hooks":   []any{map[string]any{"type": "command", "command": "cat > " + shellQuote(file)}},
-	}}}}
-	var b strings.Builder
-	enc := json.NewEncoder(&b)
-	enc.SetEscapeHTML(false)
-	_ = enc.Encode(hook)
-	e.Args = append(append([]string(nil), e.Args...), "--settings", strings.TrimSpace(b.String()))
+	s := overlay(claudePieces, x)
+	if s == nil {
+		return e
+	}
+	e.Args = append(append([]string(nil), e.Args...), "--settings", settingsJSON(s))
 	return e
 }
 

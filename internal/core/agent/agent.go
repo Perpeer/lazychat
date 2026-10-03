@@ -107,10 +107,11 @@ type (
 	IDLearner interface {
 		SessionID(pid int) string
 	}
-	// Asker has a session tell when it waits on the user's answer: the
-	// command it returns writes the tool's notice to file each time.
-	Asker interface {
-		Ask(e Exec, file string) Exec
+	// Overlayer starts a session with what lazychat adds to it, made in
+	// memory for that session alone: the user's settings files are never
+	// written.
+	Overlayer interface {
+		Overlay(e Exec, x Extras) Exec
 	}
 	// Historian lists the sessions the tool saved for a directory, newest
 	// first, so one can be resumed by its id.
@@ -141,7 +142,7 @@ var Capabilities = []Capability{
 	{"open elsewhere", Has[BusyReader]},
 	{"session id", Has[IDLearner]},
 	{"question on screen", Has[AskReader]},
-	{"question hook", Has[Asker]},
+	{"settings per session", Has[Overlayer]},
 	{"commit message", Has[Suggester]},
 }
 
