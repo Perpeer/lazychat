@@ -31,6 +31,14 @@ type Theme struct {
 	// The badges before a file in a list of changes, as Fork colours them:
 	// modified, new, deleted, renamed; their text is OnFill.
 	BadgeModified, BadgeAdded, BadgeRemoved, BadgeRenamed lipgloss.Color
+	// Series is a chart's four kinds, in the order the charts stack them.
+	Series [4]lipgloss.Color
+}
+
+// seriesColors is Okabe and Ito's palette, told apart with the common
+// colour blindnesses too: green, sky blue, orange, vermilion.
+func seriesColors() [4]lipgloss.Color {
+	return [4]lipgloss.Color{"#009E73", "#56B4E9", "#E69F00", "#D55E00"}
 }
 
 // DefaultTheme has one accent colour carrying focus, selection and the
@@ -58,6 +66,7 @@ func DefaultTheme() Theme {
 		BadgeAdded:    lipgloss.Color("77"),
 		BadgeRemoved:  lipgloss.Color("203"),
 		BadgeRenamed:  lipgloss.Color("75"),
+		Series:        seriesColors(),
 	}
 }
 
@@ -88,6 +97,9 @@ func SetTheme(t Theme) {
 	}
 	StyleBadgeModified, StyleBadgeAdded = badge(t.BadgeModified), badge(t.BadgeAdded)
 	StyleBadgeRemoved, StyleBadgeRenamed = badge(t.BadgeRemoved), badge(t.BadgeRenamed)
+	for i, c := range t.Series {
+		StyleSeries[i] = lipgloss.NewStyle().Foreground(c)
+	}
 }
 
 func init() { SetTheme(DefaultTheme()) }

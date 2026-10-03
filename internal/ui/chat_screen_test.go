@@ -22,7 +22,7 @@ func TestChatFlow(t *testing.T) {
 	e := newEnv(t)
 	dir := project(t, e)
 	d := start(t, e, 120, 32)
-	d.expect("[1] projects", "session ─", "none yet", "no session shown")
+	d.expect("[1] projects", "[2] session │ [3] report", "none yet", "no session shown")
 	d.expectCount(0, 0)
 	d.expect("AI tools", "● claude  9.9.9", "● codex   9.9.9")
 
@@ -154,7 +154,7 @@ func TestNarrow(t *testing.T) {
 	d := start(t, e, 70, 20)
 	d.expect("[1] projects", "TASK-9 old session")
 	d.expectCount(1, 1)
-	d.expectNot("session ─")
+	d.expectNot("[3] report")
 	d.key("n", "tab", "tab", "enter")
 	d.expect("FAKE CLAUDE READY")
 	d.leave()
@@ -437,7 +437,7 @@ func TestDraft(t *testing.T) {
 	d.raw("size later\r")
 	d.leave()
 	d.key("w") // the size is read while the draft covers the pane
-	d.expect("[3] draft · ivy")
+	d.expect("draft · ivy")
 	d.key("esc")
 	d.until("no later size", func() bool { return regexp.MustCompile(`later: \d+ \d+`).MatchString(d.screen()) })
 	if after := regexp.MustCompile(`later: (\d+ \d+)`).FindStringSubmatch(d.screen())[1]; after != before {
@@ -449,7 +449,7 @@ func TestDraft(t *testing.T) {
 	d.leave()
 
 	d.key("w")
-	d.expect("[3] draft · ivy", "(cmd/opt+enter) paste in prompt", "(ctrl+u) clear")
+	d.expect("draft · ivy", "(cmd/opt+enter) paste in prompt", "(ctrl+u) clear")
 	d.typ("next: the README")
 	paste()
 	d.expect("ivy is working: the draft can go once it is done")
@@ -458,7 +458,7 @@ func TestDraft(t *testing.T) {
 	d.expect("ivy asks something: answer it first, the draft waits")
 
 	// A drag over the draft's first row selects it; the release copies.
-	y := lineOf(d.screen(), "[3] draft · ivy") + 1
+	y := lineOf(d.screen(), "draft · ivy") + 1
 	x := utf8.RuneCountInString(strings.Split(d.screen(), "\n")[y][:strings.Index(strings.Split(d.screen(), "\n")[y], "next:")])
 	d.deliver(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
 	d.deliver(tea.MouseMsg{X: x + 4, Y: y, Action: tea.MouseActionMotion, Button: tea.MouseButtonLeft})
@@ -468,7 +468,7 @@ func TestDraft(t *testing.T) {
 		t.Fatalf("the drag copied %q, want %q", copied, "next")
 	}
 	d.key("esc")
-	d.expectNot("[3] draft · ivy")
+	d.expectNot("draft · ivy")
 	d.expect("✎")
 
 	d.key("enter")
@@ -487,7 +487,7 @@ func TestDraft(t *testing.T) {
 	}
 
 	d.key("w") // the kept draft, pasted from its box
-	d.expect("[3] draft · ivy", "next: the README")
+	d.expect("draft · ivy", "next: the README")
 	paste()
 	// Pasted into the input and echoed there, with the keys in the pane.
 	d.expect("(ctrl+q) back to lazychat", "next: the README")

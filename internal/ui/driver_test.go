@@ -84,6 +84,9 @@ type env struct {
 	vars          map[string]string
 	// tools are AI tools beyond the registry's, for a test that adds one.
 	tools []agent.Tool
+	// lazyHome is lazychat's own folder, for a test that writes there (the
+	// report's export); "" keeps the settings in memory, as most tests do.
+	lazyHome string
 }
 
 func newEnv(t *testing.T) env {
@@ -124,7 +127,7 @@ func start(t *testing.T, e env, cols, rows int) *driver {
 	if len(e.tools) > 0 {
 		core.Tools = agent.RegistryOf(append(core.Tools.All(), e.tools...)...)
 	}
-	core.Settings = &settings.Settings{}
+	core.Settings = &settings.Settings{Home: e.lazyHome}
 	d := &driver{t: t, core: core, focus: &focus{}, ready: make(chan struct{}, 1), done: make(chan struct{}), state: e.state}
 	// Another workspace opens as main opens one: its lock, its state file,
 	// the same stand-in tools; the list is the one the test gave.

@@ -72,6 +72,41 @@ func (l Lister) List(cwd string) ([]Past, error) {
 	return out, nil
 }
 
+// Path is the transcript's file.
+func (p Past) Path() string { return p.path }
+
+// All lists the saved sessions of every directory, newest first.
+func (l Lister) All() ([]Past, error) {
+	dirs, err := os.ReadDir(l.Dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var out []Past
+	for _, d := range dirs {
+		if !d.IsDir() {
+			continue
+		}
+		dir := filepath.Join(l.Dir, d.Name())
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".jsonl") {
+				continue
+			}
+			if info, err := e.Info(); err == nil {
+				out = append(out, Past{ID: strings.TrimSuffix(e.Name(), ".jsonl"), Modified: info.ModTime(), path: filepath.Join(dir, e.Name())})
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Modified.After(out[j].Modified) })
+	return out, nil
+}
+
 // Title fills in and returns the session's title, reading the file once.
 func (p *Past) Title() string {
 	if p.title == "" {

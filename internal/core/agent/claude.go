@@ -36,17 +36,18 @@ type Claude struct {
 }
 
 var (
-	_ Tool       = (*Claude)(nil)
-	_ Resumer    = (*Claude)(nil)
-	_ Forker     = (*Claude)(nil)
-	_ Attacher   = (*Claude)(nil)
-	_ Stopper    = (*Claude)(nil)
-	_ BusyReader = (*Claude)(nil)
-	_ AskReader  = (*Claude)(nil)
-	_ IDLearner  = (*Claude)(nil)
-	_ Overlayer  = (*Claude)(nil)
-	_ Suggester  = (*Claude)(nil)
-	_ Historian  = (*Claude)(nil)
+	_ Tool        = (*Claude)(nil)
+	_ Resumer     = (*Claude)(nil)
+	_ Forker      = (*Claude)(nil)
+	_ Attacher    = (*Claude)(nil)
+	_ Stopper     = (*Claude)(nil)
+	_ BusyReader  = (*Claude)(nil)
+	_ AskReader   = (*Claude)(nil)
+	_ IDLearner   = (*Claude)(nil)
+	_ Overlayer   = (*Claude)(nil)
+	_ Suggester   = (*Claude)(nil)
+	_ Historian   = (*Claude)(nil)
+	_ UsageReader = (*Claude)(nil)
 )
 
 // NewClaude is Claude Code, its data in home's .claude folder.
@@ -56,6 +57,10 @@ func NewClaude(bin, home string) *Claude {
 
 // Past is Claude Code's saved sessions of dir.
 func (c *Claude) Past(dir string) ([]history.Past, error) { return c.Saved.List(dir) }
+
+func (c *Claude) Transcripts(dir string) ([]history.Past, error) { return c.Saved.List(dir) }
+
+func (c *Claude) AllTranscripts() ([]history.Past, error) { return c.Saved.All() }
 
 func (c *Claude) SessionID(pid int) string {
 	data, err := os.ReadFile(filepath.Join(c.SessionsDir, fmt.Sprintf("%d.json", pid)))

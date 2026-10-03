@@ -191,6 +191,43 @@ func capability[C any](c *Core, tool, what string) (C, error) {
 	return impl, nil
 }
 
+// Transcripts are the usage report's files: the given folders' of every
+// tool that can report usage, or with all every folder's; each names its
+// tool, newest first.
+func (c *Core) Transcripts(dirs []string, all bool) ([]history.Past, error) {
+	var out []history.Past
+	for _, t := range c.Tools.All() {
+		r, ok := t.(agent.UsageReader)
+		if !ok {
+			continue
+		}
+		var found []history.Past
+		if all {
+			ps, err := r.AllTranscripts()
+			if err != nil {
+				return nil, err
+			}
+			found = ps
+		}
+		for _, d := range dirs {
+			if all {
+				break
+			}
+			ps, err := r.Transcripts(d)
+			if err != nil {
+				return nil, err
+			}
+			found = append(found, ps...)
+		}
+		for i := range found {
+			found[i].Tool = t.ID()
+		}
+		out = append(out, found...)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Modified.After(out[j].Modified) })
+	return out, nil
+}
+
 // Past lists a project's saved sessions of every tool that keeps them,
 // newest first, each naming its tool; titles are read on demand.
 func (c *Core) Past(p state.Project) ([]history.Past, error) {

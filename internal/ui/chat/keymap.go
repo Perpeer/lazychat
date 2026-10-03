@@ -42,9 +42,12 @@ var (
 // reads them all.
 var sessionKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, draftKeys []binding
 
+// The report's tables, one per view.
+var liveKeys, listKeys, detailKeys, transcriptKeys []binding
+
 func init() {
 	moves := []binding{keyUp, keyDown, keyFirst, keyLast, keyBack, keyPageUp, keyPageDn}
-	moves = append(moves, kit.PanelKeys(2, func(c *Chat, p int) tea.Cmd { c.toPanel(p); return nil }, "1 the project tree, 2 the session shown on the right, as Enter")...)
+	moves = append(moves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session shown on the right, as Enter, 3 the report: what the Claude sessions spend and do")...)
 	// Each table is the footer, in its order: everything that can be done
 	// there, and nothing else but moving the cursor.
 	sessionKeys = append([]binding{
@@ -78,6 +81,49 @@ func init() {
 		{Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the tree, the draft kept; " + leaveLabel + " too, and a click outside the box"},
 		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the draft to select, the release copies it; a click puts the cursor there; Enter is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field"},
 	}
+	reportMoves := []binding{
+		{Keys: []string{"up", "k"}, Name: "↑↓ j k", Help: "in the report: the sessions' cursor, the detail's agent, else a scroll", Run: act(func(c *Chat) { c.moveReport(-1) })},
+		{Keys: []string{"down", "j"}, Run: act(func(c *Chat) { c.moveReport(1) })},
+		{Keys: []string{"pgup"}, Run: act(func(c *Chat) { c.moveReport(-10) })},
+		{Keys: []string{"pgdown"}, Run: act(func(c *Chat) { c.moveReport(10) })},
+	}
+	reportMoves = append(reportMoves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the chat, 3 the report")...)
+	keyViews := binding{Keys: []string{"v"}, Hint: kit.Hint{Key: "v", Does: "view"}, Help: "the report's views in turn: live, the village of sessions at work; sessions, the list; overview, every session together; a click on one picks it", Run: func(c *Chat) tea.Cmd {
+		return c.setView(reportView((int(c.rep.view) + 1) % len(reportViews)))
+	}}
+	keyAll := binding{Keys: []string{"A"}, Hint: kit.Hint{Key: "shift+a", Does: "all projects"}, Help: "the workspace's projects, or every project in ~/.claude", Run: func(c *Chat) tea.Cmd {
+		c.rep.all = !c.rep.all
+		c.rep.read = false
+		if c.rep.all {
+			c.Note("the report reads every project in ~/.claude")
+		} else {
+			c.Note("the report reads the workspace's projects")
+		}
+		return c.readReport()
+	}}
+	keyExport := binding{Keys: []string{"x"}, Hint: kit.Hint{Key: "x", Does: "export"}, Help: "write the sessions listed to ~/.lazychat/reports as JSON and CSV; the first time, an empty prices.json beside the settings, per model and per million tokens, which turns costs on once filled in", Run: act(func(c *Chat) { c.export() })}
+	keyReportBack := binding{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "out of a transcript or a session's detail, a filter dropped, else back to the chat", Run: act(func(c *Chat) {
+		c.reportBack()
+		if !c.rep.shown {
+			c.repFocus = false
+		}
+	})}
+	liveKeys = append([]binding{keyViews, keyAll, keyExport, keyReportBack, keyHelp, keyQuit}, reportMoves...)
+	listKeys = append([]binding{
+		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "detail"}, Help: "the session under the cursor: its cards, charts, agents and tools; a click on a selected row too", Run: act(func(c *Chat) { c.openDetail() })},
+		{Keys: []string{"s"}, Hint: kit.Hint{Key: "s", Does: "sort"}, Help: "sort by the next column: last, first, tokens, output, calls, agents, cost", Run: act(func(c *Chat) { c.rep.sortBy = (c.rep.sortBy + 1) % len(sortKeys) })},
+		{Keys: []string{"S"}, Hint: kit.Hint{Key: "shift+s", Does: "reverse"}, Help: "the order reversed", Run: act(func(c *Chat) { c.rep.desc = !c.rep.desc })},
+		{Keys: []string{"/"}, Hint: kit.Hint{Key: "/", Does: "filter"}, Help: "type to keep the sessions whose name, folder or date (2026-03-01) holds it; Enter keeps the filter, Esc drops it", Run: act(func(c *Chat) { c.rep.filtering = true })},
+		keyViews, keyAll, keyExport, keyReportBack, keyHelp, keyQuit,
+	}, reportMoves...)
+	detailKeys = append([]binding{
+		{Keys: []string{"t"}, Hint: kit.Hint{Key: "t", Does: "transcript"}, Help: "the chosen agent's transcript made readable: the main agent's or a subagent's", Run: act(func(c *Chat) { c.openTranscript() })},
+		keyReportBack, keyHelp, keyQuit,
+	}, reportMoves...)
+	transcriptKeys = append([]binding{
+		{Keys: []string{"a"}, Hint: kit.Hint{Key: "a", Does: "context"}, Help: "show or hide the context lines the tool added by itself (attachments, thinking)", Run: act(func(c *Chat) { c.rep.showMeta = !c.rep.showMeta })},
+		keyReportBack, keyHelp, keyQuit,
+	}, reportMoves...)
 	termKeys = []binding{
 		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the tree, in every terminal; the session runs on, and Esc is claude's, which stops its answer"},
 		{Hint: kit.Hint{Key: "click", Does: "the tree: back there"}, Help: "a click beside the pane leaves the terminal and puts the cursor on the session clicked"},
@@ -95,6 +141,16 @@ func (c *Chat) tables() (top, below []binding) {
 		return draftKeys, nil
 	case c.capture.Held():
 		return termKeys, nil
+	case c.rep.shown && c.repFocus:
+		switch c.rep.view {
+		case viewSessions:
+			return listKeys, nil
+		case viewDetail:
+			return detailKeys, nil
+		case viewTranscript:
+			return transcriptKeys, nil
+		}
+		return liveKeys, nil
 	case c.tree.Moving:
 		return moveKeys, nil
 	case onSession:
@@ -122,6 +178,8 @@ func (c *Chat) Footer() []kit.Hint {
 func (c *Chat) Lead() string {
 	top, below := c.tables()
 	switch {
+	case c.rep.shown && c.repFocus && !c.capture.Held():
+		return "report"
 	case below != nil:
 		return "session"
 	case len(top) > 0 && top[0].Hint == keyAdd.Hint:
@@ -148,6 +206,10 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
 	lines = append(lines, kit.HelpSection("Terminal", termKeys)...)
 	lines = append(lines, kit.HelpSection("Draft", draftKeys)...)
+	lines = append(lines, kit.HelpSection("Report: live and overview", liveKeys)...)
+	lines = append(lines, kit.HelpSection("Report: sessions", listKeys[:4])...)
+	lines = append(lines, kit.HelpSection("Report: a session's detail", detailKeys[:1])...)
+	lines = append(lines, kit.HelpSection("Report: a transcript", transcriptKeys[:1])...)
 	lines = append(lines, kit.HelpSection("Move mode", moveKeys)...)
 	lines = append(lines, kit.WorkspaceHelp...)
 	return strings.Join(append(lines, "Status     spinner running · ○ saved · • shown in the pane"), "\n")

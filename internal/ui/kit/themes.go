@@ -27,6 +27,7 @@ func Themes() []Theme {
 			Added: c(p.added), AddedWord: c(p.addedWord), Conflict: c(p.conflict),
 			BadgeModified: c(p.modified), BadgeAdded: c(p.newFile),
 			BadgeRemoved: c(p.deleted), BadgeRenamed: c(p.renamed),
+			Series: seriesColors(),
 		})
 	}
 	return out

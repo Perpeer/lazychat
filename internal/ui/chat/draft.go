@@ -220,7 +220,8 @@ func (c *Chat) draftView(w, h int) string {
 		}
 		lines[0] = cursor + kit.StyleDim.Render(text.Fit(" the next prompt for "+r.Name+", written while it works; Cmd/Option+Enter pastes it in once it is free", w-3))
 	}
-	return hits.Panel(3, kit.Box(kit.PanelTitle(3, "draft · "+r.Name), lines, w, h, true, false))
+	// No number: 3 is the report's; the draft box is reached with w and a click.
+	return hits.Panel(3, kit.Box("draft · "+r.Name, lines, w, h, true, false))
 }
 
 // draftRect is where the draft's text is on the screen, inside its box.

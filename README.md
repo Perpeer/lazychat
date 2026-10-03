@@ -409,6 +409,49 @@ are listed under the tree, ready or not and why. The right side is the
 shown session's terminal, its size the pty's; under 80 columns it takes the
 whole screen while shown and `Esc` brings the tree back.
 
+The right side has two tabs in its top border, as a browser has:
+`[2] <the chat's title>` and `[3] report`; `2` and `3`, or a click on one,
+switch them, and the session runs on behind the report.
+
+### Report
+
+What the Claude sessions of the workspace's projects spend and do, read
+from Claude Code's own transcripts (`~/.claude/projects/<folder>/<id>.jsonl`
+and each session's `subagents/agent-<id>.jsonl`, `.meta.json`), started by
+lazychat or not; `shift+a` widens it to every project in `~/.claude`. It
+only reads, line by line, and follows a running session by reading what
+was appended since: every second on the live view, every ten on the
+others. Codex keeps no such usage yet, so its sessions are not in it.
+
+- **live** — the village: each session at work a house, its subagents
+  figures walking out to their work (`☺→`) and back with their result
+  (`←☺ ✓`), with tokens over each; the agents out and the tokens of the
+  last five minutes on top; under it a ledger of the day's sessions, each
+  with a sparkline of output tokens a minute.
+- **sessions** — one row per session: last activity, length, resumes,
+  your messages, model calls, subagents, tokens by kind, cost. `s` sorts
+  by the next column, `shift+s` reverses, `/` filters by name, folder or
+  date; `Enter` opens a session.
+- **a session** — cards (first and last activity, resumes, messages,
+  calls, tools, subagents, tokens by kind, cost), the context of each call
+  over time with resumes (`│`) and subagent starts (`☺`) under it, each
+  call's tokens stacked, each agent's, the tools, and the subagents' table;
+  `↑↓` picks the main agent or a subagent and `t` opens its transcript as
+  USER / ASSISTANT / TOOL CALL / TOOL RESULT rows, `a` showing the context
+  lines the tool added.
+- **overview** — tokens a day stacked by kind, by project, by subagent
+  type, and the ten costliest (or largest) sessions.
+
+`v` walks the views, `esc` goes back, `x` exports the sessions listed to
+`~/.lazychat/reports/usage-<time>.json` and `.csv`. Tokens are kept by
+kind — cache read, input, cache write, output (thinking within it) — each
+with a glyph (`░ ▒ ▓ █`) as well as a colour-blind safe colour. A reply
+written over several lines counts once, its largest numbers kept; a
+fork's copied history counts once; a gap over 30 minutes is a resume.
+Costs show only for models priced in `~/.lazychat/prices.json` (per
+million tokens: `input`, `cache_write`, `cache_read`, `output`), which the
+first export creates empty to fill in; nothing is priced by lazychat.
+
 | Key | Does |
 | --- | --- |
 | `↑↓` `j k` `g` `G` | from session to session, over the headings; on a running one the pane follows. A click on a heading goes to its first session |
@@ -416,7 +459,7 @@ whole screen while shown and `Esc` brings the tree back.
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
-| `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`[3] draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
+| `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
 | `d` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |
 
@@ -796,7 +839,7 @@ internal/ui/kit           what tabs share
 internal/ui/vm            shared plain-Go state: the list cursor
 internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
-internal/core             agent, api, files, git, history, keylayout, presence, settings, state, status, workspace — no terminal packages; api runs no subprocess
+internal/core             agent, api, files, git, history, keylayout, presence, settings, state, status, usage, workspace — no terminal packages; api runs no subprocess
 macos/Lazychat            Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions
 assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
 ```
@@ -870,6 +913,7 @@ fails when they part:
 | question on screen | ✓ |   |
 | settings per session | ✓ |   |
 | commit message | ✓ | ✓ |
+| usage report | ✓ |   |
 <!-- /capabilities -->
 
 ## Changing it

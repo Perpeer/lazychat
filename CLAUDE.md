@@ -37,7 +37,8 @@ enforces the lines, so a wrong import fails the check.
   state (the list cursor).
 - `internal/term` — the only package that touches ptys and the emulator.
 - `internal/core` — state, workspaces, history, AI tools (`agent`), session
-  status (`status`), `api`. No terminal packages; `api` runs no subprocess.
+  status (`status`), Claude's usage (`usage`), `api`. No terminal
+  packages; `api` runs no subprocess.
 - `macos/Lazychat` — the menu bar app, Swift. The app is Lazychat; Lazy is
   only the mascot.
 
@@ -83,6 +84,7 @@ are read; add a rule there, with its why, when a change settles one.
 | `keys-and-layout.md` | leave key, footers, widths |
 | `tests.md` | the test layers' traps |
 | `install.md` | install and uninstall, nothing legacy |
+| `report.md` | Chat's report tab, the usage parser, the charts |
 
 ## Tests
 

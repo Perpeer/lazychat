@@ -118,6 +118,12 @@ type (
 	Historian interface {
 		Past(dir string) ([]history.Past, error)
 	}
+	// UsageReader lists the transcripts a usage report reads: a
+	// directory's, or every directory's.
+	UsageReader interface {
+		Transcripts(dir string) ([]history.Past, error)
+		AllTranscripts() ([]history.Past, error)
+	}
 )
 
 // Capability is one thing only some tools can do, by the name the screen
@@ -144,6 +150,7 @@ var Capabilities = []Capability{
 	{"question on screen", Has[AskReader]},
 	{"settings per session", Has[Overlayer]},
 	{"commit message", Has[Suggester]},
+	{"usage report", Has[UsageReader]},
 }
 
 // Options are what tests change about the tools: Bins maps a tool's id to a

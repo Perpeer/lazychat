@@ -38,6 +38,10 @@ type Chat struct {
 	// the draft box under the pane having the keys.
 	drafts   map[string]*kit.Editor
 	drafting bool
+	// rep is the report, the right side's second tab; repFocus is it
+	// having the keys.
+	rep      report
+	repFocus bool
 }
 
 var _ kit.Tab = (*Chat)(nil)

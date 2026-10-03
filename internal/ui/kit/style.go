@@ -11,9 +11,11 @@ var (
 	StyleAccent   lipgloss.Style
 	StyleBusy     lipgloss.Style
 	StyleWorktree lipgloss.Style
-	StyleHeader   lipgloss.Style
-	StyleSel      lipgloss.Style
-	StyleCursor   lipgloss.Style
+	// StyleSeries draws a chart's four kinds.
+	StyleSeries [4]lipgloss.Style
+	StyleHeader lipgloss.Style
+	StyleSel    lipgloss.Style
+	StyleCursor lipgloss.Style
 	// A diff's rows and the conflict mark (theme.go).
 	StyleRemoved, StyleRemovedWord lipgloss.Style
 	StyleAdded, StyleAddedWord     lipgloss.Style

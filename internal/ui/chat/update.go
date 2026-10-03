@@ -32,6 +32,7 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		}
 		c.act.LearnIDs()
 		c.watchSessions()
+		return c.reportTick(msg.N)
 	case termMsg:
 		c.act.Live.AckAll()
 		c.act.Reap()
@@ -39,6 +40,8 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		c.projectAction(msg)
 	case draftSentMsg:
 		c.draftSent(msg)
+	case reportMsg:
+		c.reported(msg)
 	case kit.CmdEnter:
 		if c.drafting {
 			return c.sendDraft()
@@ -72,6 +75,9 @@ func (c *Chat) projectAction(msg kit.ProjectAction) {
 func (c *Chat) Key(msg tea.KeyMsg) tea.Cmd {
 	if c.drafting {
 		return c.draftKey(msg)
+	}
+	if c.rep.shown && c.repFocus {
+		return c.reportKey(msg)
 	}
 	c.list.scroll.Follow()
 	return kit.Dispatch(c.bindings(), msg.String(), c)
@@ -133,16 +139,28 @@ func (c *Chat) toList() { c.fullTerm = false }
 
 // toPanel gives the keys to panel p: 1 the tree, 2 the session on the
 // right, which Enter opens.
-func (c *Chat) toPanel(p int) {
-	if p == 1 {
+func (c *Chat) toPanel(p int) tea.Cmd {
+	switch p {
+	case 1:
+		c.repFocus = false
 		c.toList()
-		return
+		return nil
+	case 3:
+		c.repFocus = true
+		return c.showReport()
+	}
+	if c.rep.shown {
+		// The chat comes back first; a second 2 goes into the session.
+		c.showChat()
+		c.repFocus = false
+		return nil
 	}
 	if c.tree.OnProject() {
 		c.Note("a session takes the keys: this project has none")
-		return
+		return nil
 	}
 	c.enter()
+	return nil
 }
 
 // enter opens the session under the cursor.
@@ -191,7 +209,24 @@ func (c *Chat) cursorProject() string {
 // a running session's pane gives it the keys, unless the pane shows a
 // project, which takes no keys.
 func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
+	if kit.LeftClick(msg) && c.tabClick(msg) {
+		return nil
+	}
 	hit := hits.At(msg, len(c.tree.Sessions()), len(c.core.Store.Projects))
+	if c.rep.shown {
+		if d := kit.Wheel(msg); d != 0 && (hit.Kind == kit.HitPane || hit.Kind == kit.HitPanel && hit.N == 2) {
+			c.moveReport(d / kit.WheelRows)
+			return nil
+		}
+		if kit.LeftClick(msg) && c.reportMouse(msg) {
+			c.repFocus = true
+			return nil
+		}
+		if kit.LeftClick(msg) && hit.Kind == kit.HitPanel && hit.N == 2 {
+			c.repFocus = true
+			return nil
+		}
+	}
 	if d := kit.Wheel(msg); d != 0 {
 		if hit.Kind == kit.HitPane {
 			code := kit.WheelUp
@@ -246,6 +281,9 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 // pointAt is a click beside a session that had the keys: the cursor goes to
 // the row or the project clicked, without opening or starting anything.
 func (c *Chat) pointAt(msg tea.MouseMsg) {
+	if c.tabClick(msg) {
+		return
+	}
 	hit := hits.At(msg, len(c.tree.Sessions()), len(c.core.Store.Projects))
 	switch hit.Kind {
 	case kit.HitRow:
