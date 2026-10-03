@@ -433,7 +433,7 @@ a diff with the commit box under it.
 ```
 │ lazychat
 │ ~/code/lazychat
-│   ├─ ● main  current
+│   ├─ ● main   main folder
 │   │    ↑1 · clean
 │   └─ ⑂ feature
 │        1 changed · wt-feature · from main
@@ -442,8 +442,8 @@ a diff with the commit box under it.
 Under each project hangs the checkout it works in — its folder, where
 Chat's sessions and Terminal's shells start — marked `●` in the accent
 (`⑂` and the branch in the worktree colour when the folder is itself a
-worktree), `current` beside it in the worktree colour when the
-repository has other checkouts, so where you work reads off the row; under
+worktree), `main folder` beside it when it is the repository's own
+folder; under
 it `↑` `↓` ahead and behind its upstream and how many files changed; or
 why there is nothing (not a git repository, git not installed). Under it hang the
 repository's other checkouts (`git worktree list`): `⑂` and the branch
@@ -497,8 +497,9 @@ The panels, numbered as their titles show them:
 | `↑↓` `j k` `g` `G` | over the rows, the changes or the commits, the diff following; in the diff, a row cursor |
 | `v` `y`, a drag (in the diff) | `v` marks the cursor's row as one end of a selection, `y` copies the selected rows (or the cursor's) for a prompt — each file's part headed `path:28-35`, every line marked `+` added, `-` removed or a space; a drag over the diff selects and its release copies the same way; `Esc` drops the selection |
 | `Space` | stage the file or folder under the cursor (`git add -A`), or in Staged unstage it (`git restore --staged`, `git rm --cached` before the first commit); a conflict is left for you to resolve |
-| `c` | the commit box, as `6` |
-| `b` | the branches: a finder over the `Local` then `Remote` branches, newest commit first (● the current one, what it tracks, how long ago), fetching (`git fetch --prune`) behind it; typing narrows it. `Enter` switches — a remote one as a local branch tracking it; local changes in the way are stashed and brought back, asked; any other refusal changes nothing and says why. A name no branch has adds `+ new branch <name> from <row's branch>` under the matches, made and switched to. Worktrees are `w`'s; deleting is `d` on a row |
+| `c` | the commit box, as `6`; a commit on `main` (or `master`) in the main folder is asked first — the main folder is kept for pulling and merging, work goes in a worktree |
+| `b` | the branches: a finder over the `Local` then `Remote` branches, newest commit first, each noted where it is out in the rows' words (`● this folder`, `main folder`, `⑂ <worktree>`), what it tracks and how long ago, fetching (`git fetch --prune`) behind it; typing narrows it. A worktree is a folder, never a checkout: `Enter` on a branch out in another folder takes the cursor to that folder's row. On the main folder `Enter` switches to a branch out nowhere — a remote one as a local branch tracking it; local changes in the way are stashed and brought back, asked — and a name no branch has adds `+ new branch <name> from <row's branch>`. A worktree keeps its branch: on its row nothing is switched or made (`w` makes a worktree). Deleting is `d` on a row |
+| `u` (a worktree's row) | bring the worktree's branch up to date with main, asked: `git fetch`, then `git rebase --autostash <remote>/<default branch>`. A conflict stops the rebase, the files named in the status area, for you to resolve and `git rebase --continue` (or `--abort`) |
 | `w` | the worktrees: a finder over the repository's other worktrees. `Enter` takes the cursor to one's row. A new name adds `+ new worktree <name> from <row's branch>`: a worktree on a new branch in `.worktrees/<name>` inside the repository (kept out of git through `.git/info/exclude`), opened as a project `<project> · <name>` so Chat and Terminal can run in it, the cursor on its row; with nothing typed it offers another worktree of the row's branch under a free name (`<branch>-2`, `-3`…), for several sessions on one line of work: git keeps a branch in one worktree, so each gets a branch of its own. |
 | `d` | delete what the row is, asked. On a worktree's row: the worktree with its folder (`git worktree remove`, asked again when it has changes, `--force` then), its project and that project's saved sessions and shells, refused while one of its sessions runs; its branch stays. On the project's own row: the branch it is on — git deletes no branch a checkout is on, so the checkout switches to the default branch (origin's HEAD, else `main`, else `master`) first, which itself is never deleted; `git branch -d`, and commits not in the default branch are asked again, naming them, before `-D`; local changes in the way of the switch stop it; a branch that tracks a remote one then offers that one, deleted (`git push <remote> --delete`) only after a second question saying it goes for everyone who uses the remote |
 | `shift+p` | push the row's branch (a worktree's for its row) to its upstream. With none, it asks to push to `origin` (or the only remote) and track it there; with nothing ahead it says so without running git. A push the remote rejects says to pull first. Never a force push |

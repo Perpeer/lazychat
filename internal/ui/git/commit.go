@@ -92,6 +92,18 @@ func (g *Git) commit() tea.Cmd {
 		}
 		return nil
 	}
+	if g.onMainInMainFolder() && !g.mainCommitOK {
+		branch := p.st.Branch
+		g.screen.Push(&kit.Confirm{
+			Question: "Commit on " + branch + " in the main folder? It is kept for pulling and merging; work goes in a worktree (w).",
+			Yes: func() {
+				g.mainCommitOK = true
+				g.screen.Queue(g.commit())
+			},
+		})
+		return nil
+	}
+	g.mainCommitOK = false
 	at, _ := g.cursorRow()
 	name, root := at.key, p.st.Root
 	subject, body := b.Subject(), b.Description()

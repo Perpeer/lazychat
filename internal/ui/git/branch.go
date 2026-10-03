@@ -19,6 +19,7 @@ type (
 		name     string
 		list     []git.Branch
 		wts      []git.Worktree // the repository's checkouts but the row's own
+		all      []git.Worktree // every checkout, the main folder first
 		suggest  string         // a free name for another worktree of the row's branch
 		err      error
 		fetched  bool
@@ -58,7 +59,30 @@ type branchPopup struct {
 	suggest   string
 	finder    *kit.Finder
 	wts       []git.Worktree
-	list      []git.Branch
+	// inWorktree is a row that is an added worktree: it keeps its branch,
+	// so the list there changes none. places is where each local branch is
+	// checked out.
+	inWorktree bool
+	places     map[string]place
+	list       []git.Branch
+}
+
+// place is where a branch is checked out: in the row's own folder, the
+// main folder, or another worktree's.
+type place struct {
+	path       string
+	here, main bool
+}
+
+// label is how the list says it, in the rows' words.
+func (p place) label() string {
+	switch {
+	case p.here:
+		return "● this folder"
+	case p.main:
+		return mainFolder
+	}
+	return "⑂ " + filepath.Base(p.path)
 }
 
 // taken says a name is a branch already, local or as a remote one a switch
@@ -116,6 +140,7 @@ func (g *Git) openList(worktrees bool) tea.Cmd {
 		base = "HEAD"
 	}
 	bp := &branchPopup{project: name, owner: at.name, root: root, base: base, worktrees: worktrees}
+	bp.inWorktree = at.wt != nil && !at.wt.Main || at.wt == nil && p.linked
 	bp.finder = kit.NewFinder(title, nil, func(i int) { g.pickBranch(bp, i) })
 	if worktrees {
 		bp.finder.Note = func(i int) string { return "⑂ " + text.ShortHome(bp.wts[i].Path) }
@@ -142,9 +167,10 @@ func (g *Git) openList(worktrees bool) tea.Cmd {
 			}
 			return "Local"
 		}
-		bp.finder.Note = func(i int) string { return branchNote(bp.list[i]) }
+		bp.finder.Note = func(i int) string { return bp.branchNote(bp.list[i]) }
 		bp.finder.Create = func(q string) []string {
-			if q == "" || bp.taken(q) {
+			// A worktree keeps its branch: a new one is made with w there.
+			if q == "" || bp.taken(q) || bp.inWorktree {
 				return nil
 			}
 			return []string{"new branch " + q + " from " + base}
@@ -160,7 +186,8 @@ func (g *Git) openList(worktrees bool) tea.Cmd {
 	read := func(fetched bool, ferr error) branchesMsg {
 		l, err := git.Branches(root)
 		wts, _, _ := git.Others(root)
-		return branchesMsg{name: name, list: l, wts: wts, suggest: git.FreeName(root, base), err: err, fetched: fetched, fetchErr: ferr}
+		all, _ := git.Worktrees(root)
+		return branchesMsg{name: name, list: l, wts: wts, all: all, suggest: git.FreeName(root, base), err: err, fetched: fetched, fetchErr: ferr}
 	}
 	list := g.own(func() tea.Msg { return read(false, nil) })
 	if worktrees {
@@ -228,12 +255,12 @@ func sameDir(a, b string) bool {
 	return errA == nil && errB == nil && ra == rb
 }
 
-// branchNote is a branch's dim note: ● for the one checked out, what it
-// tracks, how long ago its last commit was.
-func branchNote(b git.Branch) string {
+// branchNote is a branch's dim note: where it is checked out, in the rows'
+// words, what it tracks, how long ago its last commit was.
+func (bp *branchPopup) branchNote(b git.Branch) string {
 	var parts []string
-	if b.Current {
-		parts = append(parts, "● current")
+	if pl, ok := bp.places[b.Name]; ok && !b.Remote {
+		parts = append(parts, pl.label())
 	}
 	if b.Upstream != "" {
 		parts = append(parts, b.Upstream)
@@ -259,6 +286,12 @@ func (g *Git) showBranches(msg branchesMsg) {
 		names[i] = b.Name
 	}
 	bp.list, bp.wts, bp.suggest = msg.list, msg.wts, msg.suggest
+	bp.places = map[string]place{}
+	for _, w := range msg.all {
+		if w.Branch != "" {
+			bp.places[w.Branch] = place{path: w.Path, here: sameDir(w.Path, bp.root), main: w.Main}
+		}
+	}
 	if bp.worktrees {
 		items := make([]string, 0, len(msg.wts))
 		for _, w := range msg.wts {
@@ -298,8 +331,24 @@ func (g *Git) pickBranch(bp *branchPopup, i int) {
 		return
 	}
 	b := bp.list[i]
-	if b.Current {
-		g.screen.Note("already on %s", b.Name)
+	local := localBranch(b)
+	if pl, ok := bp.places[local]; ok {
+		// Moving to a worktree is going to its folder, never a checkout.
+		switch {
+		case pl.here:
+			g.screen.Note("%s is this folder's branch already", local)
+		case g.selectPath(pl.path):
+			g.focus = panelProjects
+			g.changes.Sel = 0
+			g.screen.Note("%s is out in %s: its row", local, pl.label())
+			g.screen.Queue(tea.Batch(g.loadCursor(), g.loadDiff()))
+		default:
+			g.screen.Note("%s is out in %s", local, text.ShortHome(pl.path))
+		}
+		return
+	}
+	if bp.inWorktree {
+		g.screen.Note("a worktree keeps its branch: w makes a worktree for %s", local)
 		return
 	}
 	g.screen.Queue(g.own(func() tea.Msg {
@@ -335,6 +384,18 @@ func (g *Git) switched(msg switchedMsg) tea.Cmd {
 	}
 	g.changes.Sel = 0
 	return tea.Batch(g.load(msg.name), g.loadDiff())
+}
+
+// localBranch is the local branch a list entry is or becomes: a remote
+// one's name without its remote.
+func localBranch(b git.Branch) string {
+	if !b.Remote {
+		return b.Name
+	}
+	if _, rest, ok := strings.Cut(b.Name, "/"); ok {
+		return rest
+	}
+	return b.Name
 }
 
 // localName is the branch a switch lands on: a remote one's name without

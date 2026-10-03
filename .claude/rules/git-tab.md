@@ -28,15 +28,21 @@ paths:
   suggested name counts on from the branch the work started on
   (`git.FreeName`). A new worktree is added as a project so sessions can
   run in it.
-- Which checkout is never a guess, said on the rows, not on a line over a
-  pane (the user took that out): the checkout a project works in says
-  `current` beside its branch in the worktree colour when the repository
-  has others; every checkout shows ↑ ↓ and changed under it, a folder only
-  when it differs from the branch, and the sessions running there (store
-  sessions marked Running, by project or by a project on that folder).
-  Headings keep `⎇ <branch>` and add `⑂ <worktree>` in the worktree colour
-  (`kit.HeadLabel`, `git.Head.Worktree`).
-- The cursor sits on checkouts, never headings: `●` current, `⑂`
+- Worktrees as git means them: one folder per branch; the main folder
+  (the repository's own) is for pulling and merging. One vocabulary on
+  the rows and in the branch list, never "current" (it meant two things):
+  `main folder` beside the repository's own checkout, `⑂ <folder>` for a
+  worktree, `● this folder` in the list for the row's own branch. Every
+  checkout shows ↑ ↓ and changed under it, a folder only when it differs
+  from the branch. Headings keep `⎇ <branch>` and add `⑂ <worktree>` in
+  the worktree colour (`kit.HeadLabel`, `git.Head.Worktree`).
+- Going to a worktree is moving the cursor to its row, never a checkout:
+  b's Enter on a branch out in another folder selects that row; on a
+  worktree's row b switches and makes nothing. `u` (worktree rows only,
+  worktreeRowKeys) fetches and rebases onto <remote>/<default>, a conflict
+  left in place and named. A commit on main/master in the main folder is
+  asked (mainCommitOK, for that commit only).
+- The cursor sits on checkouts, never headings: `●` the main folder, `⑂`
   worktree, "from X" read from the reflog. Digits pick panels in Git but
   projects in Chat.
 - A row git could not read says "git failed" and keeps saying it while

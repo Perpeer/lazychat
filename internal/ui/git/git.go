@@ -127,6 +127,9 @@ type Git struct {
 
 	branches *branchPopup // the branch finder while it is open
 	wantPath string       // a folder whose row takes the cursor once it is listed
+	// mainCommitOK is a yes to committing on main in the main folder, for
+	// the commit it was asked for.
+	mainCommitOK bool
 
 	// git's own version, for the section under the projects.
 	version     string

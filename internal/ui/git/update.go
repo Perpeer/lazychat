@@ -83,6 +83,8 @@ func (g *Git) Update(msg tea.Msg) tea.Cmd {
 		return g.switched(msg)
 	case createdMsg:
 		return g.created(msg)
+	case updatedMsg:
+		return g.updated(msg)
 	case deletedMsg:
 		return msg.then(msg.err)
 	case versionMsg:

@@ -142,22 +142,23 @@ func (g *Git) shownStatus(key string) *project {
 // branchEntry hangs a project's branch off its heading the way Chat hangs a
 // session: the branch on the connector row, how far it is from its upstream
 // and how much changed on the row under it. It is the checkout the project
-// works in — Chat's sessions and Terminal's shells start in its folder — so
-// beside other checkouts it says "current", and when its folder is an added
-// worktree its branch takes the worktree colour too, ⑂ before it. A project still loading (nil) or one
-// git can not read shows that on the connector row instead; last says no
-// worktree follows it.
+// works in — Chat's sessions and Terminal's shells start in its folder. The
+// repository's own folder says "main folder" beside its branch; an added
+// worktree's branch takes the worktree colour, ⑂ before it — the same words
+// the branch list uses for where a branch is out. A project still loading
+// (nil) or one git can not read shows that on the connector row instead;
+// last says no worktree follows it.
 func branchEntry(p *project, path string, w int, last bool) []kit.TreeLine {
-	current := p != nil && len(p.wts) > 0
 	if p != nil && p.linked {
-		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, current, folderNote(path, p.st.Branch))
+		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, "", folderNote(path, p.st.Branch))
 	}
-	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, current, "")
+	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, mainFolder, "")
 }
 
 // worktreeEntry is one of the repository's other checkouts under the
-// project's branch: its branch after ⑂ (○ for the main checkout), the same
-// counts, and its folder only where the branch does not already say it.
+// project's branch: its branch after ⑂ (○ and "main folder" for the
+// repository's own), the same counts, and its folder only where the branch
+// does not already say it.
 func worktreeEntry(r row, p *project, w int, last bool) []kit.TreeLine {
 	var notes []string
 	if p != nil && !r.wt.Main {
@@ -174,11 +175,11 @@ func worktreeEntry(r row, p *project, w int, last bool) []kit.TreeLine {
 	if p != nil && p.from != "" {
 		notes = append(notes, "from "+p.from)
 	}
-	glyph := "⑂"
+	glyph, label := "⑂", ""
 	if r.wt.Main {
-		glyph = "○"
+		glyph, label = "○", mainFolder
 	}
-	return checkoutEntry(p, w, last, glyph, kit.StyleDim, kit.StyleBold, false, strings.Join(notes, " · "))
+	return checkoutEntry(p, w, last, glyph, kit.StyleDim, kit.StyleBold, label, strings.Join(notes, " · "))
 }
 
 // folderNote is a worktree's folder when it is not named after its branch,
@@ -190,13 +191,14 @@ func folderNote(path, branch string) string {
 	return ""
 }
 
-// currentMark is said beside the branch of the checkout a project works in.
-const currentMark = "  current"
+// mainFolder names the repository's own checkout, beside its branch here
+// and in the branch list: worktrees are the other folders, kept for work.
+const mainFolder = "main folder"
 
-// checkoutEntry is a checkout's row: glyph and branch, "current" beside it
-// on the one the project works in, then ↑ ahead, ↓ behind and what changed
-// with any note.
-func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, current bool, note string) []kit.TreeLine {
+// checkoutEntry is a checkout's row: glyph and branch, a label beside it
+// (the main folder's), then ↑ ahead, ↓ behind and what changed with any
+// note.
+func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, label, note string) []kit.TreeLine {
 	first, rest := "   └─ ", "      "
 	if !last {
 		first, rest = "   ├─ ", "   │  "
@@ -226,9 +228,10 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipglo
 	foot := "  " + strings.Join(counts, " · ")
 	room := w - text.Width(first) - text.Width(glyph+" ")
 	tail, plainTail := "", ""
-	if current {
-		room -= text.Width(currentMark)
-		tail, plainTail = kit.StyleWorktree.Render(currentMark), currentMark
+	if label != "" {
+		plainTail = "   " + label
+		room -= text.Width(plainTail)
+		tail = kit.StyleDim.Render(plainTail)
 	}
 	branch := text.FitMiddle(p.st.Branch, room)
 	out := []kit.TreeLine{{Prefix: first, Styled: mark.Render(glyph) + " " + name.Render(branch) + tail, Plain: glyph + " " + branch + plainTail}}

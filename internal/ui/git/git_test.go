@@ -21,12 +21,13 @@ func TestKeymap(t *testing.T) {
 		keys []binding
 		want string
 	}{
-		"branch":  {branchKeys, "c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
-		"project": {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
-		"changes": {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
-		"commits": {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
-		"diff":    {diffKeys, "esc projects · v select · y copy · drag select · copy · c commit · wheel scroll · r refresh · ? help"},
-		"commit":  {commitKeys, "ctrl+s commit · ctrl+n suggest · Tab next · esc projects"},
+		"branch":   {branchKeys, "c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
+		"worktree": {worktreeRowKeys, "c commit · p pull · shift+p push · f fetch · u update from main · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
+		"project":  {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
+		"changes":  {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
+		"commits":  {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
+		"diff":     {diffKeys, "esc projects · v select · y copy · drag select · copy · c commit · wheel scroll · r refresh · ? help"},
+		"commit":   {commitKeys, "ctrl+s commit · ctrl+n suggest · Tab next · esc projects"},
 	} {
 		var parts []string
 		for _, h := range kit.FooterHints(c.keys) {
@@ -43,7 +44,7 @@ func TestKeymap(t *testing.T) {
 	if hidden := kit.Unlisted(append(append([]binding(nil), branchKeys...), projectKeys...)); len(hidden) > 0 {
 		t.Errorf("branch and project rows: keys that work unnamed: %q", hidden)
 	}
-	for _, b := range append(append(append(branchKeys, projectKeys...), changeKeys...), moveKeys...) {
+	for _, b := range append(append(append(worktreeRowKeys, projectKeys...), changeKeys...), moveKeys...) {
 		if d := b.Does(); d != "" && !strings.Contains(help, d) {
 			t.Errorf("help lacks %q", d)
 		}
@@ -104,15 +105,16 @@ func TestFileHeadings(t *testing.T) {
 }
 
 // A branch too long for its row stays on one row, cut in its middle with
-// its last part kept, and the counts come after.
+// its last part kept beside the main folder's label, and the counts come
+// after.
 func TestBranchOneRow(t *testing.T) {
 	p := &project{}
 	p.st.Branch = "garden-shed-paints/feature/blue-door"
-	rows := branchEntry(p, "", 30, true)
+	rows := branchEntry(p, "", 44, true)
 	if len(rows) != 2 {
 		t.Fatalf("%d rows: %+v", len(rows), rows)
 	}
-	if rows[0].Plain != "● garden-shed…/blue-door" || text.Width(rows[0].Prefix+rows[0].Plain) > 30 {
+	if rows[0].Plain != "● garden-shed…/blue-door   main folder" || text.Width(rows[0].Prefix+rows[0].Plain) > 44 {
 		t.Errorf("branch row %q", rows[0].Prefix+rows[0].Plain)
 	}
 	if !strings.Contains(rows[1].Plain, "clean") {
