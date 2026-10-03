@@ -15,7 +15,7 @@ var act = kit.Act[*Git]
 // The tables per column: the branch under the cursor in the projects, its
 // project's own row under it, the changes, and move mode. Each is a footer
 // row, in its order, and nothing else works but moving the cursor.
-var branchKeys, cloudKeys, projectKeys, emptyKeys, changeKeys, commitsKeys, diffKeys, moveKeys, commitKeys []binding
+var branchKeys, projectKeys, emptyKeys, changeKeys, commitsKeys, diffKeys, moveKeys, commitKeys []binding
 
 func init() {
 	keyRefresh := binding{Keys: []string{"r"}, Hint: kit.Hint{Key: "r", Does: "refresh"}, Help: "read the project's changes and the diff again now; they are read every few seconds anyway while the tab is on screen", Run: func(g *Git) tea.Cmd { return tea.Batch(g.loadCursor(), g.loadDiff()) }}
@@ -58,9 +58,6 @@ func init() {
 		binding{Keys: []string{"G", "end"}, Run: func(g *Git) tea.Cmd { return g.moveProject(1 << 20) }},
 	)
 	branchKeys = append(branchKeys, panelKeys()...)
-	// A checkout git could not read because iCloud has not brought its git
-	// files to this Mac gets one key more, first, only there.
-	cloudKeys = append([]binding{{Keys: []string{"i"}, Hint: kit.Hint{Key: "i", Does: "download"}, Help: "ask iCloud to bring the row's git files to this Mac (brctl download, each file), then read the row again; offered only on a row whose files are still in iCloud", Run: func(g *Git) tea.Cmd { return g.downloadICloud() }}}, branchKeys...)
 	emptyKeys = []binding{kit.ProjectOpen[*Git](), keyHelp, keyQuit}
 	projectKeys = kit.ProjectRow((*Git).cursorProject, func(g *Git) { g.moving = true })
 	changeKeys = []binding{
@@ -130,8 +127,6 @@ func (g *Git) tables() (top, below []binding) {
 		return commitsKeys, nil
 	case len(g.core.Store.Projects) == 0:
 		return emptyKeys, nil
-	case g.inICloud() != nil:
-		return cloudKeys, projectKeys
 	}
 	return branchKeys, projectKeys
 }
@@ -185,7 +180,6 @@ func helpText() string {
 		"",
 	}
 	lines = append(lines, kit.HelpSection("Branch", branchKeys)...)
-	lines = append(lines, kit.HelpSection("Branch whose git files are in iCloud only", cloudKeys[:1])...)
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
 	lines = append(lines, kit.HelpSection("Changes", changeKeys)...)

@@ -39,11 +39,9 @@ paths:
 - The cursor sits on checkouts, never headings: `●` current, `⑂`
   worktree, "from X" read from the reflog. Digits pick panels in Git but
   projects in Chat.
-- A read that times out is `git.ErrSlow`, or `git.ErrInICloud` when the
-  checkout's git folders hold iCloud "dataless" files (stat flag
-  SF_DATALESS, looked at without opening them, which would fetch them);
-  the row keeps its last result or failure while read again, never "…",
-  and `i` (cloudKeys, on such a row only) runs `brctl download` per file.
+- A row git could not read says "git failed" and keeps saying it while
+  read again, never "…". Why (a sync tool's missing files, a slow disk) is
+  left to the user: lazychat does not manage iCloud or other sync tools.
 - Off-loop answers are wrapped as `owned{by, msg}` so a stale or foreign
   answer is dropped.
 - Deleting is `d` on a row (`ui/git/delete.go`, `core/git/delete.go`),

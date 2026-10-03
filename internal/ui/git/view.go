@@ -270,13 +270,6 @@ func problem(p *project) string {
 	case errors.Is(p.err, git.ErrNoGit):
 		return "git is not installed"
 	}
-	var cloud git.ErrInICloud
-	switch {
-	case errors.As(p.err, &cloud):
-		return fmt.Sprintf("%d files of .git still in iCloud · (i) download", len(cloud.Files))
-	case errors.Is(p.err, git.ErrSlow):
-		return "git took over 10 s to answer"
-	}
 	return "git failed"
 }
 
