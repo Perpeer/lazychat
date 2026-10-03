@@ -76,6 +76,18 @@ need macOS and at least one AI coding agent installed and logged in:
 [Codex](https://github.com/openai/codex). More on the script, the menu bar
 helper and the iTerm keys in [Building from source](#building-from-source).
 
+### Uninstall
+
+```sh
+./uninstall.sh            # or ./install.sh --uninstall
+./uninstall.sh --purge    # also your lazychat data, to the Trash
+```
+
+It takes away the program, the menu bar helper and the iTerm keys, and
+keeps your settings and workspaces unless you add `--purge`. Your projects
+and Claude Code's and Codex's files are never touched. `--dry-run` shows
+what would go. More in [Uninstalling](#uninstalling).
+
 ## Quick start
 
 1. Run `lazychat` and make a workspace — a name for the set of projects you work on.
@@ -161,6 +173,29 @@ branch. `install.sh` stamps it into the binary with the short hash
 (`-dirty` when the tree has uncommitted changes); it shows as `v1.0(N)` at
 the screen's bottom-right corner, and `lazychat --version` prints it with
 the hash.
+
+### Uninstalling
+
+`./uninstall.sh`, or `./install.sh --uninstall` (which runs it), takes
+back what installing and running put on the Mac, one line per piece:
+
+- `$PREFIX/lazychat` (by default `~/.local/bin/lazychat`);
+- `~/Applications/LazychatBar.app`, quit first, and its macOS permissions
+  (`tccutil reset All dev.lazychat.bar`);
+- the iTerm keys `--iterm-keys` added — only `⌘1`–`⌘4`, and only those that
+  still send lazychat's tab keys; quit iTerm first, as for installing them;
+- Warp's launch configuration, `~/.warp/launch_configurations/lazychat.yaml`;
+- the temp `lazychat-notices-*` folders of lazychats that are gone.
+
+`~/.lazychat` — your settings and workspaces, with their projects' list and
+sessions — stays, so a reinstall finds everything; `--purge` moves it to
+the Trash. `--dry-run` lists what would go and changes nothing. It stops
+while a lazychat runs, since quitting it would end its sessions; run it
+again after. It never touches your projects, Claude Code's or Codex's
+files, or Go (install.sh may have installed it with Homebrew; other tools
+may use it). A login item you added for the menu bar helper is removed in
+System Settings › General › Login Items. Run it twice and the second run
+finds nothing left.
 
 ## Run
 

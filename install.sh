@@ -2,17 +2,27 @@
 # Builds lazychat from this checkout into $PREFIX (default ~/.local/bin).
 #   ./install.sh               build, or report SAME when nothing changed
 #   ./install.sh --iterm-keys  also make iTerm send ⌘1–⌘4 as lazychat's tab keys
+#   ./install.sh --uninstall   take it all back: runs ./uninstall.sh (--purge, --dry-run)
 # On macOS with swiftc it also builds the menu bar helper, LazychatBar.app.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 PREFIX="${PREFIX:-$HOME/.local/bin}"
 
+# --uninstall hands every other argument to uninstall.sh, wherever it stands.
+for arg in "$@"; do
+  if [ "$arg" = --uninstall ]; then
+    rest=()
+    for a in "$@"; do [ "$a" = --uninstall ] || rest+=("$a"); done
+    exec ./uninstall.sh ${rest[@]+"${rest[@]}"}
+  fi
+done
+
 iterm_keys=0
 for arg in "$@"; do
   case "$arg" in
     --iterm-keys) iterm_keys=1 ;;
-    -h|--help) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "install.sh: unknown option $arg" >&2; exit 2 ;;
   esac
 done
