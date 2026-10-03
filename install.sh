@@ -97,7 +97,9 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
   else
     mkdir -p "$bar/Contents/MacOS" "$bar/Contents/Resources"
     swiftc -O -o "$bar/Contents/MacOS/Lazy" macos/Lazy/*.swift
-    cp macos/Lazy/Info.plist "$bar/Contents/Info.plist"
+    # install -m, not cp: a checkout's own modes (iCloud leaves some files
+    # 600) must not reach the bundle, or Finder marks it as one it cannot open.
+    install -m 644 macos/Lazy/Info.plist "$bar/Contents/Info.plist"
     # The app's icon is the mascot the helper draws, so it is one drawing
     # everywhere: rendered as an iconset, made an .icns by macOS's iconutil.
     iconset="$(mktemp -d)/AppIcon.iconset"
@@ -106,13 +108,17 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
     rm -rf "$(dirname "$iconset")"
     echo "$barsum" > "$bar/Contents/Resources/source.sum"
     codesign --force -s - "$bar" 2>/dev/null
-    # Tell Launch Services, so Finder and Spotlight show it and its icon now.
-    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$bar" 2>/dev/null || true
     pkill -x Lazy 2>/dev/null || true
     open -g "$bar"
     echo "ok    installed   Lazy, the menu bar mascot, at ${bar/#$HOME/~}"
     echo "      note        start it from Applications; Settings › menu bar hides it; System Settings › General › Login Items starts it at login"
   fi
+  # On every install, built now or not: every file readable by all, or
+  # Finder marks the app as one it cannot open (modes are not part of the
+  # signature), and Launch Services told, so Finder and Spotlight show it
+  # and its icon at once.
+  chmod -R u+rwX,go+rX "$bar"
+  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$bar" 2>/dev/null || true
 fi
 
 case ":$PATH:" in

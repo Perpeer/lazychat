@@ -126,8 +126,8 @@ func (g *Git) section(w int) []string {
 	return kit.SectionRows("git", []kit.SectionItem{it}, w)
 }
 
-// branchLines is how many rows a branch may wrap to under its project.
-const branchLines = 2
+// A branch takes one row under its project: a long one is cut in its
+// middle (text.FitMiddle), its end kept, rather than wrapped.
 
 // shownStatus is a row's status once it has one to draw.
 func (g *Git) shownStatus(key string) *project {
@@ -202,7 +202,8 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark lipgloss.Sty
 	if where != "" {
 		foot = "  " + where + " ·" + foot[1:]
 	}
-	out := kit.TitleRows(first, rest, mark.Render(glyph)+" ", glyph+" ", p.st.Branch, kit.StyleBold, w, branchLines)
+	branch := text.FitMiddle(p.st.Branch, w-text.Width(first)-text.Width(glyph+" "))
+	out := kit.TitleRows(first, rest, mark.Render(glyph)+" ", glyph+" ", branch, kit.StyleBold, w, 1)
 	return append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
 }
 

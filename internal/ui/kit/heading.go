@@ -61,7 +61,7 @@ func ProjectHeading(name, path, branch string, w int) []TreeLine {
 		out = append(out, TreeLine{Styled: StyleDim.Render(" " + d), Plain: " " + d})
 	}
 	if branch != "" {
-		b := text.Fit(branch, w-2)
+		b := text.FitMiddle(branch, w-2)
 		out = append(out, TreeLine{Styled: " " + StyleAccent.Render(b), Plain: " " + b})
 	}
 	return out
@@ -81,7 +81,7 @@ func HeadLabel(h git.Head, ok bool) string {
 
 // ListWidth is the projects column's width in a tab cols wide, the same in
 // every tab so the column does not jump when the tab changes.
-func ListWidth(cols int) int { return Clamp(cols*28/100, 32, 40) }
+func ListWidth(cols int) int { return Clamp(cols*32/100, 36, 56) }
 
 // dirRows breaks a path into rows of w columns, character by character —
 // paths have no spaces to break at — keeping the last rows when it is longer.

@@ -264,8 +264,9 @@ func TestProjectsColumnWidth(t *testing.T) {
 	d.quitApp()
 }
 
-// A branch and a session name too long for their row wrap to
-// a second row in the same bold as the first, in every tab's project list.
+// A session name too long for its row wraps to a second row in the same
+// bold as the first; a branch never wraps: it is cut in its middle, its
+// last part kept, in the headings and in the Git tab's branch row.
 func TestLongTitles(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -277,9 +278,17 @@ func TestLongTitles(t *testing.T) {
 	gitIn(t, dir, "commit", "-qm", "first")
 
 	d := start(t, e, 120, 36)
-	d.expect("○ TASK-7130 the core", "data redesign follow")
+	d.expect("○ TASK-7130 the core data", "redesign follow up", "⎇ core-data-redesign/…/TASK-7130")
 	d.tab(2)
-	d.expect("● core-data-redesign/", "feature/TASK-7130")
+	d.expect("…/TASK-7130")
+	for _, r := range strings.Split(d.screen(), "\n") {
+		if strings.Contains(r, "● core-data") && !strings.Contains(r, "…/TASK-7130") {
+			t.Errorf("the branch row wrapped or lost its end: %q", r)
+		}
+		if strings.Contains(r, "feature/TASK-7130") && !strings.Contains(r, "core-data") {
+			t.Errorf("the branch took a second row: %q", r)
+		}
+	}
 	d.quitApp()
 }
 

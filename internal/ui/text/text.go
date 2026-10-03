@@ -33,6 +33,33 @@ func Fit(s string, n int) string {
 	return out + "…"
 }
 
+// FitMiddle cuts to n display columns with an ellipsis in the middle, the
+// end kept: a branch's last part — a ticket, a feature — is what tells it
+// from its neighbours, so the part after the last / stays whole when it
+// leaves room for at least one character before the ellipsis.
+func FitMiddle(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	if Width(s) <= n {
+		return s
+	}
+	if n == 1 {
+		return "…"
+	}
+	tail := ""
+	if i := strings.LastIndex(s, "/"); i >= 0 && Width(s[i:]) <= n-2 {
+		tail = s[i:]
+	} else {
+		// No such part, or too long: the end gets half the room.
+		rs := []rune(s)
+		for j := len(rs) - 1; j >= 0 && Width(string(rs[j:])) <= (n-1)/2; j-- {
+			tail = string(rs[j:])
+		}
+	}
+	return FitExact(s, n-1-Width(tail)) + "…" + tail
+}
+
 // FitExact cuts to n columns without an ellipsis, for terminal rows that are
 // already the right width and must not gain a character.
 func FitExact(s string, n int) string {

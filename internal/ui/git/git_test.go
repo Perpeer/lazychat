@@ -102,20 +102,20 @@ func TestFileHeadings(t *testing.T) {
 	}
 }
 
-// A branch too long for its row wraps to two rows under the connector, both
-// bold, and the counts come after.
-func TestBranchWraps(t *testing.T) {
+// A branch too long for its row stays on one row, cut in its middle with
+// its last part kept, and the counts come after.
+func TestBranchOneRow(t *testing.T) {
 	p := &project{}
-	p.st.Branch = "core-data-redesign/feature/TASK-7130"
+	p.st.Branch = "garden-shed-paints/feature/blue-door"
 	rows := branchEntry(p, 30, true)
-	if len(rows) != 3 {
+	if len(rows) != 2 {
 		t.Fatalf("%d rows: %+v", len(rows), rows)
 	}
-	if rows[0].Plain != "● core-data-redesign/" || strings.TrimSpace(rows[1].Plain) != "feature/TASK-7130" {
-		t.Errorf("branch rows %q / %q", rows[0].Plain, rows[1].Plain)
+	if rows[0].Plain != "● garden-shed…/blue-door" || text.Width(rows[0].Prefix+rows[0].Plain) > 30 {
+		t.Errorf("branch row %q", rows[0].Prefix+rows[0].Plain)
 	}
-	if !strings.Contains(rows[2].Plain, "clean") {
-		t.Errorf("the counts row %q", rows[2].Plain)
+	if !strings.Contains(rows[1].Plain, "clean") {
+		t.Errorf("the counts row %q", rows[1].Plain)
 	}
 }
 

@@ -81,3 +81,26 @@ func TestWrapTitle(t *testing.T) {
 		}
 	}
 }
+
+// A long branch is cut in its middle: the part after the last / kept whole
+// when it leaves room, else the end gets half; it never passes n.
+func TestFitMiddle(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		n    int
+		want string
+	}{
+		{"main", 10, "main"},
+		{"garden-shed-paints/feature/blue-door", 20, "garden-sh…/blue-door"},
+		{"garden-shed-paints/feature/blue-door", 12, "g…/blue-door"},
+		{"averyveryverylongbranchname", 11, "avery…hname"},
+		{"abc/averyveryverylongtail", 8, "abc/…ail"},
+		{"x", 1, "x"},
+		{"xyz", 1, "…"},
+	} {
+		got := FitMiddle(c.in, c.n)
+		if got != c.want || Width(got) > c.n {
+			t.Errorf("FitMiddle(%q, %d) = %q (%d wide), want %q", c.in, c.n, got, Width(got), c.want)
+		}
+	}
+}

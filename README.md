@@ -323,18 +323,21 @@ its footer belong to the selected one, and only the window that has the
 keys is framed in the accent. Every tab that lists the projects shows them
 in the same order and keeps one choice between them: the project the
 cursor was last on, in any tab, is the one the next tab comes into view on.
-The projects column is as wide in Chat, Git and Terminal (28 % of the tab,
-32 to 40 columns), so it stays put when the tab changes.
+The projects column is as wide in Chat, Git and Terminal (32 % of the tab,
+36 to 56 columns), so it stays put when the tab changes.
 
 A project's heading is the same in every tab: its name in bold (wrapped to
 two rows), its folder dim under it (wrapped to three rows, a longer one
 keeping its tail) and the branch the folder is on in the accent: `⎇ main`, `⑂ feature` when the folder is a worktree, nothing
-outside a repository. It is read from the HEAD file at most every three
+outside a repository. A branch always takes one row: one too long is cut
+in its middle, its last part kept — `core-data-redesign/…/TASK-7130` — since
+that part tells branches apart. It is read from the HEAD file at most every three
 seconds, so a switch made elsewhere shows. What hangs under a project — a
 session, a shell, a branch — hangs on `├─` `└─` connectors, with a row
 above each that only the tree's `│` runs through, so entries tell apart at
-a glance. A long name keeps its bold on every row it wraps to; one without
-spaces (a branch, a path) breaks after `/ - _ .`. A project with nothing
+a glance. A long session name keeps its bold on every row it wraps to; one
+without spaces breaks after `/ - _ .`. A branch, in the Git tab too, stays
+on one row, cut in its middle as above. A project with nothing
 under it has one row, `no sessions yet` / `no terminals yet`, to stand on;
 `Enter` or `n` there makes the first. Adding a project starts nothing in
 it, in any tab.
