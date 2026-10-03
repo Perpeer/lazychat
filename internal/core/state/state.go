@@ -41,7 +41,8 @@ type Session struct {
 	Started  time.Time `json:"started"`
 	LastUsed time.Time `json:"last_used"`
 	// Running is set while lazychat runs the session and kept when
-	// lazychat quits with it running, so the next start resumes it.
+	// lazychat ends with it running for any reason but the quit question,
+	// so the next start resumes it.
 	Running bool `json:"running,omitempty"`
 }
 
@@ -310,6 +311,22 @@ func (s *Store) SetRunning(key string, on bool) error {
 		}
 	}
 	return fmt.Errorf("no session with key %s", key)
+}
+
+// ClearRunning takes every session's running mark away at once, so the
+// next start resumes none: a deliberate quit closes them all.
+func (s *Store) ClearRunning() error {
+	changed := false
+	for i := range s.Sessions {
+		if s.Sessions[i].Running {
+			s.Sessions[i].Running = false
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	return s.Save()
 }
 
 // ForgetID drops the conversation id a session was recorded with, so the

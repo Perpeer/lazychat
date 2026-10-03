@@ -309,3 +309,28 @@ func TestToolChoice(t *testing.T) {
 		})
 	}
 }
+
+// Stopping every session because lazychat leaves without the quit
+// question — the window closed, another workspace opened — keeps their
+// running marks, so the next start brings them back.
+func TestStopAllKeepsMarks(t *testing.T) {
+	a, h, p := setup(t)
+	a.NewSession(p.Name)
+	h.submit([]string{p.Name, "claude", "ivy"})
+	rec := a.core.Store.Sessions[0]
+	if !rec.Running {
+		t.Fatalf("ivy is not marked running: %+v", rec)
+	}
+	a.StopAll(2 * time.Second)
+	end := time.Now().Add(5 * time.Second)
+	for a.Live.Running(rec.Key) {
+		if time.Now().After(end) {
+			t.Fatal("ivy did not stop")
+		}
+		a.Reap()
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !a.core.Store.Sessions[0].Running {
+		t.Error("ivy lost its mark when lazychat left")
+	}
+}

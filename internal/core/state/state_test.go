@@ -229,3 +229,40 @@ func TestRenameSession(t *testing.T) {
 		t.Error("a missing session was renamed")
 	}
 }
+
+// A deliberate quit closes every session: no mark is left for the next
+// start, on disk too.
+func TestClearRunning(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	s, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AddProject(t.TempDir(), "demo"); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"ivy", "oak"} {
+		r, err := s.AddSession("claude", name, "demo", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.SetRunning(r.Key, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.ClearRunning(); err != nil {
+		t.Fatal(err)
+	}
+	again, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range again.Sessions {
+		if r.Running {
+			t.Errorf("%s still marked running", r.Name)
+		}
+	}
+	if len(again.Sessions) != 2 {
+		t.Errorf("sessions %v, want both kept", again.Sessions)
+	}
+}

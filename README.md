@@ -708,11 +708,14 @@ blinking block, a steady underline when the pane is not focused.
 lazychat records each session it starts or resumes in the workspace's
 state file: its name, project, tool, whether it runs, and, for claude, its
 session id, learned from `~/.claude/sessions/<pid>.json` once the process
-reports it. Sessions still running when lazychat quits — or when it opens
-another workspace — keep that mark, and the next start on the workspace
-resumes them as conversations: the screen and scrollback start afresh, a
-reply in progress at the quit was cut off, and one with nothing saved to
-resume is let go. Shells do not come back.
+reports it. Quitting through the quit question (`q`, or `Ctrl+C` on a list)
+closes every session: they stay in the list, not running, and the next start
+brings none back — `Enter` or `r` resumes one. Sessions still running when
+lazychat ends any other way — the terminal window closed, a crash — or when
+it opens another workspace keep that mark, and the next start on the
+workspace resumes them as conversations: the screen and scrollback start
+afresh, a reply in progress at the end was cut off, and one with nothing
+saved to resume is let go. Shells do not come back.
 Saved sessions to resume are read from Claude Code's own transcripts,
 `~/.claude/projects/<folder slug>/*.jsonl`; the `/rename` title is looked up
 in each file's head and tail, else the first prompt stands in.

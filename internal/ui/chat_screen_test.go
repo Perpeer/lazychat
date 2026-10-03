@@ -362,10 +362,10 @@ func TestOpenWithoutConversation(t *testing.T) {
 	d.quitApp()
 }
 
-// Sessions running when lazychat quit come back as conversations on the
-// next start: one with a saved conversation is resumed, one with none is
-// let go and no longer marked; a session still running at quit keeps its
-// mark for the start after.
+// Sessions running when lazychat last ended without the quit question come
+// back as conversations on the next start: one with a saved conversation is
+// resumed, one with none is let go and no longer marked. Quitting through the
+// question closes them: the start after brings none back.
 func TestResumeAtStart(t *testing.T) {
 	e, _ := seeded(t,
 		state.Session{Tool: "claude", Name: "ivy", ID: "aaaa1111-2222"},
@@ -395,8 +395,14 @@ func TestResumeAtStart(t *testing.T) {
 	}
 	d.quitApp()
 	for _, r := range d.sessions() {
-		if r.Name == "ivy" && !r.Running {
-			t.Errorf("ivy lost its mark when lazychat quit")
+		if r.Running {
+			t.Errorf("%s kept its mark through a deliberate quit", r.Name)
 		}
 	}
+	d = start(t, e, 120, 32)
+	d.expect("ivy", "idle")
+	if strings.Contains(d.screen(), "resumed") || strings.Contains(d.screen(), "args:--resume") {
+		t.Errorf("a session came back after a deliberate quit:\n%s", d.screen())
+	}
+	d.quitApp()
 }

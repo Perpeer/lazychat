@@ -240,14 +240,19 @@ func (a *App) running() int {
 }
 
 // Quit always asks, from every tab, so a stray q never closes lazychat; the
-// question names what runs, which ends with lazychat either way.
+// question names what runs, which ends with lazychat either way. A yes is a
+// deliberate quit: the sessions are closed, not brought back next start, while
+// an end without it (the window closed, a crash) still brings them back.
 func (a *App) Quit() tea.Cmd {
 	n := a.running()
 	question := "quit lazychat?"
 	if n > 0 {
-		question = fmt.Sprintf("stop %d running session(s) and quit? Their conversations are resumed when lazychat opens this workspace again.", n)
+		question = fmt.Sprintf("stop %d running session(s) and quit? They stay in the list; Enter or r resumes one.", n)
 	}
 	a.popups.Push(&kit.Confirm{Question: question, Yes: func() {
+		if err := a.core.Store.ClearRunning(); err != nil {
+			a.Note("quit: %v", err)
+		}
 		a.Queue(a.quitNow())
 	}})
 	return nil
