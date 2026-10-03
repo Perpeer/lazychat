@@ -301,3 +301,17 @@ func TestMascotTwoSessions(t *testing.T) {
 	d.holds(1200*time.Millisecond, "ivy, clicked, does not keep a steady ✓", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 	d.quitApp()
 }
+
+// While a session asks, the mascot's keyboard row is all "?", under the
+// "?" on its top edge; once the question is gone, so is that row.
+func TestMascotAskKeyboard(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	d := start(t, e, 120, 32)
+	d.session("oak", "ask")
+	d.tab(3)
+	d.until("no ? keyboard while oak asks", func() bool {
+		rows := strings.Split(d.mascot(), "\n")
+		return len(rows) >= 4 && strings.Contains(rows[0], "?") && strings.Contains(rows[3], "[????]")
+	})
+	d.quitApp()
+}

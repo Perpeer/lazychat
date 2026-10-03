@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Takes back what install.sh and lazychat put on this Mac.
-#   ./uninstall.sh            the program, Lazy (the menu bar mascot) and its
+#   ./uninstall.sh            the program, Lazychat.app (Lazy in the menu bar) and its
 #                             permissions, the iTerm keys, Warp's launch configuration
 #   ./uninstall.sh --purge    also lazychat's data, ~/.lazychat, to the Trash
 #   ./uninstall.sh --dry-run  say what would go, change nothing
@@ -59,12 +59,16 @@ gone() {
 
 gone "program" "$PREFIX/lazychat"
 
-# Lazy, wherever install.sh put it, and LazychatBar, its name before.
+# Lazychat.app, wherever install.sh put it, and Lazy and LazychatBar, its
+# names before.
 apps="${LAZYCHAT_APPLICATIONS:-/Applications}"
 if [ "$darwin" = 1 ] && [ -z "$testing" ] && [ "$dry" = 0 ]; then
+  pkill -x Lazychat 2>/dev/null || true
   pkill -x Lazy 2>/dev/null || true
   pkill -x LazychatBar 2>/dev/null || true
 fi
+gone "menu bar" "$apps/Lazychat.app"
+gone "menu bar" "$HOME/Applications/Lazychat.app"
 gone "menu bar" "$apps/Lazy.app"
 gone "menu bar" "$HOME/Applications/Lazy.app"
 gone "menu bar" "$HOME/Applications/LazychatBar.app"
@@ -154,5 +158,5 @@ elif [ -e "$data" ]; then
 fi
 
 echo "kept  untouched   your projects, Claude Code's and Codex's files, and Go"
-[ "$darwin" = 1 ] && echo "note  login item  one you added for Lazy in System Settings › General › Login Items is removed there"
+[ "$darwin" = 1 ] && echo "note  login item  one you added for Lazychat in System Settings › General › Login Items is removed there"
 exit 0

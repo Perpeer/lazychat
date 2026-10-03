@@ -1,4 +1,4 @@
-// Lazy is lazychat's mascot, here in the macOS menu bar. Every running
+// Lazychat.app puts Lazy, lazychat's mascot, in the macOS menu bar. Every running
 // lazychat writes ~/.lazychat/state/<pid>.json with its sessions' states;
 // this app reads that folder, shows the mascot's news as its own face,
 // lists the sessions, and brings a lazychat's terminal window forward on a
@@ -164,7 +164,7 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             menu.addItem(.separator())
         }
-        menu.addItem(withTitle: "Quit Lazy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit Lazychat Menu Bar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
     @objc func open(_ sender: NSMenuItem) { focus(pid: Int32(sender.tag)) }

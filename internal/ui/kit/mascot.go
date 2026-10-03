@@ -139,6 +139,12 @@ func keyboard(lit, n int) string {
 }
 
 // MascotTypingLine is the typing mascot in one row: its eyes and two keys.
+// AskKeyboard is the keyboard row under the asking mascot: every key a
+// "?", so the question shows on its keyboard as well as on its top edge.
+func AskKeyboard(n int) string {
+	return StyleDim.Render("[") + StyleAccent.Render(strings.Repeat("?", n)) + StyleDim.Render("]")
+}
+
 func MascotTypingLine(frame, w int) string {
 	eyes := StyleBusy.Render("(" + Working.eyes(frame) + ")")
 	return eyes + keyboardBare(frame%2, max(0, w-4))

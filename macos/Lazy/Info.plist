@@ -5,11 +5,11 @@
 	<key>CFBundleIdentifier</key>
 	<string>dev.lazychat.lazy</string>
 	<key>CFBundleName</key>
-	<string>Lazy</string>
+	<string>Lazychat</string>
 	<key>CFBundleDisplayName</key>
-	<string>Lazy</string>
+	<string>Lazychat</string>
 	<key>CFBundleExecutable</key>
-	<string>Lazy</string>
+	<string>Lazychat</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -23,6 +23,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Lazy brings the terminal window of the lazychat you clicked to the front, or opens lazychat in the terminal you pick.</string>
+	<string>Lazychat brings the terminal window of the lazychat you clicked to the front, or opens lazychat in the terminal you pick.</string>
 </dict>
 </plist>

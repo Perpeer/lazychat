@@ -3,7 +3,7 @@
 #   ./install.sh               build, or report SAME when nothing changed
 #   ./install.sh --iterm-keys  also make iTerm send ⌘1–⌘4 as lazychat's tab keys
 #   ./install.sh --uninstall   take it all back: runs ./uninstall.sh (--purge, --dry-run)
-# On macOS with swiftc it also builds Lazy, the menu bar mascot, into /Applications.
+# On macOS with swiftc it also builds Lazychat.app, Lazy in the menu bar, into /Applications.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -69,7 +69,7 @@ else
   fi
 fi
 
-# Lazy, the mascot in the menu bar, on macOS with swiftc: built into
+# Lazychat.app, Lazy the mascot in the menu bar, on macOS with swiftc: built into
 # /Applications, where Finder, Launchpad and Spotlight show it and it can
 # be started by hand; into ~/Applications for a user who may not write
 # there. It is started again when it changed. Its bundle id stays the same,
@@ -77,18 +77,25 @@ fi
 if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
   apps="${LAZYCHAT_APPLICATIONS:-/Applications}"
   [ -w "$apps" ] || apps="$HOME/Applications"
-  bar="$apps/Lazy.app"
-  # The helper was LazychatBar.app in ~/Applications before it was Lazy;
-  # one there is taken away, with its permissions, so only Lazy is left.
+  bar="$apps/Lazychat.app"
+  # The helper was LazychatBar.app in ~/Applications, then Lazy.app; an
+  # old one is taken away so only Lazychat is left (LazychatBar's
+  # permissions too: it had another bundle id).
   old="$HOME/Applications/LazychatBar.app"
   if [ -e "$old" ]; then
     pkill -x LazychatBar 2>/dev/null || true
     rm -rf "$old"
     tccutil reset All dev.lazychat.bar >/dev/null 2>&1 || true
-    echo "ok    replaced    LazychatBar.app by Lazy.app; a Login Item you added for it is added again for Lazy"
+    echo "ok    replaced    LazychatBar.app by Lazychat.app; a Login Item you added for it is added again for Lazychat"
   fi
-  # One copy only: a Lazy in the other Applications folder goes.
-  for other in "/Applications/Lazy.app" "$HOME/Applications/Lazy.app"; do
+  for old in "/Applications/Lazy.app" "$HOME/Applications/Lazy.app"; do
+    [ -e "$old" ] && [ -w "$(dirname "$old")" ] || continue
+    pkill -x Lazy 2>/dev/null || true
+    rm -rf "$old"
+    echo "ok    replaced    Lazy.app by Lazychat.app; a Login Item you added for it is added again for Lazychat"
+  done
+  # One copy only: a Lazychat in the other Applications folder goes.
+  for other in "/Applications/Lazychat.app" "$HOME/Applications/Lazychat.app"; do
     [ "$other" != "$bar" ] && [ -e "$other" ] && [ -w "$(dirname "$other")" ] && rm -rf "$other"
   done
   # Built for macOS 13 and later, against an SDK no newer than this Mac's
@@ -106,26 +113,26 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
   # and the target — so a change to any of them rebuilds it.
   barsum="$( { cat macos/Lazy/*.swift macos/Lazy/Info.plist; echo "$sdk $target"; } | shasum | cut -c1-12)"
   if [ -f "$bar/Contents/Resources/source.sum" ] && [ "$(cat "$bar/Contents/Resources/source.sum")" = "$barsum" ]; then
-    echo "ok    up to date  Lazy, the menu bar mascot, at ${bar/#$HOME/~}"
+    echo "ok    up to date  Lazychat.app, Lazy in the menu bar, at ${bar/#$HOME/~}"
   else
     mkdir -p "$bar/Contents/MacOS" "$bar/Contents/Resources"
     # SDKROOT, not -sdk: the SDK version the linker writes into the app
     # comes from SDKROOT; -sdk alone still left the newer one there.
-    SDKROOT="${sdk:-${SDKROOT:-}}" swiftc -O -target "$target" -o "$bar/Contents/MacOS/Lazy" macos/Lazy/*.swift
+    SDKROOT="${sdk:-${SDKROOT:-}}" swiftc -O -target "$target" -o "$bar/Contents/MacOS/Lazychat" macos/Lazy/*.swift
     # install -m, not cp: a checkout's own modes (iCloud leaves some files
     # 600) must not reach the bundle, or Finder marks it as one it cannot open.
     install -m 644 macos/Lazy/Info.plist "$bar/Contents/Info.plist"
     # The app's icon is the mascot the helper draws, so it is one drawing
     # everywhere: rendered as an iconset, made an .icns by macOS's iconutil.
     iconset="$(mktemp -d)/AppIcon.iconset"
-    "$bar/Contents/MacOS/Lazy" --icon "$iconset"
+    "$bar/Contents/MacOS/Lazychat" --icon "$iconset"
     iconutil -c icns -o "$bar/Contents/Resources/AppIcon.icns" "$iconset"
     rm -rf "$(dirname "$iconset")"
     echo "$barsum" > "$bar/Contents/Resources/source.sum"
     codesign --force -s - "$bar" 2>/dev/null
-    pkill -x Lazy 2>/dev/null || true
+    pkill -x Lazychat 2>/dev/null || true
     open -g "$bar"
-    echo "ok    installed   Lazy, the menu bar mascot, at ${bar/#$HOME/~}"
+    echo "ok    installed   Lazychat.app, Lazy in the menu bar, at ${bar/#$HOME/~}"
     echo "      note        start it from Applications; Settings › menu bar hides it; System Settings › General › Login Items starts it at login"
   fi
   # On every install, built now or not: every file readable by all, or

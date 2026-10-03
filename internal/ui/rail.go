@@ -70,7 +70,7 @@ func (a *App) rail(h int) []string {
 		var face []string
 		switch {
 		case free >= mascotRows && asking:
-			face = append(kit.MascotAsk(a.anim, railW), blank)
+			face = append(kit.MascotAsk(a.anim, railW), kit.AskKeyboard(railInner))
 		case free >= mascotRows && (a.celebrating(st) || st.Cheer):
 			face = append(kit.MascotParty(a.anim, railW), blank)
 		case free >= mascotRows && st.Mood == kit.Working:

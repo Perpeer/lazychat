@@ -306,7 +306,7 @@ func askWorkspace(reg *workspace.Registry, trash, note string, restore *workspac
 	}
 }
 
-// startMenuBar starts Lazy, the menu bar mascot install.sh built, when it
+// startMenuBar starts Lazychat.app, Lazy in the menu bar, install.sh built, when it
 // is there and not running: open hands an app already running nothing, and
 // -g leaves it in the background.
 func startMenuBar() {
@@ -319,10 +319,10 @@ func startMenuBar() {
 	}
 }
 
-// menuBarApp is where install.sh put Lazy.app: /Applications, or the
+// menuBarApp is where install.sh put Lazychat.app: /Applications, or the
 // user's own Applications for one who may not write there; "" for neither.
 func menuBarApp(apps, home string) string {
-	for _, bar := range []string{filepath.Join(apps, "Lazy.app"), filepath.Join(home, "Applications", "Lazy.app")} {
+	for _, bar := range []string{filepath.Join(apps, "Lazychat.app"), filepath.Join(home, "Applications", "Lazychat.app")} {
 		if _, err := os.Stat(bar); err == nil {
 			return bar
 		}

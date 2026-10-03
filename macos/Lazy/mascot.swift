@@ -82,6 +82,11 @@ func drawMascot(_ m: Mood, frame f: Int, badges: Int, in rect: NSRect, ink: NSCo
     case .asks: // a ? by the top edge's right corner, bobbing
         let q = NSAttributedString(string: "?", attributes: [.font: NSFont.boldSystemFont(ofSize: 7 * u), .foregroundColor: ink])
         q.draw(at: NSPoint(x: rect.minX + (16.8 - 1.8) * u, y: rect.minY + (f % 2 == 0 ? 12.4 : 13.2) * u))
+        // Its keyboard row is all "?", as the app's is while a session asks.
+        let key = NSAttributedString(string: "?", attributes: [.font: NSFont.boldSystemFont(ofSize: 3.8 * u), .foregroundColor: ink])
+        for k in 0..<4 {
+            key.draw(at: NSPoint(x: rect.minX + (5.2 + CGFloat(k) * 3.8) * u, y: rect.minY + -0.2 * u))
+        }
     case .rest:
         break
     }

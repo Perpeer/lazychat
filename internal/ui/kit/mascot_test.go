@@ -134,3 +134,12 @@ func TestMascotAsk(t *testing.T) {
 		t.Errorf("badges with a question: %q", top)
 	}
 }
+
+// Under the asking mascot every key of its keyboard is a "?", the row as
+// wide as the face.
+func TestAskKeyboard(t *testing.T) {
+	row := AskKeyboard(4)
+	if got := ansi.Strip(row); got != "[????]" || text.Width(row) != 6 {
+		t.Errorf("the asking keyboard %q", got)
+	}
+}

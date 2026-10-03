@@ -154,7 +154,7 @@ says when a running lazychat is still on the previous build.
 `PREFIX=<dir>` installs elsewhere.
 
 On macOS with `swiftc` (Xcode or its Command Line Tools) it also builds
-Lazy, the mascot in the menu bar, as `/Applications/Lazy.app` (see Menu
+`/Applications/Lazychat.app`, which puts Lazy, the mascot, in the menu bar (see Menu
 bar) — so Finder, Launchpad and Spotlight show it and it starts from there
 — with the mascot as its icon; a user who may not write `/Applications`
 gets it in `~/Applications`. It is signed for this Mac only (`codesign -s -`, no
@@ -184,9 +184,9 @@ the hash.
 back what installing and running put on the Mac, one line per piece:
 
 - `$PREFIX/lazychat` (by default `~/.local/bin/lazychat`);
-- `Lazy.app` from `/Applications` (or `~/Applications`), quit first, and
+- `Lazychat.app` from `/Applications` (or `~/Applications`), quit first, and
   its macOS permissions (`tccutil reset All dev.lazychat.lazy`); an old
-  `~/Applications/LazychatBar.app` too;
+  `Lazy.app` or `~/Applications/LazychatBar.app` too;
 - the iTerm keys `--iterm-keys` added — only `⌘1`–`⌘4`, and only those that
   still send lazychat's tab keys; quit iTerm first, as for installing them;
 - Warp's launch configuration, `~/.warp/launch_configurations/lazychat.yaml`;
@@ -545,7 +545,7 @@ tabs never move; on a short terminal (80×24) it shrinks to one.
 ╭────╮  ╭───●╮  ╭──●●╮  ╭─●●●╮  ╭─✦──╮  ╭───?╮
 │ ^^ │  │ •◦ │  │ •◦ │  │ •◦ │  │✦^^✦│  │ oO │
 ╰────╯  ╰─┬┬─╯  ╰─┬┬─╯  ╰─┬┬─╯  ╰────╯  ╰────╯
-        [▫▫▪▫]  [▪▫▫▫]  [▫▪▫▫]
+        [▫▫▪▫]  [▪▫▫▫]  [▫▪▫▫]                  [????]
  rest   one at  two at  three or done:   a question
         work    work    more     a party
 ```
@@ -565,7 +565,7 @@ tabs never move; on a short terminal (80×24) it shrinks to one.
   waits. When the last one finishes the party plays until a new prompt.
 - **a question** when a session asks: a `?` on its top edge by the right
   corner — every mark on that edge sits at the right, the badges left of
-  the `?` — and its eyes glance about, and the session blinks in Chat's list, `?` before
+  the `?` — every key on its keyboard a `?`, and its eyes glance about, and the session blinks in Chat's list, `?` before
   its name, until the question is answered — the session works again — or
   leaves its screen.
 
@@ -608,14 +608,15 @@ to bring them back.
 
 ## Menu bar
 
-`Lazy.app`, which `install.sh` builds into `/Applications` on macOS, puts
-Lazy in the menu bar as an icon, for every lazychat open at once, and moves as the
+`Lazychat.app`, which `install.sh` builds into `/Applications` on macOS, puts
+Lazy, the mascot, in the menu bar as an icon, for every lazychat open at once, and moves as the
 app's mascot does, by the same rules: at rest, typing on its keyboard while
 a session works (one dot on its top edge per session at work, from the
 right corner, three at most), a star running round it when one is done and
 not looked at while nothing works — and for two seconds when one finishes
 while others still work — a `?` by its top edge's right corner
-while one asks, the badges left of it. It is drawn like the system's own icons, in the menu bar's
+while one asks, the badges left of it and every key on its keyboard a `?`.
+Its menu's last line is "Quit Lazychat Menu Bar", which quits only the icon. It is drawn like the system's own icons, in the menu bar's
 colour, light or dark, and it moves on a 150 ms beat only while there is
 news. A click on it brings a lazychat's terminal window and tab to the
 front at once: the one with a question up, else one with a finished session
@@ -636,19 +637,19 @@ has none, gets a launch configuration at
 `warp://launch/lazychat.yaml`; the others are started with `open -na <app>
 --args …` running lazychat in your login shell. The window runs
 `~/.local/bin/lazychat` when it is there (`LAZYCHAT_BIN` names another), so
-a terminal whose PATH lacks `~/.local/bin` still finds it. `Lazy
---terminals` lists what the menu would offer, and `Lazy --open
+a terminal whose PATH lacks `~/.local/bin` still finds it. `Lazychat
+--terminals` lists what the menu would offer, and `Lazychat --open
 <name>` opens lazychat in one as a click does.
 
 The mascot is drawn once, in code (`macos/Lazy/mascot.swift`): the
 menu bar draws its frames live, and `install.sh` renders the app's icon
-from the same drawing (`Lazy --icon`, then `iconutil`), so Finder,
-System Settings and macOS's dialogs show the same face. `Lazy
+from the same drawing (`Lazychat --icon`, then `iconutil`), so Finder,
+System Settings and macOS's dialogs show the same face. `Lazychat
 --frames <dir>` writes every frame as a PNG to look at.
 
 A mascot that does not move is a lazychat that writes nothing: one started
 before the menu bar was installed keeps running its old build, so quit it
-and start it again. `/Applications/Lazy.app/Contents/MacOS/Lazy
+and start it again. `/Applications/Lazychat.app/Contents/MacOS/Lazychat
 --status` says what the menu bar would show now and every lazychat it sees,
 with its sessions' states.
 
@@ -731,8 +732,8 @@ internal/ui/vm            shared plain-Go state: the list cursor
 internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
 internal/core             agent, api, files, git, history, keylayout, presence, settings, state, workspace — no terminal packages; api runs no subprocess
-macos/Lazy                Lazy, the menu bar mascot, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal
-assets                    the mascot as images: icon-1024.png (`Lazy --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
+macos/Lazy                Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal
+assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
 ```
 
 A tab is `<tab>.go` (its struct, `kit.Tab`), `update.go` (keys, mouse and
