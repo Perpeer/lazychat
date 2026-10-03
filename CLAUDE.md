@@ -5,6 +5,19 @@ keys, the code map — and this file only says how to change the code
 without breaking it. Read the README's `## Code` section before a
 structural change.
 
+## Public repository
+
+This repository is public. Nothing from the machine it is worked on goes
+into it — not into files, tests, examples, comments, commit messages or
+commit metadata: no project, workspace, session or branch names, ticket
+keys, paths, user names, e-mail addresses or terminal setups seen there,
+not even as a test fixture. Make examples up, and make them look like
+nothing real (`garden-shed-paints/feature/blue-door`). Commits use the
+repository's own `user.name` and `user.email` (`git config --local`),
+never a machine's global identity; check `git log -1 --format='%an <%ae>'`
+before a push. Something found later is removed from the history too,
+before it is pushed.
+
 ## Layers
 
 Each imports only what is below it; the layers rule of `./check.sh`

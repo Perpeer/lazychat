@@ -90,9 +90,6 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 	if t.draft != nil && t.draft(s) {
 		styled, plain = styled+kit.StyleAccent.Render(" ✎"), plain+" ✎"
 	}
-	if s.Key == t.tree.Shown {
-		styled, plain = styled+kit.StyleDim.Render(" •"), plain+" •"
-	}
 	return append(out, kit.TreeLine{Prefix: rest, Styled: "  " + kit.ToolBadge(tool) + styled, Plain: "  " + tool + plain})
 }
 

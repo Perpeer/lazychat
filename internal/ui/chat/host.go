@@ -61,7 +61,6 @@ func (c *Chat) Show(key string, s *term.Session) {
 func (c *Chat) Hide(key string) {
 	if c.pane.Key == key {
 		c.pane.Clear()
-		c.tree.Shown = ""
 	}
 }
 
@@ -84,7 +83,6 @@ func (c *Chat) Later(f func()) {
 func (c *Chat) point(key string, s *term.Session) {
 	cols, rows := c.PaneSize()
 	c.pane.Point(key, s, cols, rows)
-	c.tree.Shown = key
 }
 
 // dirValue is a directory as the path field shows it: ~ for home and a

@@ -14,9 +14,8 @@ import (
 type Tree struct {
 	vm.List // the cursor, an index into Rows()
 	Store   *state.Store
-	Shown   string // key of the session the pane shows
-	Moving  bool   // move mode: the row under the cursor is picked up
-	Whole   bool   // in move mode, the cursor's project is carried, not its row
+	Moving  bool // move mode: the row under the cursor is picked up
+	Whole   bool // in move mode, the cursor's project is carried, not its row
 }
 
 // Row is one entry: a project's heading, the empty row of a project with

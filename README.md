@@ -288,7 +288,7 @@ Nothing lazychat does leaves a workspace half written or written over:
       │ ⎇ main                           ││ …                                                        │
 ╔════╗│   │                              ││                                                          │
 ║chat║│   ├─ ◐ fix-12 search box         ││                                                          │
-╚════╝│   │    claude · ◷ 42s •          ││                                                          │
+╚════╝│   │    claude · ◷ 42s            ││                                                          │
 ┌────┐│   │                              ││                                                          │
 │git ││   └─ ○ fix-8 settings page       ││ ❯ hello▏                                                 │
 └────┘│        claude · 3m 18s           ││                                                          │
@@ -388,7 +388,7 @@ selection replaces it; `Tab` types two spaces.
 
 The left side is one tree of the projects, each with every session
 lazychat started or resumed in it, remembered across runs: a glyph
-(spinner running, `○` saved, `•` the one shown), the name wrapped to three
+(spinner running, `○` saved), the name wrapped to three
 rows, and under it its tool, in its colour, and its turn's time in two
 units: from the prompt that set it working, `◷ 42s` counting while it works,
 `⏸ 1m 05s` held in the accent while a question waits for you and going on

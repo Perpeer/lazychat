@@ -230,7 +230,8 @@ func TestCodexSession(t *testing.T) {
 	d.typ("cx")
 	d.key("enter")
 	d.expect("FAKE CODEX READY in")
-	d.until("no codex row under the session", func() bool { return regexp.MustCompile(`│ +codex( •)? +│`).MatchString(d.screen()) })
+	// The row under the name is the tool alone: no mark for the shown one.
+	d.until("no codex row under the session", func() bool { return regexp.MustCompile(`│ +codex +│`).MatchString(d.screen()) })
 	if s := d.sessions(); len(s) != 1 || s[0].Tool != "codex" {
 		t.Errorf("records %+v, want one of codex", s)
 	}
