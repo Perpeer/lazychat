@@ -95,8 +95,8 @@ func TestStatuslinePiece(t *testing.T) {
 	}
 }
 
-// The row puts the session's fields and the workspace's each in brackets,
-// then the rest, then the plan's limits in brackets of their own; fields
+// The row puts the session's fields, the workspace's and the plan's limits
+// each in brackets, side by side, then the rest; fields
 // dropped to fit go from inside their group, and a group left empty is not
 // drawn.
 func TestStatusLineRow(t *testing.T) {
@@ -120,15 +120,30 @@ func TestStatusLineRow(t *testing.T) {
 	}
 	const base = `"model":{"display_name":"Opus 5.5"},"effort":{"level":"medium"},"workspace":{"current_dir":"/x/lazychat","git_worktree":"main"},"context_window":{"used_percentage":12,"context_window_size":200000},"cost":{"total_cost_usd":0.42},"rate_limits":{"five_hour":{"used_percentage":13}}`
 	for _, c := range []struct{ name, json, cols, want string }{
-		{"all", `{` + base + `,"session_name":"dev"}`, "140", "[Opus 5.5 · medium · dev] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · [session 13%]"},
-		{"no session name", `{` + base + `}`, "140", "[Opus 5.5 · medium] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · [session 13%]"},
-		{"both limits", `{` + strings.Replace(base, `"rate_limits":{"five_hour":{"used_percentage":13}}`, `"rate_limits":{"five_hour":{"used_percentage":81},"seven_day":{"used_percentage":46}}`, 1) + `}`, "140", "[Opus 5.5 · medium] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · [session 81% · week 46%]"},
-		{"no limits yet", `{` + strings.Replace(base, `,"rate_limits":{"five_hour":{"used_percentage":13}}`, ``, 1) + `}`, "140", "[Opus 5.5 · medium] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42"},
-		{"narrow", `{` + base + `,"session_name":"dev"}`, "60", "[Opus 5.5] [main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12% · [session 13%]"},
+		{"all", `{` + base + `,"session_name":"dev"}`, "140", "[Opus 5.5 · medium · dev] [lazychat · ⑂ main] [session 13%] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42"},
+		{"no session name", `{` + base + `}`, "140", "[Opus 5.5 · medium] [lazychat · ⑂ main] [session 13%] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42"},
+		{"both limits", `{` + strings.Replace(base, `"rate_limits":{"five_hour":{"used_percentage":13}}`, `"rate_limits":{"five_hour":{"used_percentage":81},"seven_day":{"used_percentage":46}}`, 1) + `}`, "140", "[Opus 5.5 · medium] [lazychat · ⑂ main] [session 81% · week 46%] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42"},
+		{"no limits yet", `{` + strings.Replace(base, `,"rate_limits":{"five_hour":{"used_percentage":13}}`, ``, 1) + `}`, "140", "[Opus 5.5 · medium] [lazychat · ⑂ main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42"},
+		{"narrow", `{` + base + `,"session_name":"dev"}`, "60", "[Opus 5.5] [⑂ main] [session 13%] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%"},
 		{"no workspace", `{"model":{"display_name":"Opus 5.5"},"cost":{"total_cost_usd":1}}`, "140", "[Opus 5.5] · cost $1.00"},
 	} {
 		if got := row(c.json, c.cols); got != c.want {
 			t.Errorf("%s:\n got %q\nwant %q", c.name, got, c.want)
+		}
+	}
+	// The worktree's branch takes the colour lazychat passes, the session
+	// and the folder are bold, as lazychat's own lists draw them.
+	cmd := exec.Command("bash", "-c", string(statusLineScript))
+	cmd.Dir = t.TempDir()
+	cmd.Env = append(os.Environ(), "COLUMNS=140", "LAZYCHAT_WORKTREE=#010203", "LAZYCHAT_ACCENT=178")
+	cmd.Stdin = strings.NewReader(`{` + base + `,"session_name":"dev"}`)
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"\x1b[38;2;1;2;3m⑂ main", "\x1b[1mdev", "\x1b[1mlazychat"} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("no %q in %q", want, out)
 		}
 	}
 }

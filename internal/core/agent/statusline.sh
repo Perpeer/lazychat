@@ -8,15 +8,16 @@ export LC_NUMERIC=C
 # Segment order (as rendered, left to right). To reorder, move the matching
 # `sess+=`, `ws+=` or `seg+=` line inside the while loop; to remove one,
 # delete it. The session's fields (1-3), the workspace's (4-5) and the
-# plan's limits (10-11) are each drawn in a pair of brackets, so the groups
-# stand apart from the rest:
-#   [Opus 5.5 · medium · dev] [lazychat · main*] · ctx ▮▮▯▯ 12% · cost $0.42 · [session 81% ↻2h14m · week 46% ↻1d4h]
+# plan's limits (10-11) are each drawn in a pair of brackets, side by side,
+# so the groups stand apart from the rest:
+#   [Opus 5.5 · medium · dev] [lazychat · ⎇ main] [session 81% ↻2h14m · week 46% ↻1d4h] · ctx ▮▮▯▯ 12% · cost $0.42
 #
 #   1. model         .model.display_name
 #   2. effort        .fast_mode + .effort.level                  [show_effort]
 #   3. session       .session_name                               [show_session]
 #   4. directory     basename of .workspace.current_dir          [show_dir]
-#   5. branch        .workspace.git_worktree, else `git branch --show-current`; * = dirty
+#   5. branch        .workspace.git_worktree (⑂, worktree colour), else
+#                    `git branch --show-current` (⎇, accent colour)
 #   6. context       CELLS-wide bar + used % + window size       [show_win covers "/1M"]
 #   7. cost          .cost.total_cost_usd                        [show_cost]
 #   8. cache        share of current context served from cache   [show_cache]
@@ -39,7 +40,12 @@ export LC_NUMERIC=C
 #
 # Each segment is prefixed by a title from the L_* table below; set one to ""
 # to hide just that title. CELLS sets the bar width.
-# Colors: green < 60%, yellow < 85%, red above.
+# Colors: green < 60%, yellow < 85%, red above; the green is the bright one
+# (92), plain green read too faint on dark themes. The effort is green too. The session and the folder
+# are bold and the branch takes lazychat's accent (a worktree its worktree
+# colour), as lazychat's own lists draw them: lazychat passes its theme's
+# colours as LAZYCHAT_ACCENT and LAZYCHAT_WORKTREE (#rrggbb or a 256-colour
+# number); without them Gruvbox's, lazychat's start theme, stand in.
 
 case ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} in
   *UTF-8*|*utf8*) ;;
@@ -75,8 +81,19 @@ IFS=$'\x1f' read -r MODEL SESSION CWD WORKTREE EFFORT FAST CTX_PCT CTX_SIZE COST
 )"
 
 R=$'\033[0m'; DIM=$'\033[2m'; BOLD=$'\033[1m'
-GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RED=$'\033[31m'; CYAN=$'\033[36m'; MAGENTA=$'\033[35m'
+GREEN=$'\033[92m'; YELLOW=$'\033[33m'; RED=$'\033[31m'; CYAN=$'\033[36m'
 SEP="${DIM} · ${R}"
+
+fg() { # a #rrggbb or 256-colour number as a foreground escape
+  local c=$1
+  if [[ $c == \#?????? ]]; then
+    printf '\033[38;2;%d;%d;%dm' $((16#${c:1:2})) $((16#${c:3:2})) $((16#${c:5:2}))
+  elif [[ $c =~ ^[0-9]+$ ]]; then
+    printf '\033[38;5;%sm' "$c"
+  fi
+}
+ACCENT=$(fg "${LAZYCHAT_ACCENT:-#fabd2f}")
+WTREE=$(fg "${LAZYCHAT_WORKTREE:-#83a598}")
 
 # Segment titles. Set any to "" to render that segment without a title.
 L_MODEL=""       L_SESSION=""  L_GIT=""      L_DIR=""      L_EFFORT=""        L_CTX="ctx"
@@ -144,18 +161,20 @@ drop_next() {
 
 branch=$WORKTREE
 [[ -z $branch && -n $CWD ]] && branch=$(git -C "$CWD" branch --show-current 2>/dev/null)
-dirty=""
-[[ -n $branch && -n $(git -C "$CWD" status --porcelain 2>/dev/null | head -1) ]] && dirty="${YELLOW}*${R}"
 
 while :; do
   sess=() ws=() seg=() lim=()
   [[ -n $MODEL ]] && sess+=("$(lbl "$L_MODEL")${BOLD}${CYAN}${MODEL}${R}")
   label=$EFFORT
   [[ -n $FAST ]] && label="fast${label:+ · $label}"
-  (( show_effort )) && [[ -n $label ]] && sess+=("$(lbl "$L_EFFORT")${DIM}${label}${R}")
-  (( show_session )) && [[ -n $SESSION ]] && sess+=("$(lbl "$L_SESSION")${DIM}${SESSION}${R}")
-  (( show_dir )) && [[ -n $CWD ]] && ws+=("$(lbl "$L_DIR")${DIM}${CWD##*/}${R}")
-  [[ -n $branch ]] && ws+=("$(lbl "$L_GIT")${MAGENTA}${branch}${R}${dirty}")
+  (( show_effort )) && [[ -n $label ]] && sess+=("$(lbl "$L_EFFORT")${GREEN}${label}${R}")
+  (( show_session )) && [[ -n $SESSION ]] && sess+=("$(lbl "$L_SESSION")${BOLD}${SESSION}${R}")
+  (( show_dir )) && [[ -n $CWD ]] && ws+=("$(lbl "$L_DIR")${BOLD}${CWD##*/}${R}")
+  if [[ -n $WORKTREE ]]; then
+    ws+=("$(lbl "$L_GIT")${WTREE}⑂ ${branch}${R}")
+  elif [[ -n $branch ]]; then
+    ws+=("$(lbl "$L_GIT")${ACCENT}⎇ ${branch}${R}")
+  fi
 
   if [[ -n $CTX_PCT ]]; then
     win=""
@@ -194,11 +213,11 @@ while :; do
   line=""
   (( ${#sess[@]} )) && line=$(group "${sess[@]}")
   (( ${#ws[@]} )) && line="${line:+$line }$(group "${ws[@]}")"
+  (( ${#lim[@]} )) && line="${line:+$line }$(group "${lim[@]}")"
   if (( ${#seg[@]} )); then
     rest=$(printf "%s${SEP}" "${seg[@]}"); rest=${rest%"$SEP"}
     line="${line:+$line$SEP}$rest"
   fi
-  (( ${#lim[@]} )) && line="${line:+$line$SEP}$(group "${lim[@]}")"
   (( $(vis "$line") <= W )) && break
   drop_next || break
 done

@@ -24,8 +24,8 @@ paths:
 - The status line script (`agent/statusline.sh`) has two twins kept
   identical by hand: the user's `~/.claude/hooks/statusline.sh` and
   prompter's `claude/hooks/statusline.sh` (its example line names
-  `garden-shed`); change all three together. Groups in brackets: the
-  session, the workspace, and at the end the plan's limits
+  `garden-shed`); change all three together. Groups in brackets, side by
+  side before the context bar: the session, the workspace, the plan's limits
   `[session N% ↻… · week N% ↻…]`, which Claude Code sends only after a
   session's first reply (`rate_limits.five_hour` / `seven_day`).
 - Codex has no question signal and no hook: its status is working/done

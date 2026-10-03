@@ -1,6 +1,10 @@
 package kit
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"os"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // Theme is every colour lazychat draws with, in one place, so that a
 // settings screen can change them together. The styles the tabs use are
@@ -64,6 +68,10 @@ func CurrentTheme() Theme { return theme }
 // SetTheme draws everything from t from the next frame on.
 func SetTheme(t Theme) {
 	theme = t
+	// Sessions started from now on inherit these, so claude's status line
+	// draws a branch and a worktree in the colours lazychat draws them.
+	_ = os.Setenv("LAZYCHAT_ACCENT", string(t.Accent))
+	_ = os.Setenv("LAZYCHAT_WORKTREE", string(t.Worktree))
 	StyleAccent = lipgloss.NewStyle().Foreground(t.Accent)
 	StyleBusy = lipgloss.NewStyle().Foreground(t.Busy)
 	StyleWorktree = lipgloss.NewStyle().Foreground(t.Worktree).Bold(true)

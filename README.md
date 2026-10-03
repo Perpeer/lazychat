@@ -607,10 +607,15 @@ goes when lazychat quits, and one a crash left behind is cleared at the
 next start.
 
 The status line — model, effort, folder, branch, a context bar, cost,
-cache, time and, in brackets of their own at the end, the plan's limits as
-Claude desktop names them (`[session 81% ↻2h14m · week 46% ↻1d4h]`, the
+cache, time and, in brackets of their own beside the session's and the
+workspace's, before the context bar, the plan's limits as Claude desktop
+names them (`[session 81% ↻2h14m · week 46% ↻1d4h]`, the
 time left to each reset; Claude Code sends them from a session's first
-reply on, for plans that have them), dropping the optional ones to fit —
+reply on, for plans that have them), dropping the optional ones to fit;
+the session and the folder bold and the branch `⎇ main` in the theme's
+accent (a worktree `⑂` in its worktree colour), as lazychat's lists draw
+them — lazychat passes its colours to its sessions as `LAZYCHAT_ACCENT`
+and `LAZYCHAT_WORKTREE` — the effort green —
 is a script lazychat carries and writes to
 `~/.lazychat/claude/statusline.sh`. A session gets it only when none of
 the settings it reads names a status line: yours (`~/.claude/settings.json`,
