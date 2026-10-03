@@ -33,6 +33,10 @@ type Chat struct {
 	pane    kit.TermPane
 	capture *kit.Capture
 	watch   watcher // what each running session is doing, for the mascot
+	// drafts are the next prompts being written, per session; drafting is
+	// the draft box under the pane having the keys.
+	drafts   map[string]*kit.Editor
+	drafting bool
 }
 
 var _ kit.Tab = (*Chat)(nil)
@@ -48,6 +52,7 @@ func New(core *api.Core, screen kit.Screen) *Chat {
 		branch: func(path string) string { return kit.HeadLabel(core.Head(path)) },
 	}
 	c.list.turn = c.turnTime
+	c.list.draft = c.hasDraft
 	c.capture = kit.NewCapture(screen, &c.pane, c.paneRect)
 	c.capture.HeldNewline = true
 	// Leaving the terminal lands on what was just in use, and on a narrow
@@ -75,11 +80,20 @@ func (c *Chat) Status() string { return fmt.Sprintf("%d live", len(c.act.Live.Al
 func (c *Chat) Blur() {
 	c.tree.Moving = false
 	c.capture.Drop()
+	if c.drafting {
+		c.closeDraft()
+	}
 }
 
 func (c *Chat) Running() int { return len(c.act.Live.Alive()) }
 
-// Typing is false: a session's keys are captured raw, never through here.
-func (c *Chat) Typing() bool { return false }
+// Typing is the draft box having the keys; a session's keys are captured
+// raw, never through here.
+func (c *Chat) Typing() bool { return c.drafting }
 
-func (c *Chat) Stop(timeout time.Duration) { c.act.StopAll(timeout) }
+func (c *Chat) Stop(timeout time.Duration) {
+	if c.drafting {
+		c.saveDraft()
+	}
+	c.act.StopAll(timeout)
+}

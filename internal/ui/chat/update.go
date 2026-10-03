@@ -10,7 +10,7 @@ import (
 // the model, the pane and the actions.
 
 // hits are the zones the view marks.
-var hits = kit.Hits{Row: "row", Heading: "proj", Pane: "term", Panels: []string{"cpanel-1", "cpanel-2"}}
+var hits = kit.Hits{Row: "row", Heading: "proj", Pane: "term", Panels: []string{"cpanel-1", "cpanel-2", "cpanel-3"}}
 
 func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 	if c.capture.Update(msg) {
@@ -37,6 +37,8 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		c.act.Reap()
 	case kit.ProjectAction:
 		c.projectAction(msg)
+	case draftSentMsg:
+		c.draftSent(msg)
 	}
 	return nil
 }
@@ -64,6 +66,9 @@ func (c *Chat) projectAction(msg kit.ProjectAction) {
 }
 
 func (c *Chat) Key(msg tea.KeyMsg) tea.Cmd {
+	if c.drafting {
+		return c.draftKey(msg)
+	}
 	c.list.scroll.Follow()
 	return kit.Dispatch(c.bindings(), msg.String(), c)
 }
@@ -199,6 +204,10 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 		return nil
 	}
 	c.tree.Moving = false // a click puts a picked-up row down where it is
+	// A click outside the draft box puts the draft away, kept.
+	if c.drafting && !(hit.Kind == kit.HitPanel && hit.N == 3) {
+		c.closeDraft()
+	}
 	switch hit.Kind {
 	case kit.HitRow:
 		if c.onRow(hit.N) && !c.capture.Held() {

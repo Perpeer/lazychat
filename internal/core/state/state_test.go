@@ -266,3 +266,38 @@ func TestClearRunning(t *testing.T) {
 		t.Errorf("sessions %v, want both kept", again.Sessions)
 	}
 }
+
+// A session's draft is kept on disk until it is cleared.
+func TestDraft(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	s, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AddProject(t.TempDir(), "demo"); err != nil {
+		t.Fatal(err)
+	}
+	r, err := s.AddSession("claude", "ivy", "demo", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetDraft(r.Key, "next: write the tests\nthen the README"); err != nil {
+		t.Fatal(err)
+	}
+	again, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := again.Sessions[0].Draft; got != "next: write the tests\nthen the README" {
+		t.Fatalf("draft after a reload: %q", got)
+	}
+	if err := again.SetDraft(r.Key, ""); err != nil {
+		t.Fatal(err)
+	}
+	if third, _ := Load(path); third.Sessions[0].Draft != "" {
+		t.Errorf("draft not cleared: %q", third.Sessions[0].Draft)
+	}
+	if err := s.SetDraft("nope", "x"); err == nil {
+		t.Error("a draft for no session was taken")
+	}
+}

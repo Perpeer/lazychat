@@ -40,7 +40,7 @@ var (
 // session has the keys they never reach Bubble Tea, the input router hands
 // them to the session. They are filled in init because the help binding
 // reads them all.
-var sessionKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys []binding
+var sessionKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, draftKeys []binding
 
 func init() {
 	moves := []binding{keyUp, keyDown, keyFirst, keyLast, keyBack, keyPageUp, keyPageDn}
@@ -55,6 +55,8 @@ func init() {
 				c.act.RenameSession(r)
 			}
 		})},
+		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "draft"}, Help: "write the session's next prompt in a box under its pane while it works; an answer it asks for never takes its place, and it is kept across runs (✎ on the row)", Run: act(func(c *Chat) { c.openDraft() })},
+		{Keys: []string{"s"}, Hint: kit.Hint{Key: "s", Does: "send draft"}, Help: "paste the session's draft into it and press Enter, once it runs, does not work and asks nothing", Run: func(c *Chat) tea.Cmd { return c.sendDraft() }},
 		keyMove,
 		{Keys: []string{"x"}, Hint: kit.Hint{Key: "x", Does: "close"}, Help: "close the session, asked: a running one is stopped, the record leaves the tree; the transcript stays and r brings it back", Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {
@@ -71,6 +73,11 @@ func init() {
 	projectKeys = kit.ProjectRow((*Chat).cursorProject, func(c *Chat) { c.tree.Moving, c.tree.Whole = true, true })
 	emptyKeys = []binding{keyAdd, keyHelp, keyQuit, keyBack}
 	moveKeys = kit.ReorderKeys(func(c *Chat, d int) { c.carry(d) }, func(c *Chat) { c.tree.Moving = false })
+	draftKeys = []binding{
+		{Hint: kit.Hint{Key: "ctrl+s", Does: "send"}, Help: "paste the draft into the session and press Enter, once it runs, does not work and asks nothing; the draft is then cleared"},
+		{Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the tree, the draft kept; " + leaveLabel + " too, and a click outside the box"},
+		{Hint: kit.Hint{Key: "enter", Does: "new line"}, Help: "a new line in the draft; the arrows, Home, End, Option+←→ and a paste work as in any text field"},
+	}
 	termKeys = []binding{
 		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the tree, in every terminal; the session runs on, and Esc is claude's, which stops its answer"},
 		{Hint: kit.Hint{Key: "click", Does: "the tree: back there"}, Help: "a click beside the pane leaves the terminal and puts the cursor on the session clicked"},
@@ -84,6 +91,8 @@ func init() {
 func (c *Chat) tables() (top, below []binding) {
 	_, onSession := c.tree.Session()
 	switch {
+	case c.drafting:
+		return draftKeys, nil
 	case c.capture.Held():
 		return termKeys, nil
 	case c.tree.Moving:
@@ -138,6 +147,7 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
 	lines = append(lines, kit.HelpSection("Terminal", termKeys)...)
+	lines = append(lines, kit.HelpSection("Draft", draftKeys)...)
 	lines = append(lines, kit.HelpSection("Move mode", moveKeys)...)
 	lines = append(lines, kit.WorkspaceHelp...)
 	return strings.Join(append(lines, "Status     spinner running · ○ saved · • shown in the pane"), "\n")

@@ -53,6 +53,9 @@ if [ -n "$FAKE_CLAUDE_START_WORK" ]; then
   printf '\033]0;\342\234\263 fake\007'
 fi
 printf 'FAKE CLAUDE READY in %s args:%s\n' "$(pwd)" "$*"
+# FAKE_CLAUDE_BRACKETS=1 asks for bracketed paste, as claude does, and goes
+# on reading lines: a paste then Enter arrives as one line.
+[ -n "$FAKE_CLAUDE_BRACKETS" ] && printf '\033[?2004h'
 # FAKE_CLAUDE_PASTE=1 asks for bracketed paste, as claude does, and reports
 # what each read held: a paste (between ESC[200~ and ESC[201~) as pasted,
 # anything with a CR as submitted, so a test can tell the two apart.

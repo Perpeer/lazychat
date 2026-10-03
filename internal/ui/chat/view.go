@@ -33,9 +33,9 @@ func (c *Chat) narrow() bool { return c.rect.Cols < narrowWidth }
 func (c *Chat) paneRect() kit.Rect {
 	g := c.geometry()
 	if c.narrow() {
-		return kit.Rect{X0: c.rect.X0 + 1, Y0: c.rect.Y0 + 1, Cols: c.rect.Cols - 2, Rows: g.bodyH - 2}
+		return kit.Rect{X0: c.rect.X0 + 1, Y0: c.rect.Y0 + 1, Cols: c.rect.Cols - 2, Rows: g.bodyH - c.draftH(g.bodyH) - 2}
 	}
-	return kit.Rect{X0: c.rect.X0 + g.leftW + 1, Y0: c.rect.Y0 + 1, Cols: g.rightW - 2, Rows: g.bodyH - 2}
+	return kit.Rect{X0: c.rect.X0 + g.leftW + 1, Y0: c.rect.Y0 + 1, Cols: g.rightW - 2, Rows: g.bodyH - c.draftH(g.bodyH) - 2}
 }
 
 func (c *Chat) PaneSize() (cols, rows int) {
@@ -52,7 +52,8 @@ func (c *Chat) View() string {
 		return hits.Panel(1, kit.Box(c.list.title(), rows, g.leftW, g.bodyH, focused, false))
 	}
 	pane := func(w int) string {
-		h := g.bodyH
+		dh := c.draftH(g.bodyH)
+		h := g.bodyH - dh
 		var right string
 		if r, ok := c.tree.Current(); ok && r.Session == nil {
 			right = c.projectPanel(r.Project.Name, w, h)
@@ -62,7 +63,11 @@ func (c *Chat) View() string {
 			from, length := c.pane.Scrollbar(h - 2)
 			right = kit.WithScrollbar(term, from, length)
 		}
-		return hits.Panel(2, right)
+		right = hits.Panel(2, right)
+		if dh > 0 {
+			right += "\n" + c.draftView(w, dh)
+		}
+		return right
 	}
 	switch {
 	case c.narrow() && c.fullTerm:

@@ -411,6 +411,8 @@ whole screen while shown and `Esc` brings the tree back.
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
+| `d` | write the session's next prompt while it works: a box opens under its pane (`[3] draft · ivy`); `Enter` is a new line, `Ctrl+S` sends, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
+| `s` | send the draft: pasted into the session with `Enter`, then cleared — only while the session runs, does not work and asks nothing (a question is answered first); otherwise the footer says why and the draft waits |
 | `x` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |
 

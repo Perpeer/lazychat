@@ -44,6 +44,9 @@ type Session struct {
 	// lazychat ends with it running for any reason but the quit question,
 	// so the next start resumes it.
 	Running bool `json:"running,omitempty"`
+	// Draft is the next prompt the user writes while the session works,
+	// kept apart from the tool's own input so an answer cannot take its place.
+	Draft string `json:"draft,omitempty"`
 }
 
 type State struct {
@@ -307,6 +310,20 @@ func (s *Store) SetRunning(key string, on bool) error {
 				return nil
 			}
 			s.Sessions[i].Running = on
+			return s.Save()
+		}
+	}
+	return fmt.Errorf("no session with key %s", key)
+}
+
+// SetDraft keeps a session's next-prompt draft; an empty one clears it.
+func (s *Store) SetDraft(key, text string) error {
+	for i, x := range s.Sessions {
+		if x.Key == key {
+			if x.Draft == text {
+				return nil
+			}
+			s.Sessions[i].Draft = text
 			return s.Save()
 		}
 	}

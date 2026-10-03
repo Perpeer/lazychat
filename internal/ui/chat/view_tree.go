@@ -21,6 +21,7 @@ type treeView struct {
 	seen   func(key string) bool                             // the session finished and was looked at, waiting for a prompt
 	branch func(path string) string                          // what the project's folder is on; nil for none
 	turn   func(key string) (time.Duration, model.TurnState) // the session's turn time; nil for none
+	draft  func(r state.Session) bool                        // the session has a draft waiting; nil for none
 	tick   int
 	scroll kit.Scroller
 	follow kit.Follow
@@ -84,6 +85,9 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 	if t.turn != nil {
 		ts, tp := turnFoot(t.turn(s.Key))
 		styled, plain = styled+ts, plain+tp
+	}
+	if t.draft != nil && t.draft(s) {
+		styled, plain = styled+kit.StyleAccent.Render(" ✎"), plain+" ✎"
 	}
 	if s.Key == t.tree.Shown {
 		styled, plain = styled+kit.StyleDim.Render(" •"), plain+" •"
