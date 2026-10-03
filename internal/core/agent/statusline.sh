@@ -7,9 +7,10 @@ export LC_NUMERIC=C
 #
 # Segment order (as rendered, left to right). To reorder, move the matching
 # `sess+=`, `ws+=` or `seg+=` line inside the while loop; to remove one,
-# delete it. The session's fields (1-3) and the workspace's (4-5) are each
-# drawn in a pair of brackets, so the two groups stand apart from the rest:
-#   [Opus 5.5 · medium · dev] [lazychat · main*] · ctx ▮▮▯▯ 12% · cost $0.42
+# delete it. The session's fields (1-3), the workspace's (4-5) and the
+# plan's limits (10-11) are each drawn in a pair of brackets, so the groups
+# stand apart from the rest:
+#   [Opus 5.5 · medium · dev] [lazychat · main*] · ctx ▮▮▯▯ 12% · cost $0.42 · [session 81% ↻2h14m · week 46% ↻1d4h]
 #
 #   1. model         .model.display_name
 #   2. effort        .fast_mode + .effort.level                  [show_effort]
@@ -21,14 +22,15 @@ export LC_NUMERIC=C
 #   8. cache        share of current context served from cache   [show_cache]
 #                    = current_usage.cache_read_input_tokens / all input
 #   9. time          .cost.total_duration_ms                     [show_dur]
-#  10. 5h limit      .rate_limits.five_hour.used_percentage
+#  10. session limit .rate_limits.five_hour.used_percentage
 #                    + ↻ time left until .resets_at              [show_reset]
 #  11. weekly limit  .rate_limits.seven_day.used_percentage      [show_week]
+#                    (both arrive once the session has had its first reply)
 #                    + ↻ time left until .resets_at              [show_reset]
 #
 # Segments in [brackets] are optional and get dropped, in the order set by
 # drop_next(), when the row would exceed the terminal width. Model, branch,
-# context and the 5h limit are never dropped. Any segment whose field is
+# context and the session limit are never dropped. Any segment whose field is
 # absent from the payload is skipped — `rate_limits` only arrives for
 # Pro/Max accounts, `context_window.used_percentage` is null until the
 # first API call and right after /compact, and `session_name` is present
@@ -78,7 +80,7 @@ SEP="${DIM} · ${R}"
 
 # Segment titles. Set any to "" to render that segment without a title.
 L_MODEL=""       L_SESSION=""  L_GIT=""      L_DIR=""      L_EFFORT=""        L_CTX="ctx"
-L_COST="cost"    L_CACHE="cache" L_TIME="time" L_5H="5h"        L_WK="wk"
+L_COST="cost"    L_CACHE="cache" L_TIME="time" L_5H="session"   L_WK="week"
 
 lbl() { [[ -n $1 ]] && printf '%s%s %s' "$DIM" "$1" "$R"; }
 
@@ -146,7 +148,7 @@ dirty=""
 [[ -n $branch && -n $(git -C "$CWD" status --porcelain 2>/dev/null | head -1) ]] && dirty="${YELLOW}*${R}"
 
 while :; do
-  sess=() ws=() seg=()
+  sess=() ws=() seg=() lim=()
   [[ -n $MODEL ]] && sess+=("$(lbl "$L_MODEL")${BOLD}${CYAN}${MODEL}${R}")
   label=$EFFORT
   [[ -n $FAST ]] && label="fast${label:+ · $label}"
@@ -181,14 +183,14 @@ while :; do
   fi
   if [[ -n $FIVE ]]; then
     at=""; (( show_reset )) && [[ -n $FIVE_AT ]] && at=$(until_reset "$FIVE_AT")
-    seg+=("$(lbl "$L_5H")$(heat "$FIVE")${FIVE}%${R}${at}")
+    lim+=("$(lbl "$L_5H")$(heat "$FIVE")${FIVE}%${R}${at}")
   fi
   if (( show_week )) && [[ -n $SEVEN ]]; then
     at=""; (( show_reset )) && [[ -n $SEVEN_AT ]] && at=$(until_reset "$SEVEN_AT")
-    seg+=("$(lbl "$L_WK")$(heat "$SEVEN")${SEVEN}%${R}${at}")
+    lim+=("$(lbl "$L_WK")$(heat "$SEVEN")${SEVEN}%${R}${at}")
   fi
 
-  (( ${#sess[@]} + ${#ws[@]} + ${#seg[@]} )) || exit 0
+  (( ${#sess[@]} + ${#ws[@]} + ${#seg[@]} + ${#lim[@]} )) || exit 0
   line=""
   (( ${#sess[@]} )) && line=$(group "${sess[@]}")
   (( ${#ws[@]} )) && line="${line:+$line }$(group "${ws[@]}")"
@@ -196,6 +198,7 @@ while :; do
     rest=$(printf "%s${SEP}" "${seg[@]}"); rest=${rest%"$SEP"}
     line="${line:+$line$SEP}$rest"
   fi
+  (( ${#lim[@]} )) && line="${line:+$line$SEP}$(group "${lim[@]}")"
   (( $(vis "$line") <= W )) && break
   drop_next || break
 done

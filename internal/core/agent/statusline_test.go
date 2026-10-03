@@ -96,8 +96,9 @@ func TestStatuslinePiece(t *testing.T) {
 }
 
 // The row puts the session's fields and the workspace's each in brackets,
-// then the rest as before; fields dropped to fit go from inside their
-// group, and a group left empty is not drawn.
+// then the rest, then the plan's limits in brackets of their own; fields
+// dropped to fit go from inside their group, and a group left empty is not
+// drawn.
 func TestStatusLineRow(t *testing.T) {
 	for _, bin := range []string{"bash", "jq"} {
 		if _, err := exec.LookPath(bin); err != nil {
@@ -119,9 +120,11 @@ func TestStatusLineRow(t *testing.T) {
 	}
 	const base = `"model":{"display_name":"Opus 5.5"},"effort":{"level":"medium"},"workspace":{"current_dir":"/x/lazychat","git_worktree":"main"},"context_window":{"used_percentage":12,"context_window_size":200000},"cost":{"total_cost_usd":0.42},"rate_limits":{"five_hour":{"used_percentage":13}}`
 	for _, c := range []struct{ name, json, cols, want string }{
-		{"all", `{` + base + `,"session_name":"dev"}`, "140", "[Opus 5.5 · medium · dev] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · 5h 13%"},
-		{"no session name", `{` + base + `}`, "140", "[Opus 5.5 · medium] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · 5h 13%"},
-		{"narrow", `{` + base + `,"session_name":"dev"}`, "60", "[Opus 5.5] [main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12% · 5h 13%"},
+		{"all", `{` + base + `,"session_name":"dev"}`, "140", "[Opus 5.5 · medium · dev] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · [session 13%]"},
+		{"no session name", `{` + base + `}`, "140", "[Opus 5.5 · medium] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · [session 13%]"},
+		{"both limits", `{` + strings.Replace(base, `"rate_limits":{"five_hour":{"used_percentage":13}}`, `"rate_limits":{"five_hour":{"used_percentage":81},"seven_day":{"used_percentage":46}}`, 1) + `}`, "140", "[Opus 5.5 · medium] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42 · [session 81% · week 46%]"},
+		{"no limits yet", `{` + strings.Replace(base, `,"rate_limits":{"five_hour":{"used_percentage":13}}`, ``, 1) + `}`, "140", "[Opus 5.5 · medium] [lazychat · main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12%/200k · cost $0.42"},
+		{"narrow", `{` + base + `,"session_name":"dev"}`, "60", "[Opus 5.5] [main] · ctx ▮▯▯▯▯▯▯▯▯▯▯▯ 12% · [session 13%]"},
 		{"no workspace", `{"model":{"display_name":"Opus 5.5"},"cost":{"total_cost_usd":1}}`, "140", "[Opus 5.5] · cost $1.00"},
 	} {
 		if got := row(c.json, c.cols); got != c.want {

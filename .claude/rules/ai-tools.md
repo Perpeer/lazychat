@@ -21,6 +21,13 @@ paths:
   notice file, and a status line only when none of the user's three
   settings files names one (needs `jq`). Never write into `~/.claude` or a
   project's `.claude`; those are only read.
+- The status line script (`agent/statusline.sh`) has two twins kept
+  identical by hand: the user's `~/.claude/hooks/statusline.sh` and
+  prompter's `claude/hooks/statusline.sh` (its example line names
+  `garden-shed`); change all three together. Groups in brackets: the
+  session, the workspace, and at the end the plan's limits
+  `[session N% ↻… · week N% ↻…]`, which Claude Code sends only after a
+  session's first reply (`rate_limits.five_hour` / `seven_day`).
 - Codex has no question signal and no hook: its status is working/done
   from its output alone.
 - Resume at start: sessions marked running when lazychat ended any way
