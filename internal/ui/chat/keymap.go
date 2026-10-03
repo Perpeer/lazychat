@@ -42,12 +42,12 @@ var (
 // reads them all.
 var sessionKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, draftKeys []binding
 
-// The report's tables, one per view.
-var pageKeys, transcriptKeys []binding
+// The report's table.
+var pageKeys []binding
 
 func init() {
 	moves := []binding{keyUp, keyDown, keyFirst, keyLast, keyBack, keyPageUp, keyPageDn}
-	moves = append(moves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session shown on the right, as Enter, 3 the report: what the Claude sessions spend and do")...)
+	moves = append(moves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session shown on the right, as Enter, 3 the report: what each prompt of the Claude session spent, and on what")...)
 	// Each table is the footer, in its order: everything that can be done
 	// there, and nothing else but moving the cursor.
 	sessionKeys = append([]binding{
@@ -81,25 +81,14 @@ func init() {
 		{Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the tree, the draft kept; " + leaveLabel + " too, and a click outside the box"},
 		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the draft to select, the release copies it; a click puts the cursor there; Enter is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field"},
 	}
-	reportMoves := []binding{
-		{Keys: []string{"up", "k"}, Name: "↑↓ j k PgUp PgDn", Help: "in the report: scroll the page", Run: act(func(c *Chat) { c.rep.scroll-- })},
-		{Keys: []string{"down", "j"}, Run: act(func(c *Chat) { c.rep.scroll++ })},
-		{Keys: []string{"pgup"}, Run: act(func(c *Chat) { c.rep.scroll -= 10 })},
-		{Keys: []string{"pgdown"}, Run: act(func(c *Chat) { c.rep.scroll += 10 })},
-	}
-	reportMoves = append(reportMoves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the chat, 3 the report")...)
-	keyExport := binding{Keys: []string{"x"}, Hint: kit.Hint{Key: "x", Does: "export"}, Help: "write the session to ~/.lazychat/reports as JSON and CSV; the first time, an empty prices.json beside the settings, per model and per million tokens, which turns costs on once filled in", Run: act(func(c *Chat) { c.export() })}
-	keyReportBack := binding{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "out of a transcript, else back to the chat", Run: act(func(c *Chat) { c.reportBack() })}
+	keyReportBack := binding{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the chat", Run: act(func(c *Chat) { c.reportBack() })}
 	pageKeys = append([]binding{
-		{Keys: []string{"t"}, Hint: kit.Hint{Key: "t", Does: "transcript"}, Help: "the picked agent's transcript made readable: the main agent's, or a subagent's picked with ←→", Run: act(func(c *Chat) { c.openTranscript() })},
-		{Keys: []string{"left", "h"}, Hint: kit.Hint{Key: "←→", Does: "pick agent"}, Help: "pick the agent t opens, lit in the sequence: the main agent, then each subagent", Run: act(func(c *Chat) { c.pickAgent(-1) })},
-		{Keys: []string{"right", "l"}, Run: act(func(c *Chat) { c.pickAgent(1) })},
-		keyExport, keyReportBack, keyHelp, keyQuit,
-	}, reportMoves...)
-	transcriptKeys = append([]binding{
-		{Keys: []string{"a"}, Hint: kit.Hint{Key: "a", Does: "context"}, Help: "show or hide the context lines the tool added by itself (attachments, thinking)", Run: act(func(c *Chat) { c.rep.showMeta = !c.rep.showMeta })},
+		{Keys: []string{"up", "k"}, Hint: kit.Hint{Key: "↑↓", Does: "pick prompt"}, Help: "pick the prompt shown in full under the list: up to a newer one, down to an older one; on the newest the report follows the next prompt", Run: act(func(c *Chat) { c.pickPrompt(-1) })},
+		{Keys: []string{"down", "j"}, Run: act(func(c *Chat) { c.pickPrompt(1) })},
+		{Keys: []string{"pgup"}, Name: "PgUp PgDn", Help: "scroll the page; the wheel too", Run: act(func(c *Chat) { c.rep.scroll -= 10 })},
+		{Keys: []string{"pgdown"}, Run: act(func(c *Chat) { c.rep.scroll += 10 })},
 		keyReportBack, keyHelp, keyQuit,
-	}, reportMoves...)
+	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the chat, 3 the report")...)
 	termKeys = []binding{
 		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the tree, in every terminal; the session runs on, and Esc is claude's, which stops its answer"},
 		{Hint: kit.Hint{Key: "click", Does: "the tree: back there"}, Help: "a click beside the pane leaves the terminal and puts the cursor on the session clicked"},
@@ -118,9 +107,6 @@ func (c *Chat) tables() (top, below []binding) {
 	case c.capture.Held():
 		return termKeys, nil
 	case c.rep.shown && c.repFocus:
-		if c.rep.transcript {
-			return transcriptKeys, nil
-		}
 		return pageKeys, nil
 	case c.tree.Moving:
 		return moveKeys, nil
@@ -178,7 +164,6 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("Terminal", termKeys)...)
 	lines = append(lines, kit.HelpSection("Draft", draftKeys)...)
 	lines = append(lines, kit.HelpSection("Report", pageKeys)...)
-	lines = append(lines, kit.HelpSection("Report: a transcript", transcriptKeys[:1])...)
 	lines = append(lines, kit.HelpSection("Move mode", moveKeys)...)
 	lines = append(lines, kit.WorkspaceHelp...)
 	return strings.Join(append(lines, "Status     spinner running · ○ saved · • shown in the pane"), "\n")

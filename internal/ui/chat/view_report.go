@@ -1,7 +1,9 @@
 package chat
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -22,11 +24,6 @@ func (c *Chat) chatTabs(chatTitle string) string {
 
 // tokenLabels name the four kinds as the charts stack them, cheapest first.
 var tokenLabels = []string{"cache read", "input", "cache write", "output"}
-
-// segs is a usage's kinds as chart segments, in tokenLabels' order.
-func segs(t usage.Tokens) []kit.Seg {
-	return []kit.Seg{{Kind: 0, Value: t.CacheRead}, {Kind: 1, Value: t.Input}, {Kind: 2, Value: t.CacheWrite}, {Kind: 3, Value: t.Output}}
-}
 
 // kinds is a usage in one line, each kind with its glyph and colour.
 func kinds(t usage.Tokens) string {
@@ -59,8 +56,6 @@ func (c *Chat) reportBox(chatTitle string, w, h int) string {
 	r := &c.rep
 	var lines []string
 	switch {
-	case r.transcript:
-		lines = c.transcriptView(inner)
 	case r.shownFor.id == "?":
 		lines = []string{"", kit.StyleDim.Render(" Claude Code has not said this session's id yet: its report shows once it has.")}
 	case !r.read:
@@ -88,109 +83,176 @@ func section(title, note string) string {
 	return kit.StyleBold.Render(" "+title) + kit.StyleDim.Render("  "+note)
 }
 
-// pageView is the session on one page: who it is and what it spent, the
-// last prompt, its agents as a sequence, every prompt, then its charts.
+// promptRows is how many prompts the list shows around the picked one.
+const promptRows = 12
+
+// pageView is the session prompt by prompt: the list, newest first, then
+// the picked prompt in full — its time, tokens, agents, skills and MCP
+// calls.
 func (c *Chat) pageView(s *usage.Session, w int) []string {
 	now := time.Now()
-	t := s.Totals()
+	working := c.working(s, now)
 	state := kit.StyleDim.Render("idle")
-	if c.working(s, now) {
+	if working {
 		state = kit.StyleBusy.Render(kit.Spinner[(c.tick/2)%len(kit.Spinner)] + " working")
 	}
-	cost := ""
-	if v, ok := c.rep.prices.Cost(s.AllCalls()); ok {
-		cost = fmt.Sprintf(" · cost %.2f", v)
-	}
-	out := []string{
-		" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state + kit.StyleDim.Render(fmt.Sprintf("   %d calls · %d agents · %d tools · since %s", len(s.AllCalls()), len(s.Agents), s.ToolCount(), s.First.Local().Format("01-02 15:04"))+cost),
-		" " + kinds(t) + kit.StyleDim.Render("   "+strings.Join(tokenLabels, " · ")),
-	}
+	out := []string{" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state +
+		kit.StyleDim.Render("   time without the questions put to you; a permission prompt's wait is not written down and stays in")}
 	if s.Bad > 0 {
 		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %d line(s) were not JSON and are left out", s.Bad)))
 	}
 	turns := s.Turns()
-	working := c.working(s, now)
-	if len(turns) > 0 {
-		last := turns[len(turns)-1]
-		end := "working"
-		if !working && !last.End.IsZero() {
-			end = last.End.Local().Format("15:04:05")
-		}
-		took := now.Sub(last.Time)
-		if !working && !last.End.IsZero() {
-			took = last.End.Sub(last.Time)
-		}
-		out = append(out, "", section("last prompt", last.Time.Local().Format("15:04:05")+" → "+end+" · "+text.Span(took)),
-			" "+kit.StyleAccent.Render("❯ "+text.Fit(last.Text, max(10, w-4))),
-			" "+kinds(last.Tokens)+kit.StyleDim.Render(fmt.Sprintf("   %d calls · %d agents", last.Calls, last.Agents)))
+	if len(turns) == 0 {
+		return append(out, "", kit.StyleDim.Render(" no prompt yet"))
 	}
-	out = append(out, "", section("agents", "spawned →, back ← with what they spent; ←→ picks one, t opens its transcript"))
-	out = append(out, c.sequence(s, now, w)...)
-	if len(turns) > 1 {
-		out = append(out, "", section("prompts", "newest first: when, how long, output, all tokens"))
-		for i := len(turns) - 1; i >= 0 && i >= len(turns)-20; i-- {
-			tn := turns[i]
-			end := "now  "
-			span := now.Sub(tn.Time)
-			if i < len(turns)-1 || !working {
-				end = tn.End.Local().Format("15:04")
-				span = tn.End.Sub(tn.Time)
-				if tn.End.IsZero() {
-					end, span = "–    ", 0
-				}
-			}
-			row := fmt.Sprintf(" %s → %s %6s %7s %7s  %s", tn.Time.Local().Format("01-02 15:04"), end, text.Span(max(0, span)), num(tn.Tokens.Output), num(tn.Tokens.Sum()), tn.Text)
-			out = append(out, text.Fit(row, w))
+	last := len(turns) - 1
+	c.rep.back = kit.Clamp(c.rep.back, 0, last)
+	picked := last - c.rep.back
+	out = append(out, "", section("prompts", "↑↓ picks one · newest first"),
+		kit.StyleDim.Render(fmt.Sprintf("    %-3s %-11s %-8s %7s %8s %7s  %s", "#", "started", "ended", "active", "tokens", "output", "prompt")))
+	top := min(last, max(picked+promptRows/2, promptRows-1))
+	for i := top; i >= 0 && i > top-promptRows; i-- {
+		tn := turns[i]
+		end, _ := turnEnd(tn, i == last, working, now)
+		mark := "  "
+		if i == picked {
+			mark = "▶ "
 		}
-	}
-	calls := s.AllCalls()
-	chartW := max(10, w-4)
-	out = append(out, "", section("context per call", "│ a resume"))
-	var ctx []int64
-	for _, cl := range calls {
-		ctx = append(ctx, cl.Tokens.Context())
-	}
-	for _, l := range kit.Line(ctx, chartW, 4) {
-		out = append(out, "  "+l)
-	}
-	out = append(out, "", section("tokens per call", "")+kit.Legend(tokenLabels))
-	var stacks [][]kit.Seg
-	from := max(0, len(calls)-chartW)
-	bar := kit.Clamp(chartW/max(1, len(calls)-from)-1, 1, 4)
-	for _, cl := range calls[from:] {
-		for range bar {
-			stacks = append(stacks, segs(cl.Tokens))
+		row := fmt.Sprintf(" %s %-3d %-11s %-8s %7s %8s %7s  %s", mark, i+1, tn.Time.Local().Format("01-02 15:04"), end, text.Span(activeTime(tn, i == last, working, now)), num(tn.Tokens.Sum()), num(tn.Tokens.Output), tn.Text)
+		row = text.Fit(row, w)
+		if i == picked {
+			row = kit.StyleAccent.Render(row)
 		}
-		if bar > 1 {
-			stacks = append(stacks, nil)
+		out = append(out, row)
+	}
+	if top-promptRows >= 0 {
+		out = append(out, kit.StyleDim.Render(fmt.Sprintf("    … %d older", top-promptRows+1)))
+	}
+	return append(out, c.promptView(s, turns, picked, working, now, w)...)
+}
+
+// turnEnd is when a turn ended as the list writes it, and whether it is
+// still under way: the newest one runs while the session works, and one
+// whose end was never written (an interrupted answer) ends at its last
+// call.
+func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
+	switch {
+	case t.Ended():
+		return t.End.Local().Format("15:04:05"), false
+	case newest && working:
+		return "working", true
+	case !t.Last.IsZero():
+		return t.Last.Local().Format("15:04:05"), false
+	}
+	return "–", false
+}
+
+// activeTime is a turn's time without its questions' waits.
+func activeTime(t usage.Turn, newest, working bool, now time.Time) time.Duration {
+	if !t.Ended() && !(newest && working) {
+		t.End = t.Last
+		if t.End.IsZero() {
+			t.End = t.Time
 		}
 	}
-	for _, l := range kit.Columns(stacks, 0, 5) {
-		out = append(out, "  "+l)
+	return t.Active(now)
+}
+
+// promptView is one prompt in full.
+func (c *Chat) promptView(s *usage.Session, turns []usage.Turn, i int, working bool, now time.Time, w int) []string {
+	t := turns[i]
+	newest := i == len(turns)-1
+	end, running := turnEnd(t, newest, working, now)
+	var waited time.Duration
+	for _, wt := range t.Waits {
+		to := wt.To
+		if to.IsZero() {
+			to = now
+		}
+		waited += to.Sub(wt.From)
 	}
-	out = append(out, "", section("tools", ""))
-	tools := map[string]int{}
-	for k, v := range s.Tools {
-		tools[k] += v
+	note := t.Time.Local().Format("15:04:05") + " → " + end + " · " + text.Span(activeTime(t, newest, working, now)) + " active"
+	if waited > 0 {
+		note += fmt.Sprintf(" · %s waiting for your answer, left out (%d question(s))", text.Span(waited), len(t.Waits))
 	}
-	for _, a := range s.Agents {
-		for k, v := range a.Tools {
-			tools[k] += v
+	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), note),
+		" " + kit.StyleAccent.Render("❯ "+text.Fit(t.Text, max(10, w-4)))}
+	cost := ""
+	var calls []usage.Call
+	for _, cl := range s.AllCalls() {
+		if !cl.Time.Before(t.Time) && (newest || cl.Time.Before(turns[i+1].Time)) {
+			calls = append(calls, cl)
 		}
 	}
-	type tc struct {
-		name string
-		n    int
+	if v, ok := c.rep.prices.Cost(calls); ok {
+		cost = fmt.Sprintf(" · cost %.2f", v)
 	}
-	var tl []tc
-	top := 0
-	for k, v := range tools {
-		tl = append(tl, tc{k, v})
-		top = max(top, v)
+	out = append(out, " "+kinds(t.Tokens)+kit.StyleDim.Render(fmt.Sprintf("   %s · %d calls%s", strings.Join(tokenLabels, " · "), t.Calls, cost)))
+	if running {
+		out[len(out)-1] += " " + kit.StyleBusy.Render(kit.Spinner[(c.tick/2)%len(kit.Spinner)])
 	}
-	sort.Slice(tl, func(i, j int) bool { return tl[i].n > tl[j].n || tl[i].n == tl[j].n && tl[i].name < tl[j].name })
-	for _, x := range tl {
-		out = append(out, " "+text.Pad(text.Fit(x.name, 16), 16)+" "+kit.StackedBar([]kit.Seg{{Kind: 1, Value: int64(x.n)}}, int64(top), max(8, w-26))+fmt.Sprintf(" %d", x.n))
+	out = append(out, "", section("agents", "out ▶, back ◀ with what they spent; ★ one of yours"))
+	out = append(out, c.sequence(t.Agents, now, w)...)
+	out = append(out, "", section("skills", "added: what its text put in the context · carried: read again by every later call of the prompt"))
+	out = append(out, useRows(t.Uses, usage.Skill, w)...)
+	out = append(out, "", section("MCP", "added: what the result put in the context · carried: read again by every later call"))
+	out = append(out, useRows(t.Uses, usage.MCP, w)...)
+	return out
+}
+
+// own says an origin is the user's or a project's, not what comes with
+// Claude Code.
+func own(origin string) bool { return origin != "built-in" && origin != "" }
+
+// useRows are a prompt's skills or MCP calls grouped by name, the costliest
+// first: how often, what they added, what carrying it cost.
+func useRows(uses []*usage.Use, kind usage.UseKind, w int) []string {
+	type group struct {
+		name, origin   string
+		n              int
+		added, carried int64
+		agent          bool
+	}
+	var gs []*group
+	byKey := map[string]*group{}
+	for _, u := range uses {
+		if u.Kind != kind {
+			continue
+		}
+		key := u.Origin + "\x00" + u.Name
+		g := byKey[key]
+		if g == nil {
+			g = &group{name: u.Name, origin: u.Origin}
+			byKey[key] = g
+			gs = append(gs, g)
+		}
+		g.n++
+		g.added += u.Added
+		g.carried += u.Carried
+		g.agent = g.agent || u.Agent != ""
+	}
+	if len(gs) == 0 {
+		if kind == usage.Skill {
+			return []string{kit.StyleDim.Render(" no skill was used")}
+		}
+		return []string{kit.StyleDim.Render(" no MCP call")}
+	}
+	slices.SortStableFunc(gs, func(a, b *group) int { return cmp.Compare(b.added+b.carried, a.added+a.carried) })
+	from := "from"
+	if kind == usage.MCP {
+		from = "server"
+	}
+	out := []string{kit.StyleDim.Render(fmt.Sprintf("    %-28s %-16s %4s %8s %8s %8s", "name", from, "×", "added", "carried", "spent"))}
+	for _, g := range gs {
+		star := "  "
+		if kind == usage.Skill && own(g.origin) {
+			star = kit.StyleAccent.Render("★ ")
+		}
+		by := ""
+		if g.agent {
+			by = kit.StyleDim.Render("  in a subagent too")
+		}
+		out = append(out, " "+star+text.Fit(fmt.Sprintf("%-28s %-16s %4d %8s %8s %8s", text.Fit(g.name, 28), text.Fit(g.origin, 16), g.n, num(g.added), num(g.carried), num(g.added+g.carried)), max(10, w-4))+by)
 	}
 	return out
 }
@@ -198,16 +260,36 @@ func (c *Chat) pageView(s *usage.Session, w int) []string {
 // seqLanes is how many agents' lifelines the sequence draws at most.
 const seqLanes = 12
 
-// sequence draws the session and its agents as a sequence diagram: the
-// session's lifeline on the left, one per agent beside it, an arrow out
-// when it was spawned and one back when it returned, in time order; a
-// lifeline still dotted is an agent at work.
-func (c *Chat) sequence(s *usage.Session, now time.Time, w int) []string {
-	if len(s.Agents) == 0 {
-		return []string{kit.StyleDim.Render(" the session worked alone: no subagent")}
+// sequence draws a prompt's agents as a sequence diagram: the session's
+// lifeline on the left, one per agent beside it, an arrow out when it
+// left and one back when it returned, in time order; a lifeline still
+// dotted is an agent at work.
+func (c *Chat) sequence(agents []*usage.Agent, now time.Time, w int) []string {
+	if len(agents) == 0 {
+		return []string{kit.StyleDim.Render(" no subagent: the session worked alone")}
 	}
-	agents := append([]*usage.Agent(nil), s.Agents...)
-	sort.SliceStable(agents, func(i, j int) bool { return agents[i].First.Before(agents[j].First) })
+	left := func(a *usage.Agent) time.Time {
+		if !a.Left.IsZero() {
+			return a.Left
+		}
+		return a.First
+	}
+	// A background agent's result never comes as a result: it is back
+	// when its transcript has been quiet a while.
+	quiet := func(a *usage.Agent) bool {
+		return !a.Done() && a.Back.IsZero() && !a.Last.IsZero() && now.Sub(a.Last) > liveWithin
+	}
+	back := func(a *usage.Agent) time.Time {
+		switch {
+		case !a.Back.IsZero():
+			return a.Back
+		case a.Duration > 0:
+			return left(a).Add(a.Duration)
+		}
+		return a.Last
+	}
+	agents = append([]*usage.Agent(nil), agents...)
+	sort.SliceStable(agents, func(i, j int) bool { return left(agents[i]).Before(left(agents[j])) })
 	var out []string
 	if len(agents) > seqLanes {
 		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %d earlier agents are not drawn", len(agents)-seqLanes)))
@@ -239,6 +321,9 @@ func (c *Chat) sequence(s *usage.Session, now time.Time, w int) []string {
 		if name == "" {
 			name = "agent"
 		}
+		if own(a.Origin) {
+			name = "★" + name
+		}
 		put(head, xs[i+1]-1, text.Fit(name, laneW-1))
 	}
 	out = append(out, kit.StyleBold.Render(string(head)))
@@ -249,13 +334,9 @@ func (c *Chat) sequence(s *usage.Session, now time.Time, w int) []string {
 	}
 	var events []event
 	for _, a := range agents {
-		events = append(events, event{at: a.First, a: a})
-		if a.Done() {
-			end := a.Last
-			if a.Duration > 0 && !a.First.IsZero() {
-				end = a.First.Add(a.Duration)
-			}
-			events = append(events, event{at: end, a: a, back: true})
+		events = append(events, event{at: left(a), a: a})
+		if a.Done() || quiet(a) {
+			events = append(events, event{at: back(a), a: a, back: true})
 		}
 	}
 	sort.SliceStable(events, func(i, j int) bool { return events[i].at.Before(events[j].at) })
@@ -278,7 +359,11 @@ func (c *Chat) sequence(s *usage.Session, now time.Time, w int) []string {
 				row[i] = '─'
 			}
 			row[xs[0]+1], row[x] = '◀', '┘'
-			label = kit.StyleBusy.Render("✓ ") + kit.StyleDim.Render(num(max(e.a.Reported, e.a.Totals().Sum()))+" · "+text.Span(e.a.Duration))
+			mark := kit.StyleBusy.Render("✓ ")
+			if quiet(e.a) {
+				mark = kit.StyleDim.Render("quiet ")
+			}
+			label = mark + kit.StyleDim.Render(e.at.Local().Format("15:04:05")+" · "+text.Span(e.at.Sub(left(e.a)))+" · ") + num(e.a.Totals().Sum()) + kit.StyleDim.Render(" tokens")
 		} else {
 			alive[e.a] = true
 			for i := xs[0] + 1; i < x; i++ {
@@ -287,52 +372,21 @@ func (c *Chat) sequence(s *usage.Session, now time.Time, w int) []string {
 			row[x-1], row[x] = '▶', '┐'
 			desc := e.a.Description
 			if desc == "" {
-				desc = text.Fit(firstLine(e.a.Prompt), 30)
+				desc, _, _ = strings.Cut(strings.TrimSpace(e.a.Prompt), "\n")
 			}
-			label = kit.StyleDim.Render(e.at.Local().Format("15:04:05")+" ") + desc
+			label = kit.StyleDim.Render(e.at.Local().Format("15:04:05")+" "+e.a.Origin+" · ") + desc
 		}
-		line := string(row)
-		if index[e.a] == c.rep.item {
-			line = kit.StyleAccent.Render(line)
-		}
-		out = append(out, " "+line+" "+text.Fit(label, max(8, w-width-3)))
+		out = append(out, " "+string(row)+" "+text.Fit(label, max(8, w-width-3)))
 	}
 	if len(alive) > 0 {
 		row := lifelines()
 		var names []string
 		for _, a := range agents {
-			if alive[a] && now.Sub(a.Last) <= liveWithin {
-				names = append(names, fmt.Sprintf("%s %s", a.Type, num(a.Totals().Sum())))
+			if alive[a] {
+				names = append(names, fmt.Sprintf("%s %s · %s", a.Type, text.Span(now.Sub(left(a))), num(a.Totals().Sum())))
 			}
 		}
-		note := "waiting for their result"
-		if len(names) > 0 {
-			note = "at work: " + strings.Join(names, ", ")
-		}
-		out = append(out, " "+string(row)+" "+kit.StyleAccent.Render(text.Fit(note, max(8, w-width-3))))
-	}
-	return out
-}
-
-// transcriptView is a transcript made readable, context lines hidden
-// unless asked for.
-func (c *Chat) transcriptView(w int) []string {
-	r := &c.rep
-	whose := "the main agent"
-	if r.s != nil && r.item > 0 && r.item <= len(r.s.Agents) {
-		a := r.s.Agents[r.item-1]
-		whose = a.Type + " · " + a.Description
-	}
-	out := []string{section("transcript", whose+" · ↑↓ scroll · a shows the context lines the tool added · esc back"), ""}
-	style := map[string]func(...string) string{
-		"user": kit.StyleAccent.Render, "assistant": kit.StyleBold.Render, "tool call": kit.StyleSeries[2].Render,
-		"tool result": kit.StyleDim.Render, "context": kit.StyleDim.Render,
-	}
-	for _, l := range r.lines {
-		if l.meta && !r.showMeta {
-			continue
-		}
-		out = append(out, " "+style[l.who](text.Pad(strings.ToUpper(l.who), 12))+" "+text.Fit(l.text, max(10, w-15)))
+		out = append(out, " "+string(row)+" "+kit.StyleAccent.Render(text.Fit("at work: "+strings.Join(names, ", "), max(8, w-width-3))))
 	}
 	return out
 }

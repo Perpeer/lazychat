@@ -23,8 +23,7 @@ func TestKeymapFooters(t *testing.T) {
 		{"project", projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		{"no project yet", emptyKeys, "o open · ? help"},
 		{"terminal", termKeys, "ctrl+q back to lazychat · click the tree: back there · wheel scroll · other keys go to claude"},
-		{"report", pageKeys, "t transcript · ←→ pick agent · x export · esc back · ? help"},
-		{"report transcript", transcriptKeys, "a context · esc back · ? help"},
+		{"report", pageKeys, "↑↓ pick prompt · esc back · ? help"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -45,7 +44,7 @@ func TestKeymapFooters(t *testing.T) {
 func TestKeymapTables(t *testing.T) {
 	help := helpText()
 	with := func(top []binding) []binding { return append(append([]binding(nil), top...), projectKeys...) }
-	for name, keys := range map[string][]binding{"session": with(sessionKeys), "no session": with(emptyRowKeys), "no project yet": emptyKeys, "move": moveKeys, "terminal": termKeys, "report": pageKeys, "report transcript": transcriptKeys} {
+	for name, keys := range map[string][]binding{"session": with(sessionKeys), "no session": with(emptyRowKeys), "no project yet": emptyKeys, "move": moveKeys, "terminal": termKeys, "report": pageKeys} {
 		t.Run(name, func(t *testing.T) {
 			if hidden := kit.Unlisted(keys); len(hidden) > 0 {
 				t.Errorf("keys that work but the footer does not name: %q", hidden)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -59,36 +60,74 @@ func (t *tail) read(line func([]byte)) error {
 // Reader follows one session's transcript and its subagents' files,
 // folding what was appended since the last Update into the Session.
 type Reader struct {
-	main   tail
-	dir    string // <session id>/subagents
-	s      *Session
-	calls  map[string]int // message id → index in its agent's calls or the session's
-	uuids  map[string]bool
-	tools  map[string]bool // tool_use ids counted
-	agents map[string]*agentFile
-	last   time.Time
+	// Home is the user's home, where user skills and agents live apart
+	// from a project's; Open sets it.
+	Home    string
+	main    tail
+	mainRun *stream
+	dir     string // <session id>/subagents
+	s       *Session
+	uuids   map[string]bool
+	tools   map[string]bool // tool_use ids counted
+	agents  map[string]*agentFile
+	origins map[string]string // agent type → its origin
+	last    time.Time
 }
 
 type agentFile struct {
 	tail
 	a        *Agent
-	calls    map[string]int
+	run      *stream
 	metaRead bool
+}
+
+// stream is one transcript's own run of calls, where what came between two
+// calls — tool results, a skill's text — is measured by how much the
+// second call's context grew.
+type stream struct {
+	calls   *[]Call
+	index   map[string]int // message id → index in calls
+	agent   string
+	waiting []result        // read since the last call
+	live    []*Use          // read again by every later call of the prompt
+	called  map[string]tool // tool_use id → the tool
+}
+
+// result is something that entered the context, its use if it is one the
+// report follows, its size its share of the growth.
+type result struct {
+	use  *Use
+	size int64
+}
+
+type tool struct {
+	name string
+	at   time.Time
+	use  *Use
+	wait int // index in the session's waits, for a question
+}
+
+func newStream(calls *[]Call, agent string) *stream {
+	return &stream{calls: calls, index: map[string]int{}, agent: agent, called: map[string]tool{}}
 }
 
 // Open starts following the transcript at path; nothing is read before
 // Update.
 func Open(path string) *Reader {
 	id := strings.TrimSuffix(filepath.Base(path), ".jsonl")
-	return &Reader{
-		main:   tail{path: path},
-		dir:    filepath.Join(filepath.Dir(path), id, "subagents"),
-		s:      &Session{ID: id, Tools: map[string]int{}},
-		calls:  map[string]int{},
-		uuids:  map[string]bool{},
-		tools:  map[string]bool{},
-		agents: map[string]*agentFile{},
+	home, _ := os.UserHomeDir()
+	r := &Reader{
+		Home:    home,
+		main:    tail{path: path},
+		dir:     filepath.Join(filepath.Dir(path), id, "subagents"),
+		s:       &Session{ID: id, Tools: map[string]int{}},
+		uuids:   map[string]bool{},
+		tools:   map[string]bool{},
+		agents:  map[string]*agentFile{},
+		origins: map[string]string{},
 	}
+	r.mainRun = newStream(&r.s.Calls, "")
+	return r
 }
 
 // Session is what was read so far.
@@ -100,13 +139,63 @@ func (r *Reader) Update() (*Session, error) {
 		return r.s, err
 	}
 	r.readAgents()
+	for _, f := range r.agents {
+		a := f.a
+		if a.Left.IsZero() && a.ToolUseID != "" {
+			a.Left = r.mainRun.called[a.ToolUseID].at
+		}
+		if a.Origin == "" && a.Type != "" {
+			a.Origin = r.agentOrigin(a.Type)
+		}
+	}
 	return r.s, nil
+}
+
+// agentOrigin is where an agent type is defined: a file of its name among
+// the user's or the project's agents, a plugin's (named plugin:agent), or
+// else Claude Code's own.
+func (r *Reader) agentOrigin(typ string) string {
+	if o, ok := r.origins[typ]; ok {
+		return o
+	}
+	o := "built-in"
+	exists := func(dir string) bool {
+		_, err := os.Stat(filepath.Join(dir, ".claude", "agents", typ+".md"))
+		return dir != "" && err == nil
+	}
+	switch {
+	case strings.Contains(typ, ":"):
+		o = "plugin"
+	case exists(r.s.Dir):
+		o = "project"
+	case exists(r.Home):
+		o = "user"
+	}
+	r.origins[typ] = o
+	return o
+}
+
+// skillOrigin is where a skill's folder is: a plugin's, the user's, or
+// else a project's.
+func skillOrigin(dir, home string) string {
+	claude := filepath.Join(home, ".claude") + string(filepath.Separator)
+	switch {
+	case home != "" && strings.HasPrefix(dir, claude+"plugins"+string(filepath.Separator)):
+		return "plugin"
+	case home != "" && strings.HasPrefix(dir, claude):
+		return "user"
+	}
+	return "project"
 }
 
 // record is the part of a transcript line the report reads; anything else
 // is left alone, and a line of an unknown type is skipped.
 type record struct {
 	Type        string    `json:"type"`
+	Subtype     string    `json:"subtype"`
+	IsMeta      bool      `json:"isMeta"`
+	Compacted   bool      `json:"isCompactSummary"`
+	SourceTool  string    `json:"sourceToolUseID"`
 	UUID        string    `json:"uuid"`
 	Timestamp   time.Time `json:"timestamp"`
 	Version     string    `json:"version"`
@@ -134,11 +223,19 @@ type block struct {
 	Type  string `json:"type"`
 	ID    string `json:"id"`
 	Name  string `json:"name"`
+	Text  string `json:"text"`
 	Input struct {
 		SubagentType string `json:"subagent_type"`
 		Description  string `json:"description"`
+		Skill        string `json:"skill"`
 	} `json:"input"`
+	ToolUseID string          `json:"tool_use_id"`
+	Content   json.RawMessage `json:"content"`
 }
+
+// skillText starts the text Claude Code adds when a skill is loaded,
+// followed by the skill's folder.
+const skillText = "Base directory for this skill: "
 
 type agentResult struct {
 	Status            string `json:"status"`
@@ -193,10 +290,11 @@ func (r *Reader) mainLine(line []byte) {
 		r.s.Bad++
 		return
 	}
-	switch rec.Type {
-	case "user", "assistant":
+	switch {
+	case rec.Type == "user", rec.Type == "assistant":
+	case rec.Type == "system" && rec.Subtype == "turn_duration":
 	default:
-		return // attachments, metadata, system lines: no tokens, no turns
+		return // attachments, metadata, other system lines: no tokens, no turns
 	}
 	if rec.UUID != "" {
 		// A fork starts with its parent's history copied: those lines are
@@ -205,6 +303,10 @@ func (r *Reader) mainLine(line []byte) {
 			return
 		}
 		r.uuids[rec.UUID] = true
+	}
+	if rec.Type == "system" {
+		r.s.Ends = append(r.s.Ends, rec.Timestamp)
+		return
 	}
 	r.stamp(rec.Timestamp)
 	if rec.Version != "" {
@@ -216,29 +318,149 @@ func (r *Reader) mainLine(line []byte) {
 	if rec.GitBranch != "" {
 		r.s.Branch = rec.GitBranch
 	}
+	run := r.mainRun
 	switch rec.Type {
 	case "user":
-		if _, isList := blocks(rec.Message.Content); !isList && len(rec.Message.Content) > 0 {
-			r.s.UserMessages++
+		bs, isList := blocks(rec.Message.Content)
+		// A compaction's summary goes on with the prompt before: no prompt.
+		if !isList && len(rec.Message.Content) > 0 && !rec.IsMeta && !rec.Compacted {
 			var text string
 			if json.Unmarshal(rec.Message.Content, &text) == nil {
-				line, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
-				r.s.Prompts = append(r.s.Prompts, Prompt{Time: rec.Timestamp, Text: line})
+				if p, ok := prompt(text); ok {
+					r.s.UserMessages++
+					p.Time = rec.Timestamp
+					r.s.Prompts = append(r.s.Prompts, p)
+					// What the prompt before brought in is carried no more
+					// in this prompt's count.
+					run.live, run.waiting = nil, nil
+				}
 			}
 		}
+		r.userBlocks(run, &rec, bs)
 		if len(rec.ToolUseResult) > 0 {
-			r.agentResult(rec.ToolUseResult)
+			answers := ""
+			for _, b := range bs {
+				if b.Type == "tool_result" {
+					answers = b.ToolUseID
+				}
+			}
+			r.agentResult(rec.ToolUseResult, answers, rec.Timestamp)
 		}
 	case "assistant":
-		r.s.Calls = fold(r.s.Calls, r.calls, &rec)
-		bs, _ := blocks(rec.Message.Content)
-		for _, b := range bs {
-			if b.Type != "tool_use" || b.ID == "" || r.tools[b.ID] {
+		r.assistant(run, &rec, r.s.Tools)
+	}
+}
+
+// prompt is a user's text as the report lists it: a slash command as it
+// was typed, a command's own output not at all.
+func prompt(text string) (Prompt, bool) {
+	text = strings.TrimSpace(text)
+	switch {
+	case strings.HasPrefix(text, "<local-command-"):
+		return Prompt{}, false
+	case strings.Contains(text, "<command-name>"):
+		name := between(text, "<command-name>", "</command-name>")
+		if args := strings.TrimSpace(between(text, "<command-args>", "</command-args>")); args != "" {
+			name += " " + args
+		}
+		text = name
+	case strings.HasPrefix(text, "<task-notification>"):
+		text = "(a background task finished)"
+	}
+	line, _, _ := strings.Cut(text, "\n")
+	return Prompt{Text: line}, true
+}
+
+func between(s, from, to string) string {
+	_, rest, ok := strings.Cut(s, from)
+	if !ok {
+		return ""
+	}
+	in, _, _ := strings.Cut(rest, to)
+	return in
+}
+
+// userBlocks takes a user line's results and skill texts into its stream:
+// each waits for the next call, which measures them, and a question's
+// answer closes its wait.
+func (r *Reader) userBlocks(run *stream, rec *record, bs []block) {
+	for _, b := range bs {
+		switch b.Type {
+		case "tool_result":
+			t := run.called[b.ToolUseID]
+			if t.name == "AskUserQuestion" && run.agent == "" && t.wait < len(r.s.Waits) && r.s.Waits[t.wait].To.IsZero() {
+				r.s.Waits[t.wait].To = rec.Timestamp
+			}
+			run.waiting = append(run.waiting, result{use: t.use, size: int64(len(b.Content))})
+		case "text":
+			first, _, _ := strings.Cut(b.Text, "\n")
+			dir, ok := strings.CutPrefix(first, skillText)
+			if !ok {
+				run.waiting = append(run.waiting, result{size: int64(len(b.Text))})
 				continue
 			}
-			r.tools[b.ID] = true
-			r.s.Tools[b.Name]++
+			origin := skillOrigin(strings.TrimSpace(dir), r.Home)
+			u := run.called[rec.SourceTool].use
+			if u == nil || u.Kind != Skill {
+				// Started by a slash command: no Skill call names it.
+				u = &Use{Kind: Skill, Name: filepath.Base(strings.TrimSpace(dir)), Agent: run.agent, Time: rec.Timestamp}
+				r.s.Uses = append(r.s.Uses, u)
+			}
+			u.Origin = origin
+			run.waiting = append(run.waiting, result{use: u, size: int64(len(b.Text))})
 		}
+	}
+}
+
+// assistant folds a model call into its stream. A new call measures what
+// came in since the last one, and every use carried in the prompt is read
+// again by it; then its tool uses are noted.
+func (r *Reader) assistant(run *stream, rec *record, counts map[string]int) {
+	n := len(*run.calls)
+	*run.calls = fold(*run.calls, run.index, rec)
+	if calls := *run.calls; len(calls) > n && n > 0 {
+		for _, u := range run.live {
+			u.Carried += u.Added
+		}
+		prev, next := calls[n-1].Tokens, calls[n].Tokens
+		grew := max(0, next.Context()-prev.Context()-prev.Output)
+		var total int64
+		for _, w := range run.waiting {
+			total += max(1, w.size)
+		}
+		for _, w := range run.waiting {
+			if w.use == nil {
+				continue
+			}
+			if !slices.Contains(run.live, w.use) {
+				run.live = append(run.live, w.use)
+			}
+			w.use.Added += grew * max(1, w.size) / total
+		}
+		run.waiting = nil
+	}
+	bs, _ := blocks(rec.Message.Content)
+	for _, b := range bs {
+		if b.Type != "tool_use" || b.ID == "" || r.tools[b.ID] {
+			continue
+		}
+		r.tools[b.ID] = true
+		counts[b.Name]++
+		t := tool{name: b.Name, at: rec.Timestamp}
+		switch {
+		case b.Name == "Skill":
+			t.use = &Use{Kind: Skill, Name: b.Input.Skill, Origin: "built-in", Agent: run.agent, Time: rec.Timestamp}
+		case strings.HasPrefix(b.Name, "mcp__"):
+			server, name, _ := strings.Cut(strings.TrimPrefix(b.Name, "mcp__"), "__")
+			t.use = &Use{Kind: MCP, Name: name, Origin: server, Agent: run.agent, Time: rec.Timestamp}
+		case b.Name == "AskUserQuestion" && run.agent == "":
+			t.wait = len(r.s.Waits)
+			r.s.Waits = append(r.s.Waits, Span{From: rec.Timestamp})
+		}
+		if t.use != nil {
+			r.s.Uses = append(r.s.Uses, t.use)
+		}
+		run.called[b.ID] = t
 	}
 }
 
@@ -276,13 +498,17 @@ func (r *Reader) stamp(t time.Time) {
 	}
 }
 
-// agentResult is an Agent tool's result on the parent's line.
-func (r *Reader) agentResult(raw json.RawMessage) {
+// agentResult is an Agent tool's result on the parent's line: the
+// tool_use it answers, when known, and when it came.
+func (r *Reader) agentResult(raw json.RawMessage, toolUse string, at time.Time) {
 	var res agentResult
 	if json.Unmarshal(raw, &res) != nil || res.AgentID == "" {
 		return
 	}
 	a := r.agent(res.AgentID).a
+	if toolUse != "" && a.ToolUseID == "" {
+		a.ToolUseID = toolUse
+	}
 	if res.Status != "" && a.Status != "completed" {
 		a.Status = res.Status
 	}
@@ -297,6 +523,9 @@ func (r *Reader) agentResult(raw json.RawMessage) {
 	set(&a.Model, res.ResolvedModel)
 	if res.Status != "completed" {
 		return
+	}
+	if a.Back.IsZero() {
+		a.Back = at
 	}
 	a.Reported = res.TotalTokens
 	a.Duration = time.Duration(res.TotalDurationMs) * time.Millisecond
@@ -315,10 +544,10 @@ func (r *Reader) agent(id string) *agentFile {
 		return f
 	}
 	f := &agentFile{
-		tail:  tail{path: filepath.Join(r.dir, "agent-"+id+".jsonl")},
-		a:     &Agent{ID: id, Tools: map[string]int{}},
-		calls: map[string]int{},
+		tail: tail{path: filepath.Join(r.dir, "agent-"+id+".jsonl")},
+		a:    &Agent{ID: id, Tools: map[string]int{}},
 	}
+	f.run = newStream(&f.a.Calls, id)
 	r.agents[id] = f
 	r.s.Agents = append(r.s.Agents, f.a)
 	return f
@@ -349,7 +578,9 @@ func (r *Reader) readAgents() {
 				var m meta
 				if json.Unmarshal(b, &m) == nil {
 					f.metaRead = true
-					f.a.ToolUseID = m.ToolUseID
+					if m.ToolUseID != "" {
+						f.a.ToolUseID = m.ToolUseID
+					}
 					if f.a.Type == "" {
 						f.a.Type = m.AgentType
 					}
@@ -381,18 +612,13 @@ func (r *Reader) agentLine(f *agentFile, line []byte) {
 			a.Last = t
 		}
 	}
-	if rec.Type != "assistant" {
+	if rec.Type == "user" {
+		bs, _ := blocks(rec.Message.Content)
+		r.userBlocks(f.run, &rec, bs)
 		return
 	}
-	a.Calls = fold(a.Calls, f.calls, &rec)
+	r.assistant(f.run, &rec, a.Tools)
 	if a.Model == "" {
 		a.Model = rec.Message.Model
-	}
-	bs, _ := blocks(rec.Message.Content)
-	for _, b := range bs {
-		if b.Type == "tool_use" && b.ID != "" && !r.tools[b.ID] {
-			r.tools[b.ID] = true
-			a.Tools[b.Name]++
-		}
 	}
 }

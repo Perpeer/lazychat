@@ -415,50 +415,62 @@ switch them, and the session runs on behind the report.
 
 ### Report
 
-The tree cursor's Claude session on one page — on a project, its newest
-— read from Claude Code's own transcript (`~/.claude/projects/<folder>/<id>.jsonl`
+The tree cursor's Claude session prompt by prompt — on a project, its
+newest — read from Claude Code's own transcript (`~/.claude/projects/<folder>/<id>.jsonl`
 and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
-second while the report shows. It only reads. Codex keeps no such usage
-yet.
+second while the report shows: what each prompt took and what spent it.
+It only reads. Codex keeps no such usage yet.
 
 ```
- shed work  ◐ working   14 calls · 2 agents · 9 tools · since 10-04 14:02
- ░ 1.3M  ▒ 12  ▓ 18k  █ 3.1k   cache read · input · cache write · output
-
- last prompt  14:02:10 → working · 3m 12s
+ shed work  ◐ working   time without the questions put to you; …
+ prompts  ↑↓ picks one · newest first
+    #   started     ended     active   tokens  output  prompt
+ ▶  3   10-04 14:02 working     2m10s    412k    1.2k  paint the garden shed
+    2   10-04 13:40 13:51:02    9m02s    1.2M    5.0k  /tidy-up the garage
+ prompt 3  14:02:10 → working · 2m10s active · 41s waiting for your answer, left out (1 question(s))
  ❯ paint the garden shed
- ░ 410k  ▒ 6  ▓ 9k  █ 1.2k   9 calls · 2 agents
-
- agents  spawned →, back ← with what they spent
- session               Explore               general
-   │────────────────────▶┐                              14:02:40 count the boards
-   │──────────────────────────────────────────▶┐        14:03:05 find the brushes
-   │◀────────────────────┘                     ┊        ✓ 21k · 4s
-   │                                           ┊        at work: general 9k
+ ░ 400k  ▒ 6  ▓ 9k  █ 1.2k   cache read · input · cache write · output · 9 calls
+ agents  out ▶, back ◀ with what they spent; ★ one of yours
+ session               ★shed-painter
+   │────────────────────▶┐                      14:02:40 user · count the boards
+   │◀────────────────────┘                      ✓ 14:03:20 · 40s · 96k tokens
+ skills  added: what its text put in the context · carried: read again by every later call
+    name                         from                ×    added  carried    spent
+ ★ brush-care                   project             1     1.5k     4.4k     5.8k
+ MCP  added: what the result put in the context · carried: read again by every later call
+    name                         server              ×    added  carried    spent
+   list_colours                 paint-shop          1     3.0k     5.9k     8.9k
 ```
 
-- the session: its state, calls, agents, tools, first activity and its
-  tokens by kind (`░` cache read, `▒` input, `▓` cache write, `█` output,
-  each with a colour-blind safe colour too), and a cost when priced;
-- the last prompt: when it started, when it ended or that it still works,
-  how long, and its tokens — the main agent's and every subagent's calls
-  until the next prompt;
-- the agents as a sequence: the session's lifeline and one per subagent,
-  an arrow out when it was spawned, one back when it returned with its
-  tokens and time, a dotted line while it works;
-- every prompt, newest first, then the context of each call over time,
-  each call's tokens stacked, and the tools.
+- the prompts, newest first: when each started and ended — where Claude
+  Code wrote its turn's end, or `working` — its active time, its tokens and
+  output, the main agent's and every subagent's calls until the next
+  prompt. A slash command is listed as typed;
+- active time leaves out the time a question (`AskUserQuestion`) waited
+  for the user's answer. A permission prompt's wait is not in the
+  transcript and stays in;
+- the picked prompt (`↑↓`; the newest is followed): its tokens by kind
+  (`░` cache read, `▒` input, `▓` cache write, `█` output, each with a
+  colour-blind safe colour too) and a cost when priced;
+- its agents as a sequence: the session's lifeline and one per subagent,
+  an arrow out when it left, one back when it returned with its time and
+  its own tokens, a dotted line while it works. `★` marks an agent defined
+  by the user (`~/.claude/agents`), the project (`.claude/agents`) or a
+  plugin;
+- its skills and MCP calls, the costliest first. No line says what a
+  result cost, so it is measured: *added* is how much the next call's
+  context grew, shared among the results in between by their size;
+  *carried* is the same tokens read again from the cache by every later
+  call of the prompt. A skill's origin comes from its folder — `user`,
+  `project`, `plugin`, or `built-in` when it has none — and the user's and
+  the project's are marked `★`.
 
-`↑↓` scrolls, `←→` picks the main agent or a subagent and `t` opens its
-transcript as USER / ASSISTANT / TOOL CALL / TOOL RESULT rows (`a` shows
-the context lines the tool added), `x` exports the session to
-`~/.lazychat/reports/usage-<time>.json` and `.csv`. A reply written over
-several lines counts once, its largest numbers kept; a fork's copied
-history counts once. Costs show only for models priced in
+A reply written over several lines counts once, its largest numbers kept;
+a fork's copied history counts once. Costs show only for models priced in
 `~/.lazychat/prices.json` (per million tokens: `input`, `cache_write`,
-`cache_read`, `output`), which the first export creates empty to fill in;
-nothing is priced by lazychat. A click on a session in the tree goes back
-to its chat.
+`cache_read`, `output`); nothing is priced by lazychat. `PgUp` `PgDn` and
+the wheel scroll, `Esc` goes back to the chat, and a click on a session in
+the tree too.
 
 | Key | Does |
 | --- | --- |

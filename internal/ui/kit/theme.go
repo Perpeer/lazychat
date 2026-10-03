@@ -31,7 +31,7 @@ type Theme struct {
 	// The badges before a file in a list of changes, as Fork colours them:
 	// modified, new, deleted, renamed; their text is OnFill.
 	BadgeModified, BadgeAdded, BadgeRemoved, BadgeRenamed lipgloss.Color
-	// Series is a chart's four kinds, in the order the charts stack them.
+	// Series is the four token kinds' colours, in the order the report lists them.
 	Series [4]lipgloss.Color
 }
 

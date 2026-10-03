@@ -6,6 +6,7 @@
 package usage
 
 import (
+	"sort"
 	"time"
 )
 
@@ -61,6 +62,11 @@ type Agent struct {
 	First     time.Time
 	Last      time.Time
 	ToolUseID string
+	// Left is when the parent started it, Back when its result came; Back
+	// stays zero while it works and for a background agent.
+	Left, Back time.Time
+	// Origin is built-in, user (~/.claude/agents), project or plugin.
+	Origin string
 }
 
 // Done says the parent has the agent's result.
@@ -89,7 +95,44 @@ type Session struct {
 	Bad int
 	// Prompts are what the user typed, in order: each starts a turn.
 	Prompts []Prompt
+	// Ends are the moments Claude Code said a turn was over.
+	Ends []time.Time
+	// Waits are the questions put to the user, To zero while one is open.
+	Waits []Span
+	// Uses are the skills and MCP calls, the subagents' too, in the order
+	// they were read.
+	Uses []*Use
 }
+
+// Span is a stretch of time; To is zero while it lasts.
+type Span struct{ From, To time.Time }
+
+// UseKind tells a skill from an MCP call.
+type UseKind int
+
+const (
+	Skill UseKind = iota
+	MCP
+)
+
+// Use is one skill or MCP call and what it cost. No line says what a
+// result cost, so Added is measured: the context of the call after it,
+// less the context and output of the call before, shared among the
+// results in between by their size. Carried is Added again for every
+// later call of the prompt, which reads it from the cache.
+type Use struct {
+	Kind UseKind
+	// Name is the skill's, or the MCP tool's; Origin is the skill's
+	// built-in, user, project or plugin, or the MCP server.
+	Name, Origin string
+	Agent        string // the subagent that used it; "" the session
+	Time         time.Time
+	Added        int64
+	Carried      int64
+}
+
+// Spent is all a use cost: what it added and what carrying it cost.
+func (u *Use) Spent() int64 { return u.Added + u.Carried }
 
 // Prompt is one thing the user typed: its first line and when.
 type Prompt struct {
@@ -101,10 +144,39 @@ type Prompt struct {
 // agent's and the subagents', until the next prompt.
 type Turn struct {
 	Prompt
-	End    time.Time // the last call's; zero before any
+	// End is when Claude Code said the turn was over; zero while it runs.
+	End   time.Time
+	Last  time.Time // the last call's
+	Waits []Span    // questions to the user in the turn
+	// Idle is where the turn had ended and a background agent's news
+	// started it again.
+	Idle   []Span
 	Tokens Tokens
 	Calls  int
-	Agents int // subagents started in the turn
+	Agents []*Agent // started in the turn
+	Uses   []*Use
+}
+
+// Ended says the turn is over: Claude Code said so, or the turn's end was
+// never written (an interrupted answer) and a later prompt came.
+func (t Turn) Ended() bool { return !t.End.IsZero() }
+
+// Active is the turn's time without the questions' waits: from the prompt
+// to its end, or to now while it runs.
+func (t Turn) Active(now time.Time) time.Duration {
+	end := t.End
+	if end.IsZero() {
+		end = now
+	}
+	d := end.Sub(t.Time)
+	for _, w := range append(append([]Span(nil), t.Waits...), t.Idle...) {
+		to := w.To
+		if to.IsZero() || to.After(end) {
+			to = end
+		}
+		d -= max(0, to.Sub(w.From))
+	}
+	return max(0, d)
 }
 
 // Turns is the session's prompts with what each took, in order.
@@ -122,18 +194,61 @@ func (s *Session) Turns() []Turn {
 		}
 		return i
 	}
-	for _, c := range s.AllCalls() {
+	calls := s.AllCalls()
+	for _, c := range calls {
 		if i := at(c.Time); i >= 0 {
 			out[i].Tokens = out[i].Tokens.Add(c.Tokens)
 			out[i].Calls++
-			if c.Time.After(out[i].End) {
-				out[i].End = c.Time
+			if c.Time.After(out[i].Last) {
+				out[i].Last = c.Time
 			}
 		}
 	}
 	for _, a := range s.Agents {
-		if i := at(a.First); i >= 0 && !a.First.IsZero() {
-			out[i].Agents++
+		left := a.Left
+		if left.IsZero() {
+			left = a.First
+		}
+		if i := at(left); i >= 0 && !left.IsZero() {
+			out[i].Agents = append(out[i].Agents, a)
+		}
+	}
+	for _, u := range s.Uses {
+		if i := at(u.Time); i >= 0 {
+			out[i].Uses = append(out[i].Uses, u)
+		}
+	}
+	for _, w := range s.Waits {
+		if i := at(w.From); i >= 0 {
+			out[i].Waits = append(out[i].Waits, w)
+		}
+	}
+	// A turn can end more than once: a background agent's news starts it
+	// again. It ends at its last end, unless work came after it; the time
+	// between an end and the next call was nobody's.
+	for _, e := range s.Ends {
+		i := at(e)
+		if i < 0 {
+			continue
+		}
+		if e.After(out[i].End) {
+			out[i].End = e
+		}
+		if j := sort.Search(len(calls), func(j int) bool { return calls[j].Time.After(e) }); j < len(calls) && at(calls[j].Time) == i {
+			out[i].Idle = append(out[i].Idle, Span{From: e, To: calls[j].Time})
+		}
+	}
+	for i := range out {
+		if out[i].Last.After(out[i].End) {
+			out[i].End = time.Time{}
+		}
+	}
+	for i := range out {
+		if i < len(out)-1 && out[i].End.IsZero() {
+			out[i].End = out[i].Time
+			if !out[i].Last.IsZero() {
+				out[i].End = out[i].Last
+			}
 		}
 	}
 	return out

@@ -84,7 +84,7 @@ are read; add a rule there, with its why, when a change settles one.
 | `keys-and-layout.md` | leave key, footers, widths |
 | `tests.md` | the test layers' traps |
 | `install.md` | install and uninstall, nothing legacy |
-| `report.md` | Chat's report tab, the usage parser, the charts |
+| `report.md` | Chat's report tab, the usage parser, what a prompt spent |
 
 ## Tests
 

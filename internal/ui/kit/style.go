@@ -11,7 +11,7 @@ var (
 	StyleAccent   lipgloss.Style
 	StyleBusy     lipgloss.Style
 	StyleWorktree lipgloss.Style
-	// StyleSeries draws a chart's four kinds.
+	// StyleSeries draws the four token kinds.
 	StyleSeries [4]lipgloss.Style
 	StyleHeader lipgloss.Style
 	StyleSel    lipgloss.Style

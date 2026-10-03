@@ -1,9 +1,7 @@
 package chat
 
 import (
-	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,9 +10,10 @@ import (
 	"lazychat/internal/ui/kit"
 )
 
-// The report is Chat's second tab: the tree cursor's Claude session on one
-// page — its prompts and what each took, its subagents as a sequence, its
-// tokens — read from Claude Code's own files and followed while they grow.
+// The report is Chat's second tab: the tree cursor's Claude session, prompt
+// by prompt — what each took without the questions' waits, its subagents,
+// skills and MCP calls and what they spent — read from Claude Code's own
+// files and followed while they grow.
 
 // liveWithin is how lately a transcript must have moved for its session to
 // count as at work when lazychat did not start it.
@@ -39,11 +38,8 @@ type report struct {
 	prices   usage.Prices
 	err      error
 
-	scroll     int
-	item       int // the agent whose transcript t opens: 0 the main one
-	transcript bool
-	lines      []transcriptLine
-	showMeta   bool
+	scroll int
+	back   int // the prompt shown in full, counted back from the newest
 }
 
 // reportMsg is a read's result.
@@ -91,7 +87,7 @@ func (c *Chat) readReport() tea.Cmd {
 		return nil
 	}
 	if t != r.shownFor {
-		r.read, r.s, r.scroll, r.item, r.transcript = false, nil, 0, 0, false
+		r.read, r.s, r.scroll, r.back = false, nil, 0, 0
 	}
 	if r.readers == nil {
 		r.readers = map[string]*usage.Reader{}
@@ -175,64 +171,18 @@ func (c *Chat) working(s *usage.Session, now time.Time) bool {
 	return now.Sub(s.Last) <= liveWithin || len(s.Running(now, liveWithin)) > 0
 }
 
-// openTranscript shows the chosen agent's transcript, read now.
-func (c *Chat) openTranscript() {
-	s, path := c.rep.s, c.rep.path
-	if s == nil || path == "" {
-		return
+// pickPrompt moves the prompt shown in full: up to a newer one, as the
+// list runs, down to an older one; on the newest it follows the next.
+func (c *Chat) pickPrompt(d int) {
+	if r := &c.rep; r.s != nil {
+		r.back = kit.Clamp(r.back+d, 0, max(0, len(r.s.Prompts)-1))
 	}
-	if c.rep.item > 0 && c.rep.item <= len(s.Agents) {
-		a := s.Agents[c.rep.item-1]
-		path = filepath.Join(strings.TrimSuffix(path, ".jsonl"), "subagents", "agent-"+a.ID+".jsonl")
-	}
-	lines, err := readTranscript(path)
-	if err != nil {
-		c.screen.Note("transcript: %v", err)
-		return
-	}
-	c.rep.lines, c.rep.transcript, c.rep.scroll = lines, true, 0
 }
 
-// reportBack is Esc in the report: out of a transcript, else back to the
-// chat.
+// reportBack is Esc in the report: back to the chat.
 func (c *Chat) reportBack() {
-	if c.rep.transcript {
-		c.rep.transcript, c.rep.scroll = false, 0
-		return
-	}
 	c.showChat()
 	c.repFocus = false
-}
-
-// pickAgent moves the choice of whose transcript t opens.
-func (c *Chat) pickAgent(d int) {
-	if c.rep.s != nil {
-		c.rep.item = kit.Clamp(c.rep.item+d, 0, len(c.rep.s.Agents))
-	}
-}
-
-// export writes the shown session to lazychat's reports folder, with an
-// empty prices file beside the settings the first time, to be filled in.
-func (c *Chat) export() {
-	if c.core.Settings == nil || c.core.Settings.Home == "" {
-		c.screen.Note("nowhere to export: lazychat's folder is not known here")
-		return
-	}
-	if c.rep.s == nil {
-		return
-	}
-	home := c.core.Settings.Home
-	sessions := []*usage.Session{c.rep.s}
-	js, _, err := usage.Export(filepath.Join(home, "reports"), usage.Rows(sessions, c.rep.prices), time.Now())
-	if err != nil {
-		c.screen.Note("export: %v", err)
-		return
-	}
-	note := fmt.Sprintf("exported %s and .csv", filepath.Base(js))
-	if made, _ := usage.WritePricesTemplate(filepath.Join(home, "prices.json"), usage.Models(sessions)); made {
-		note += "; prices.json made beside them, fill it in for costs"
-	}
-	c.screen.Note("%s", note)
 }
 
 // tabClick is a click on the right side's tabs, the chat or the report.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -205,51 +206,29 @@ func TestTail(t *testing.T) {
 	}
 }
 
-// A day's tokens count a call two sessions share once; costs come only
-// from prices the user gave, and a model without one shows no cost; an
-// export writes JSON and CSV, and the prices template once.
-func TestReportSums(t *testing.T) {
+// Costs come only from prices the user gave, and a model without one
+// shows no cost.
+func TestCost(t *testing.T) {
 	at := time.Date(2026, 3, 2, 10, 0, 0, 0, time.Local)
-	shared := Call{ID: "same", Time: at, Model: "model-x", Tokens: Tokens{Input: 1, Output: 10}}
-	a := &Session{ID: "a", First: at, Last: at, Calls: []Call{shared}}
-	b := &Session{ID: "b", First: at, Last: at, Calls: []Call{shared, {ID: "own", Time: at.Add(time.Minute), Model: "model-y", Tokens: Tokens{Output: 5}}}}
-	days := Daily([]*Session{a, b}, at.Add(time.Hour), 3)
-	if len(days) != 3 || days[2].Tokens.Output != 15 || days[0].Tokens.Output != 0 {
-		t.Errorf("days %+v", days)
-	}
-	if _, ok := (Prices{}).Cost(a.Calls); ok {
+	a := []Call{{ID: "same", Time: at, Model: "model-x", Tokens: Tokens{Input: 1, Output: 10}}}
+	b := append(a, Call{ID: "own", Time: at.Add(time.Minute), Model: "model-y", Tokens: Tokens{Output: 5}})
+	if _, ok := (Prices{}).Cost(a); ok {
 		t.Error("a cost with no prices")
 	}
 	p := Prices{"model-x": {Input: 1_000_000, Output: 2_000_000}}
-	if c, ok := p.Cost(a.Calls); !ok || c != 1+20 {
+	if c, ok := p.Cost(a); !ok || c != 1+20 {
 		t.Errorf("cost %v %v", c, ok)
 	}
-	if _, ok := p.Cost(b.Calls); ok {
+	if _, ok := p.Cost(b); ok {
 		t.Error("a cost though model-y has no price")
 	}
-	if got := PerMinute(b.Calls, at.Add(90*time.Second), 3); got[1] != 10 || got[2] != 5 {
-		t.Errorf("per minute %v", got)
-	}
 	dir := t.TempDir()
-	js, csv, err := Export(filepath.Join(dir, "reports"), Rows([]*Session{a, b}, p), at)
-	if err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "prices.json"), []byte(`{"model-x":{"input":1}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{js, csv} {
-		if b, err := os.ReadFile(f); err != nil || len(b) == 0 {
-			t.Errorf("%s: %v", f, err)
-		}
-	}
-	made, err := WritePricesTemplate(filepath.Join(dir, "prices.json"), Models([]*Session{a, b}))
-	if !made || err != nil {
-		t.Fatalf("template %v %v", made, err)
-	}
 	got, err := LoadPrices(filepath.Join(dir, "prices.json"))
-	if err != nil || len(got) != 2 {
-		t.Errorf("template read back %v %v", got, err)
-	}
-	if again, _ := WritePricesTemplate(filepath.Join(dir, "prices.json"), nil); again {
-		t.Error("the template was written over the user's prices")
+	if err != nil || got["model-x"].Input != 1 {
+		t.Errorf("prices read back %v %v", got, err)
 	}
 }
 
@@ -274,10 +253,150 @@ func TestTurns(t *testing.T) {
 	if len(turns) != 2 || turns[0].Text != "paint the shed" || turns[1].Text != "now the fence" {
 		t.Fatalf("turns %+v", turns)
 	}
-	if turns[0].Tokens.Output != 20+30+9 || turns[0].Calls != 3 || turns[0].Agents != 1 {
+	if turns[0].Tokens.Output != 20+30+9 || turns[0].Calls != 3 || len(turns[0].Agents) != 1 {
 		t.Errorf("first turn %+v", turns[0])
 	}
-	if turns[1].Tokens.Output != 7 || turns[1].Calls != 1 || turns[1].End.Before(turns[1].Time) {
+	if turns[1].Tokens.Output != 7 || turns[1].Calls != 1 || turns[1].Last.Before(turns[1].Time) || turns[1].Ended() || !turns[0].Ended() {
 		t.Errorf("second turn %+v", turns[1])
+	}
+}
+
+// reply writes one model reply with the given blocks, a line each.
+func (w *transcript) reply(id string, cw, cr, out int, bs ...map[string]any) {
+	if len(bs) == 0 {
+		bs = []map[string]any{{"type": "text", "text": "noted"}}
+	}
+	for _, b := range bs {
+		w.add(map[string]any{"type": "assistant", "message": map[string]any{"id": id, "model": "model-x", "role": "assistant", "content": []any{b}, "usage": usageMap(1, cw, cr, out)}})
+	}
+}
+
+func use(id, name string, input map[string]any) map[string]any {
+	return map[string]any{"type": "tool_use", "id": id, "name": name, "input": input}
+}
+
+func (w *transcript) results(extra map[string]any, rs ...map[string]any) {
+	var content []any
+	for _, r := range rs {
+		content = append(content, r)
+	}
+	v := map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": content}}
+	for k, x := range extra {
+		v[k] = x
+	}
+	w.add(v)
+}
+
+func res(id string, size int) map[string]any {
+	return map[string]any{"type": "tool_result", "tool_use_id": id, "content": strings.Repeat("o", size-2)}
+}
+
+// A prompt's skills and MCP calls are measured by how much the next call's
+// context grew, shared by the results' sizes, and carried by every later
+// call of the prompt; a question's wait leaves the prompt's time; the turn
+// ends where Claude Code says; an agent of the user's own is told apart.
+func TestPromptSpend(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".claude", "agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".claude", "agents", "shed-painter.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "s-5.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "paint the shed"}})
+	w.reply("c1", 1000, 0, 50, use("s1", "Skill", map[string]any{"skill": "brush-care"}))
+	w.results(nil, res("s1", 30))
+	w.results(map[string]any{"isMeta": true, "sourceToolUseID": "s1"}, map[string]any{"type": "text", "text": skillText + filepath.Join(home, ".claude", "skills", "brush-care") + "\n\nrinse twice"})
+	w.reply("c2", 400, 1000, 20, use("m1", "mcp__paint-shop__list_colours", map[string]any{}), use("r1", "Read", map[string]any{}))
+	w.results(nil, res("m1", 300), res("r1", 100))
+	w.reply("c3", 820, 1400, 10, use("q1", "AskUserQuestion", map[string]any{}))
+	asked := w.at
+	w.at = w.at.Add(30 * time.Second) // the user thinks it over: 40 s with the line's own step
+	w.results(nil, res("q1", 20))
+	w.reply("c4", 50, 2221, 5, use("a1", "Agent", map[string]any{"subagent_type": "shed-painter"}))
+	left := w.at
+	w.results(map[string]any{"toolUseResult": map[string]any{"status": "completed", "agentId": "p1", "agentType": "shed-painter", "totalDurationMs": 20000}}, res("a1", 40))
+	back := w.at
+	w.reply("c5", 60, 2271, 8)
+	w.add(map[string]any{"type": "system", "subtype": "turn_duration", "durationMs": 1})
+	ended := w.at
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "<command-message>tidy-up</command-message>\n<command-name>/tidy-up</command-name>\n<command-args>the garage</command-args>"}})
+	w.results(map[string]any{"isMeta": true}, map[string]any{"type": "text", "text": skillText + "/garden/shed/.claude/skills/tidy-up\n\nsweep"})
+	w.reply("c6", 10, 2339, 4)
+	w.flush()
+	sub := newTranscript(t, filepath.Join(root, "s-5", "subagents", "agent-p1.jsonl"))
+	sub.at = left
+	sub.reply("p1-a", 500, 0, 30)
+	sub.flush()
+	if err := os.WriteFile(filepath.Join(root, "s-5", "subagents", "agent-p1.meta.json"), []byte(`{"agentType":"shed-painter","toolUseId":"a1"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Open(path)
+	r.Home = home
+	s, _ := r.Update()
+	turns := s.Clone().Turns()
+	if len(turns) != 2 || turns[1].Text != "/tidy-up the garage" || !turns[1].End.IsZero() || !turns[0].End.Equal(ended) {
+		t.Fatalf("turns %+v", turns)
+	}
+	if len(turns[0].Waits) != 1 || turns[0].Waits[0].To.Sub(turns[0].Waits[0].From) != 40*time.Second || !turns[0].Waits[0].From.Equal(asked) {
+		t.Errorf("waits %+v", turns[0].Waits)
+	}
+	if got := turns[0].Active(time.Now()); got != ended.Sub(turns[0].Time)-40*time.Second {
+		t.Errorf("active %v", got)
+	}
+	us := turns[0].Uses
+	if len(us) != 2 {
+		t.Fatalf("uses %+v", us)
+	}
+	skill, mcp := us[0], us[1]
+	// c2 grew by 1401-1001-50 = 350, all of it the skill's; c3 by
+	// 2221-1401-20 = 800, three quarters of it the MCP result's.
+	if skill.Kind != Skill || skill.Name != "brush-care" || skill.Origin != "user" || skill.Added < 349 || skill.Added > 350 || skill.Carried != 3*skill.Added {
+		t.Errorf("skill %+v", *skill)
+	}
+	if mcp.Kind != MCP || mcp.Origin != "paint-shop" || mcp.Name != "list_colours" || mcp.Added != 600 || mcp.Carried != 2*600 {
+		t.Errorf("mcp %+v", *mcp)
+	}
+	if len(turns[1].Uses) != 1 || turns[1].Uses[0].Name != "tidy-up" || turns[1].Uses[0].Origin != "project" {
+		t.Errorf("slash skill %+v", turns[1].Uses)
+	}
+	if len(turns[0].Agents) != 1 {
+		t.Fatalf("agents %+v", turns[0].Agents)
+	}
+	a := turns[0].Agents[0]
+	if a.Origin != "user" || !a.Left.Equal(left) || !a.Back.Equal(back) || a.Totals().Output != 30 {
+		t.Errorf("agent %+v", *a)
+	}
+}
+
+// A compaction's summary is no prompt; a turn a background agent's news
+// starts again ends at its last end, the time in between left out.
+func TestTurnStartedAgain(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s-6.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "sort the seeds"}})
+	w.reply("a1", 10, 0, 5)
+	w.add(map[string]any{"type": "system", "subtype": "turn_duration", "durationMs": 1})
+	first := w.at
+	w.at = w.at.Add(5 * time.Minute) // nothing happens until the news
+	w.reply("a2", 10, 10, 5)
+	news := w.at
+	w.add(map[string]any{"type": "user", "isCompactSummary": true, "message": map[string]any{"role": "user", "content": "the story so far"}})
+	w.reply("a3", 10, 20, 5)
+	w.add(map[string]any{"type": "system", "subtype": "turn_duration", "durationMs": 1})
+	last := w.at
+	w.flush()
+	s, _ := Open(path).Update()
+	turns := s.Turns()
+	if len(turns) != 1 || len(turns[0].Idle) != 1 || !turns[0].Idle[0].From.Equal(first) || !turns[0].Idle[0].To.Equal(news) {
+		t.Fatalf("turns %+v", turns)
+	}
+	if !turns[0].End.Equal(last) {
+		t.Errorf("ended at %v, not the last end", turns[0].End)
+	}
+	if got := turns[0].Active(time.Now()); got != last.Sub(turns[0].Time)-news.Sub(first) {
+		t.Errorf("active %v", got)
 	}
 }
