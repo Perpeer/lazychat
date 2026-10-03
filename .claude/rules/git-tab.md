@@ -33,3 +33,15 @@ paths:
   projects in Chat.
 - Off-loop answers are wrapped as `owned{by, msg}` so a stale or foreign
   answer is dropped.
+- Deleting is Ctrl+D in the `b` finder (`kit.Finder.Delete`), every step
+  asked (`ui/git/delete.go`, `core/git/delete.go`). What loses work or
+  reaches others is asked a second time: a branch with commits not merged
+  here (`ErrUnmerged`, then `-D`), a worktree with changes
+  (`ErrWorktreeDirty`, then `--force`), and every remote delete (`push
+  <remote> --delete`), whose second question says it goes for everyone.
+  A local delete never takes its remote branch silently; it offers it.
+  A worktree goes with its project and the project's session records
+  (Terminal prunes its shells), refused while a session of it runs; its
+  branch is offered after. The main checkout and the current branch are
+  never deleted. Screen tests wait for the list before Ctrl+D: on an empty
+  finder it does nothing.

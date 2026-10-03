@@ -135,6 +135,8 @@ func (g *Git) openBranches() tea.Cmd {
 		}
 		g.create(bp, q, i == 1)
 	}
+	bp.finder.Delete = func(i int) { g.askDelete(bp, i) }
+	bp.finder.DeleteHint = "delete"
 	bp.finder.Status = "reading branches…"
 	g.branches = bp
 	g.screen.Push(bp.finder)

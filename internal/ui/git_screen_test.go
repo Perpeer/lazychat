@@ -734,3 +734,120 @@ func TestGitCreate(t *testing.T) {
 	d.expect("demo2 · tea-kettle-2")
 	d.quitApp()
 }
+
+// Ctrl+D in the b finder deletes the row: a merged branch after one
+// question, an unmerged one after a second naming its commits; a branch
+// that tracks a remote one offers that one too, which goes only after two
+// questions; a worktree goes with its project, asked again when it has
+// changes, and offers its branch after.
+func TestGitDelete(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	e, dir := seeded(t)
+	origin := t.TempDir()
+	gitIn(t, origin, "init", "-q", "--bare", "-b", "main")
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, filepath.Join(dir, "a.txt"), "one\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-qm", "first")
+	gitIn(t, dir, "remote", "add", "origin", origin)
+	gitIn(t, dir, "push", "-q", "-u", "origin", "main")
+	gitIn(t, dir, "branch", "-q", "merged")
+	gitIn(t, dir, "switch", "-qc", "lone")
+	write(t, filepath.Join(dir, "b.txt"), "lone\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-qm", "lone work")
+	gitIn(t, dir, "switch", "-qc", "shared", "main")
+	gitIn(t, dir, "push", "-q", "-u", "origin", "shared")
+	gitIn(t, dir, "switch", "-q", "main")
+	branches := func() string { return gitOut(t, dir, "branch", "--format=%(refname:short)") }
+	onRemote := func() string { return gitOut(t, origin, "branch", "--format=%(refname:short)") }
+
+	d := start(t, e, 150, 40)
+	d.tab(2)
+	d.expect("● main")
+	d.key("b")
+	d.expect("switch branch · demo2", "Ctrl+D delete", "origin/main") // the list is in
+	d.typ("merged")
+	d.key("ctrl+d")
+	d.expect("delete branch merged?")
+	d.key("y")
+	d.expect("deleted branch merged")
+	if strings.Contains(branches(), "merged") {
+		t.Fatalf("merged is still there:\n%s", branches())
+	}
+
+	d.key("ctrl+u")
+	d.typ("lone")
+	d.key("ctrl+d")
+	d.expect("delete branch lone?")
+	d.key("y")
+	d.expect("not merged here", "lone work")
+	d.key("y")
+	d.expect("deleted branch lone")
+	if strings.Contains(branches(), "lone") {
+		t.Fatalf("lone is still there:\n%s", branches())
+	}
+
+	d.key("ctrl+u")
+	d.typ("shared")
+	d.key("ctrl+d")
+	d.expect("delete branch shared?", "origin/shared on the remote stays")
+	d.key("y")
+	d.expect("also delete origin/shared on the remote?")
+	d.key("y")
+	d.expect("for everyone who uses it")
+	d.key("n")
+	if !strings.Contains(onRemote(), "shared") {
+		t.Fatalf("a no at the second question deleted the remote branch:\n%s", onRemote())
+	}
+	d.expect(" Remote", "origin/shared") // listed now as a remote branch of its own
+	d.key("ctrl+d")
+	d.expect("also delete origin/shared on the remote?")
+	d.key("y")
+	d.expect("for everyone who uses it")
+	d.key("y")
+	d.expect("deleted origin/shared on the remote")
+	if strings.Contains(onRemote(), "shared") {
+		t.Fatalf("shared is still on the remote:\n%s", onRemote())
+	}
+	d.key("esc")
+
+	d.key("b")
+	d.typ("spare")
+	d.key("down") // the new worktree row, under the new branch one
+	d.expect("▸ + new worktree spare from main")
+	d.key("enter")
+	d.expect("made worktree spare from main, opened as demo2 · spare")
+	wt := filepath.Join(dir, ".worktrees", "spare")
+	write(t, filepath.Join(wt, "unsaved.txt"), "not kept\n")
+	d.key("g")
+	d.expect("● main")
+	d.key("b")
+	d.expect(" Worktrees")
+	d.typ("spare")
+	d.expect("▸ spare")
+	d.key("ctrl+d")
+	d.expect("remove worktree spare", "the project demo2 · spare")
+	d.key("y")
+	d.expect("has changes that go with it", "unsaved.txt")
+	d.key("y")
+	d.expect("removed worktree spare", "delete branch spare?")
+	d.key("y")
+	d.expect("deleted branch spare")
+	if _, err := os.Stat(wt); !os.IsNotExist(err) {
+		t.Errorf("the worktree's folder is left: %v", err)
+	}
+	st, err := state.Load(d.state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range st.Projects {
+		if p.Name == "demo2 · spare" {
+			t.Errorf("the worktree's project is still listed")
+		}
+	}
+	d.key("esc")
+	d.quitApp()
+}

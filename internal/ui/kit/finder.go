@@ -30,12 +30,16 @@ type Finder struct {
 	// the row's index and the query when one is picked. Nil for none.
 	Create func(query string) []string
 	Made   func(i int, query string)
-	items  []string
-	pick   func(i int)
-	query  string
-	made   []string // the Create rows for the query
-	shown  []int    // indices into items that match the query
-	cursor List
+	// Delete is Ctrl+D on an item, named on the hint line as DeleteHint;
+	// the finder stays open under what it asks. Nil for none.
+	Delete     func(i int)
+	DeleteHint string
+	items      []string
+	pick       func(i int)
+	query      string
+	made       []string // the Create rows for the query
+	shown      []int    // indices into items that match the query
+	cursor     List
 }
 
 func NewFinder(title string, items []string, pick func(i int)) *Finder {
@@ -138,6 +142,11 @@ func (f *Finder) Key(msg tea.KeyMsg) (done bool, cmd tea.Cmd) {
 		f.query = ""
 		f.filter()
 		return false, nil
+	case "ctrl+d":
+		if at, ok := f.current(); ok && f.Delete != nil {
+			f.Delete(at)
+		}
+		return false, nil
 	}
 	if msg.Type == tea.KeyRunes || msg.Type == tea.KeySpace {
 		f.query += string(msg.Runes)
@@ -184,7 +193,11 @@ func (f *Finder) body(w, screenH int) []string {
 		lines = append(lines, f.row(at, w, i == f.cursor.Sel))
 	}
 	count := fmt.Sprintf(" · %d of %d", len(f.shown), len(f.items))
-	return append(lines, "", StyleDim.Render("  type to narrow · ↑↓ move · Enter go · Esc close"+count))
+	del := ""
+	if f.Delete != nil {
+		del = " · Ctrl+D " + f.DeleteHint
+	}
+	return append(lines, "", StyleDim.Render("  type to narrow · ↑↓ move · Enter go"+del+" · Esc close"+count))
 }
 
 // row is one item: its text, and its note dim at the right when both fit.
