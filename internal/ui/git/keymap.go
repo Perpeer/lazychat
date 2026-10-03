@@ -31,7 +31,7 @@ func init() {
 		{Keys: []string{"pgdown"}, Run: act(func(g *Git) { g.scrollDiff(g.diffRows() / 2) })},
 	}
 	keyCommit := binding{Keys: []string{"c"}, Hint: kit.Hint{Key: "c", Does: "commit"}, Help: "write the commit's subject and description in the box under the diff, as 5 does; Tab walks to the Commit button", Run: act(func(g *Git) { g.startCommit() })}
-	keyBranch := binding{Keys: []string{"b"}, Hint: kit.Hint{Key: "b", Does: "switch"}, Help: "switch the project to another branch: a finder over its local and remote branches, newest first, the remotes fetched as it opens; Enter switches, a remote one as a local branch tracking it", Run: func(g *Git) tea.Cmd { return g.openBranches() }}
+	keyBranch := binding{Keys: []string{"b"}, Hint: kit.Hint{Key: "b", Does: "switch"}, Help: "find or make a branch or a worktree: the repository's other worktrees, then its local and remote branches, newest first, the remotes fetched as it opens. Enter on a worktree goes to its row, on a branch switches to it (a remote one as a local branch tracking it). A name no branch has offers a new branch from the row's, switched to, or a new worktree on it in .worktrees/, opened as a project; with nothing typed, another worktree of the row's branch, its name suggested", Run: func(g *Git) tea.Cmd { return g.openBranches() }}
 	// Branches have no order of their own, so m moves nothing here; M
 	// moves the project, as in every tab.
 	keyPush := binding{Keys: []string{"P"}, Hint: kit.Hint{Key: "shift+p", Does: "push"}, Help: "push the row's branch to its upstream; with none, asked, to the first remote, tracked there. Never a force push: a rejected push says to pull first", Run: func(g *Git) tea.Cmd { return g.push() }}

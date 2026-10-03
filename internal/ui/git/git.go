@@ -122,6 +122,7 @@ type Git struct {
 	primed   bool // every project's status was asked for once
 
 	branches *branchPopup // the branch finder while it is open
+	wantPath string       // a folder whose row takes the cursor once it is listed
 
 	// git's own version, for the section under the projects.
 	version     string

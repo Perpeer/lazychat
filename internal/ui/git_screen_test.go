@@ -672,3 +672,65 @@ func TestGitPushPull(t *testing.T) {
 	d.expectNot("↓1")
 	d.quitApp()
 }
+
+// b finds or makes: a name no branch has offers a new branch, made from the
+// row's and switched to, or a new worktree in .worktrees/ on a branch of
+// its own, opened as a project; with nothing typed it offers another
+// worktree of the row's branch under a free name, and Enter on a listed
+// worktree takes the cursor to its row.
+func TestGitCreate(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	e, dir := seeded(t)
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, filepath.Join(dir, "a.txt"), "one\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-qm", "first")
+	head := func() string { return strings.TrimSpace(gitOut(t, dir, "rev-parse", "--abbrev-ref", "HEAD")) }
+
+	d := start(t, e, 150, 36)
+	d.tab(2)
+	d.expect("● main")
+	d.key("b")
+	d.expect("switch branch · demo2", "+ new worktree main-2 from main")
+	d.typ("tea-kettle")
+	d.expect("▸ + new branch tea-kettle from main", "+ new worktree tea-kettle from main")
+	d.key("enter")
+	d.expect("made tea-kettle from main and switched to it", "● tea-kettle")
+	if got := head(); got != "tea-kettle" {
+		t.Fatalf("HEAD is %q, want tea-kettle", got)
+	}
+
+	d.key("b")
+	d.expect("+ new worktree tea-kettle-2 from tea-kettle")
+	d.key("pgdown") // past the branches, onto the suggestion
+	d.expect("▸ + new worktree tea-kettle-2")
+	d.key("enter")
+	// The row under the project, not the new project's own heading.
+	d.expect("made worktree tea-kettle-2 from tea-kettle, opened as demo2 · tea-kettle-2", "└─ ⑂ tea-kettle-2")
+	wt := filepath.Join(dir, ".worktrees", "tea-kettle-2")
+	if got := strings.TrimSpace(gitOut(t, wt, "rev-parse", "--abbrev-ref", "HEAD")); got != "tea-kettle-2" {
+		t.Fatalf("the worktree is on %q, want tea-kettle-2", got)
+	}
+	if st := gitOut(t, dir, "status", "--porcelain"); st != "" {
+		t.Errorf("the project sees the worktrees folder: %q", st)
+	}
+
+	d.key("b") // a second worktree of the same work, named on
+	d.expect("+ new worktree tea-kettle-3 from tea-kettle-2")
+	d.key("esc")
+	d.key("g") // back to the project's own row
+	d.expect("● tea-kettle")
+	d.key("b")
+	d.expect(" Worktrees", "+ new worktree tea-kettle-3 from tea-kettle")
+	d.typ("kettle-2")
+	d.expect("▸ tea-kettle-2")
+	d.key("enter")
+	d.key("b") // the cursor is on the worktree's row now
+	d.expect("switch branch · demo2 · tea-kettle-2")
+	d.key("esc")
+	d.tab(1) // the worktree is a project in Chat, ready for sessions
+	d.expect("demo2 · tea-kettle-2")
+	d.quitApp()
+}

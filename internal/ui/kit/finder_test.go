@@ -115,3 +115,56 @@ func TestFinderGroupsNotes(t *testing.T) {
 		t.Errorf("groups after SetItems:\n%s", got)
 	}
 }
+
+// What was typed can be made: its rows come after the matches, Enter on
+// one hands over the query, and with no match the cursor starts on the
+// first; an item that is exactly the query offers none, and with nothing
+// typed there are none.
+func TestFinderCreate(t *testing.T) {
+	var picked, made string
+	items := []string{"main", "topic"}
+	f := NewFinder("branches", items, func(i int) { picked = items[i] })
+	f.Create = func(q string) []string {
+		if q == "" {
+			return nil
+		}
+		return []string{"new branch " + q, "new worktree " + q}
+	}
+	f.Made = func(i int, q string) { made = []string{"branch", "worktree"}[i] + ":" + q }
+	plain := func() string { return ansi.Strip(strings.Join(f.body(60, 30), "\n")) }
+	if strings.Contains(plain(), "+ new") {
+		t.Fatalf("create rows with nothing typed:\n%s", plain())
+	}
+	for _, k := range typed("top") {
+		f.Key(k)
+	}
+	got := plain()
+	if !strings.Contains(got, "▸ topic") || !strings.Contains(got, "+ new branch top") || strings.Index(got, "topic") > strings.Index(got, "+ new") {
+		t.Fatalf("rows for top:\n%s", got)
+	}
+	f.Key(tea.KeyMsg{Type: tea.KeyDown})
+	f.Key(tea.KeyMsg{Type: tea.KeyDown})
+	if done, _ := f.Key(tea.KeyMsg{Type: tea.KeyEnter}); !done || made != "worktree:top" || picked != "" {
+		t.Errorf("Enter on the second create row: made %q picked %q", made, picked)
+	}
+	f.Key(tea.KeyMsg{Type: tea.KeyCtrlU})
+	for _, k := range typed("zzz") {
+		f.Key(k)
+	}
+	if got := plain(); !strings.Contains(got, "▸ + new branch zzz") {
+		t.Errorf("with no match the cursor is not on the first create row:\n%s", got)
+	}
+	f.Key(tea.KeyMsg{Type: tea.KeyCtrlU})
+	for _, k := range typed("top") {
+		f.Key(k)
+	}
+	for _, k := range typed("ic") {
+		f.Key(k)
+	}
+	if strings.Contains(plain(), "+ new") {
+		t.Errorf("create rows for an existing name:\n%s", plain())
+	}
+	if f.Key(tea.KeyMsg{Type: tea.KeyEnter}); picked != "topic" {
+		t.Errorf("Enter picked %q, want topic", picked)
+	}
+}

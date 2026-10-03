@@ -81,6 +81,8 @@ func (g *Git) Update(msg tea.Msg) tea.Cmd {
 		g.showBranches(msg)
 	case switchedMsg:
 		return g.switched(msg)
+	case createdMsg:
+		return g.created(msg)
 	case versionMsg:
 		g.version, g.versionErr, g.versionRead = msg.version, msg.err, true
 	case statusMsg:
@@ -109,7 +111,12 @@ func (g *Git) Update(msg tea.Msg) tea.Cmd {
 					cmds = append(cmds, g.load(k))
 				}
 			}
-			g.selectRow(at.key)
+			if g.wantPath == "" || !g.selectPath(g.wantPath) {
+				g.selectRow(at.key)
+			} else {
+				g.wantPath = ""
+				cmds = append(cmds, g.loadDiff())
+			}
 		} else {
 			p.parted, p.from = msg.parted, msg.from
 		}

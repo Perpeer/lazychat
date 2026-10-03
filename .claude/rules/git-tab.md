@@ -18,7 +18,16 @@ paths:
   (`ErrNoUpstream`, `ErrRejected`, `ErrDiverged`, `ErrAuth`,
   `ErrNoRemote`).
 - `b` switches branch, stashing local changes and bringing them back,
-  asked first.
+  asked first. It also finds worktrees and makes a branch or a worktree
+  from what was typed (`kit.Finder.Create`, rows under the matches so
+  Enter still takes the first match).
+- New worktrees go in `<main checkout>/.worktrees/<name>`, excluded in
+  the repository's `info/exclude` (no tracked file changes), each on a
+  branch of its own made from the row's: git keeps a branch in one
+  worktree, and forcing it would move the branch under the other. The
+  suggested name counts on from the branch the work started on
+  (`git.FreeName`). A new worktree is added as a project so sessions can
+  run in it.
 - The cursor sits on checkouts, never headings: `●` current, `⑂`
   worktree, "from X" read from the reflog. Digits pick panels in Git but
   projects in Chat.

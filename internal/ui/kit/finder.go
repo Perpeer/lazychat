@@ -24,10 +24,17 @@ type Finder struct {
 	Note func(i int) string
 	// Status is one dim line under the query: work still going on.
 	Status string
+	// Create offers what can be made of the query, "" before anything is
+	// typed, when no item is exactly it: one row per action, under the
+	// matches, so Enter still takes the first match; Made is called with
+	// the row's index and the query when one is picked. Nil for none.
+	Create func(query string) []string
+	Made   func(i int, query string)
 	items  []string
 	pick   func(i int)
 	query  string
-	shown  []int // indices into items that match the query
+	made   []string // the Create rows for the query
+	shown  []int    // indices into items that match the query
 	cursor List
 }
 
@@ -41,8 +48,8 @@ func NewFinder(title string, items []string, pick func(i int)) *Finder {
 // was typed and the cursor on the item it was on when that is still there.
 func (f *Finder) SetItems(items []string) {
 	keep := ""
-	if len(f.shown) > 0 {
-		keep = f.items[f.shown[f.cursor.Sel]]
+	if at, ok := f.current(); ok {
+		keep = f.items[at]
 	}
 	f.items = items
 	f.filter()
@@ -69,7 +76,28 @@ func (f *Finder) filter() {
 			f.shown = append(f.shown, i)
 		}
 	}
+	f.made = nil
+	if q := strings.TrimSpace(f.query); f.Create != nil {
+		exact := false
+		for _, it := range f.items {
+			exact = exact || (q != "" && strings.EqualFold(it, q))
+		}
+		if !exact {
+			f.made = f.Create(q)
+		}
+	}
 	f.cursor.Sel, f.cursor.Scroll = 0, 0
+}
+
+// rows is how many rows the cursor walks: the matches, then the Create rows.
+func (f *Finder) rows() int { return len(f.shown) + len(f.made) }
+
+// current is the item under the cursor; false on a Create row or none.
+func (f *Finder) current() (int, bool) {
+	if f.cursor.Sel >= len(f.shown) {
+		return 0, false
+	}
+	return f.shown[f.cursor.Sel], true
 }
 
 func (f *Finder) Key(msg tea.KeyMsg) (done bool, cmd tea.Cmd) {
@@ -77,21 +105,27 @@ func (f *Finder) Key(msg tea.KeyMsg) (done bool, cmd tea.Cmd) {
 	case "esc":
 		return true, nil
 	case "enter":
-		if len(f.shown) > 0 && f.pick != nil {
-			f.pick(f.shown[f.cursor.Sel])
+		if i := f.cursor.Sel - len(f.shown); i >= 0 && i < len(f.made) {
+			if f.Made != nil {
+				f.Made(i, strings.TrimSpace(f.query))
+			}
+			return true, nil
+		}
+		if at, ok := f.current(); ok && f.pick != nil {
+			f.pick(at)
 		}
 		return true, nil
 	case "up", "ctrl+k":
-		f.cursor.Move(-1, len(f.shown))
+		f.cursor.Move(-1, f.rows())
 		return false, nil
 	case "down", "ctrl+j":
-		f.cursor.Move(1, len(f.shown))
+		f.cursor.Move(1, f.rows())
 		return false, nil
 	case "pgup":
-		f.cursor.Move(-pickerRows, len(f.shown))
+		f.cursor.Move(-pickerRows, f.rows())
 		return false, nil
 	case "pgdown":
-		f.cursor.Move(pickerRows, len(f.shown))
+		f.cursor.Move(pickerRows, f.rows())
 		return false, nil
 	case "backspace":
 		if f.query != "" {
@@ -121,13 +155,25 @@ func (f *Finder) body(w, screenH int) []string {
 		lines = append(lines, StyleDim.Render("  "+text.Fit(f.Status, w-2)))
 	}
 	lines = append(lines, "")
-	if len(f.shown) == 0 {
+	if f.rows() == 0 {
 		lines = append(lines, StyleDim.Render("  (nothing matches)"))
 	}
 	rows := min(pickerRows, max(3, screenH-10))
-	start, end := f.cursor.Window(len(f.shown), rows, 1)
+	start, end := f.cursor.Window(f.rows(), rows, 1)
 	group := ""
 	for i := start; i < end; i++ {
+		if i >= len(f.shown) {
+			if i == len(f.shown) && i > start {
+				lines = append(lines, "")
+			}
+			label := "+ " + text.Fit(f.made[i-len(f.shown)], w-4)
+			if i == f.cursor.Sel {
+				lines = append(lines, StyleSel.Render(text.Pad("▸ "+label, w)))
+			} else {
+				lines = append(lines, "  "+StyleAccent.Render(label))
+			}
+			continue
+		}
 		at := f.shown[i]
 		if f.Group != nil {
 			if g := f.Group(at); g != group || i == start {
