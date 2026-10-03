@@ -161,7 +161,7 @@ func TestSettingsMenuBar(t *testing.T) {
 	for range 6 {
 		d.key("down")
 	}
-	d.expect("menu bar", "the mascot in the menu bar")
+	d.expect("menu bar", "Lazy in the menu bar")
 	d.key("enter", "down", "enter")
 	d.expect("  hidden", "(enter) change")
 	if !d.core.Settings.NoMenuBar {

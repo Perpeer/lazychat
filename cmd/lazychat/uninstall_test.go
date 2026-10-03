@@ -15,14 +15,14 @@ import (
 // lazychat leave on one, and what must stay: a project, Claude Code's
 // settings, iTerm keys of the user's own.
 type uninstallSeed struct {
-	home, prefix, tmp, plist string
-	gone, kept               []string
+	home, prefix, tmp, plist, apps string
+	gone, kept                     []string
 }
 
 func seedUninstall(t *testing.T) uninstallSeed {
 	t.Helper()
 	root := t.TempDir()
-	s := uninstallSeed{home: filepath.Join(root, "home"), prefix: filepath.Join(root, "bin"), tmp: filepath.Join(root, "tmp")}
+	s := uninstallSeed{home: filepath.Join(root, "home"), prefix: filepath.Join(root, "bin"), tmp: filepath.Join(root, "tmp"), apps: filepath.Join(root, "Applications")}
 	put := func(path, body string) string {
 		t.Helper()
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -36,16 +36,21 @@ func seedUninstall(t *testing.T) uninstallSeed {
 	s.gone = []string{
 		put(filepath.Join(s.prefix, "lazychat"), "bin"),
 		put(filepath.Join(s.home, "Applications", "LazychatBar.app", "Contents", "Info.plist"), "app"),
+		put(filepath.Join(s.apps, "Lazy.app", "Contents", "Info.plist"), "app"),
+		put(filepath.Join(s.home, "Applications", "Lazy.app", "Contents", "Info.plist"), "app"),
 		put(filepath.Join(s.home, ".warp", "launch_configurations", "lazychat.yaml"), "yaml"),
 		put(filepath.Join(s.tmp, "lazychat-notices-99999999-1", "k"), ""),
 		put(filepath.Join(s.tmp, "lazychat-questions-1", "k"), ""),
 	}
 	s.gone[1] = filepath.Join(s.home, "Applications", "LazychatBar.app")
+	s.gone[2] = filepath.Join(s.apps, "Lazy.app")
+	s.gone[3] = filepath.Join(s.home, "Applications", "Lazy.app")
 	s.kept = []string{
 		put(filepath.Join(s.home, ".lazychat", "settings.json"), "{}"),
 		put(filepath.Join(s.home, "code", "project", "main.go"), "package main"),
 		put(filepath.Join(s.home, ".claude", "settings.json"), `{"statusLine":{}}`),
 		put(filepath.Join(s.home, ".warp", "launch_configurations", "mine.yaml"), "mine"),
+		put(filepath.Join(s.apps, "Other.app", "Contents", "Info.plist"), "other"),
 		put(filepath.Join(s.tmp, fmt.Sprintf("lazychat-notices-%d-1", os.Getpid()), "k"), ""),
 	}
 	// lazychat's ⌘1 and ⌘2, ⌘3 changed by the user, and a key of theirs.
@@ -65,7 +70,7 @@ func (s uninstallSeed) run(t *testing.T, proc string, args ...string) (string, e
 	t.Helper()
 	cmd := exec.Command("bash", append([]string{"../../uninstall.sh"}, args...)...)
 	cmd.Env = append(os.Environ(), "HOME="+s.home, "PREFIX="+s.prefix, "TMPDIR="+s.tmp,
-		"LAZYCHAT_UNINSTALL_TEST=1", "LAZYCHAT_ITERM_PLIST="+s.plist, "LAZYCHAT_PROC="+proc)
+		"LAZYCHAT_UNINSTALL_TEST=1", "LAZYCHAT_ITERM_PLIST="+s.plist, "LAZYCHAT_APPLICATIONS="+s.apps, "LAZYCHAT_PROC="+proc)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -96,7 +101,8 @@ func (s uninstallSeed) itermKeys(t *testing.T) string {
 	return strings.Join(keys, " ")
 }
 
-// uninstall.sh takes back the program, the menu bar app, Warp's launch
+// uninstall.sh takes back the program, Lazy (from /Applications and
+// ~/Applications) and LazychatBar, its old name, Warp's launch
 // configuration, dead lazychats' notices and the iTerm keys still
 // lazychat's, and leaves the data, projects, Claude Code's settings, other
 // keys and a running lazychat's notices; run again, it finds nothing left.

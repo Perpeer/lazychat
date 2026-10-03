@@ -3,7 +3,7 @@
 #   ./install.sh               build, or report SAME when nothing changed
 #   ./install.sh --iterm-keys  also make iTerm send ⌘1–⌘4 as lazychat's tab keys
 #   ./install.sh --uninstall   take it all back: runs ./uninstall.sh (--purge, --dry-run)
-# On macOS with swiftc it also builds the menu bar helper, LazychatBar.app.
+# On macOS with swiftc it also builds Lazy, the menu bar mascot, into /Applications.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -69,31 +69,49 @@ else
   fi
 fi
 
-# The menu bar helper, on macOS with swiftc: built into ~/Applications,
-# where macOS lets an ad-hoc signed app ask for notifications (from a
-# temporary folder it refuses without asking), and started again when it
-# changed. Its bundle id stays the same, so a rebuild keeps its permissions.
+# Lazy, the mascot in the menu bar, on macOS with swiftc: built into
+# /Applications, where Finder, Launchpad and Spotlight show it and it can
+# be started by hand; into ~/Applications for a user who may not write
+# there. It is started again when it changed. Its bundle id stays the same,
+# so a rebuild keeps its permissions.
 if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
-  bar="$HOME/Applications/LazychatBar.app"
-  barsum="$(cat macos/LazychatBar/*.swift macos/LazychatBar/Info.plist | shasum | cut -c1-12)"
+  apps="${LAZYCHAT_APPLICATIONS:-/Applications}"
+  [ -w "$apps" ] || apps="$HOME/Applications"
+  bar="$apps/Lazy.app"
+  # The helper was LazychatBar.app in ~/Applications before it was Lazy;
+  # one there is taken away, with its permissions, so only Lazy is left.
+  old="$HOME/Applications/LazychatBar.app"
+  if [ -e "$old" ]; then
+    pkill -x LazychatBar 2>/dev/null || true
+    rm -rf "$old"
+    tccutil reset All dev.lazychat.bar >/dev/null 2>&1 || true
+    echo "ok    replaced    LazychatBar.app by Lazy.app; a Login Item you added for it is added again for Lazy"
+  fi
+  # One copy only: a Lazy in the other Applications folder goes.
+  for other in "/Applications/Lazy.app" "$HOME/Applications/Lazy.app"; do
+    [ "$other" != "$bar" ] && [ -e "$other" ] && [ -w "$(dirname "$other")" ] && rm -rf "$other"
+  done
+  barsum="$(cat macos/Lazy/*.swift macos/Lazy/Info.plist | shasum | cut -c1-12)"
   if [ -f "$bar/Contents/Resources/source.sum" ] && [ "$(cat "$bar/Contents/Resources/source.sum")" = "$barsum" ]; then
-    echo "ok    up to date  menu bar helper at ${bar/#$HOME/~}"
+    echo "ok    up to date  Lazy, the menu bar mascot, at ${bar/#$HOME/~}"
   else
     mkdir -p "$bar/Contents/MacOS" "$bar/Contents/Resources"
-    swiftc -O -o "$bar/Contents/MacOS/LazychatBar" macos/LazychatBar/*.swift
-    cp macos/LazychatBar/Info.plist "$bar/Contents/Info.plist"
+    swiftc -O -o "$bar/Contents/MacOS/Lazy" macos/Lazy/*.swift
+    cp macos/Lazy/Info.plist "$bar/Contents/Info.plist"
     # The app's icon is the mascot the helper draws, so it is one drawing
     # everywhere: rendered as an iconset, made an .icns by macOS's iconutil.
     iconset="$(mktemp -d)/AppIcon.iconset"
-    "$bar/Contents/MacOS/LazychatBar" --icon "$iconset"
+    "$bar/Contents/MacOS/Lazy" --icon "$iconset"
     iconutil -c icns -o "$bar/Contents/Resources/AppIcon.icns" "$iconset"
     rm -rf "$(dirname "$iconset")"
     echo "$barsum" > "$bar/Contents/Resources/source.sum"
     codesign --force -s - "$bar" 2>/dev/null
-    pkill -x LazychatBar 2>/dev/null || true
+    # Tell Launch Services, so Finder and Spotlight show it and its icon now.
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$bar" 2>/dev/null || true
+    pkill -x Lazy 2>/dev/null || true
     open -g "$bar"
-    echo "ok    installed   menu bar helper at ${bar/#$HOME/~}"
-    echo "      note        Settings › menu bar hides it; System Settings › General › Login Items starts it at login"
+    echo "ok    installed   Lazy, the menu bar mascot, at ${bar/#$HOME/~}"
+    echo "      note        start it from Applications; Settings › menu bar hides it; System Settings › General › Login Items starts it at login"
   fi
 fi
 

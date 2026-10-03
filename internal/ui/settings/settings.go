@@ -70,9 +70,9 @@ func (s *Settings) settings() []setting {
 			"the AI tool a new session's form (n) starts on; by default the first that is ready",
 			&st.NewSession, false, func() string { return "" }),
 		s.tabsSetting(), s.themeSetting(),
-		onOff("mascot", "the face at the rail's top that watches the sessions; off, the footer still names the session that asks or has finished", &st.NoMascot, st.Save),
+		onOff("mascot", "Lazy, the face at the rail's top that watches the sessions; off, the footer still names the session that asks or has finished", &st.NoMascot, st.Save),
 		onOff("version", "lazychat's version at the screen's bottom-right corner; lazychat --version says it with the commit", &st.NoVersion, st.Save),
-		onOff("menu bar", "on macOS, the mascot in the menu bar: a click opens the lazychat with news, a right-click lists every lazychat's sessions; install.sh builds it", &st.NoMenuBar, func() error {
+		onOff("menu bar", "on macOS, Lazy in the menu bar: a click opens the lazychat with news, a right-click lists every lazychat's sessions; install.sh builds it into /Applications", &st.NoMenuBar, func() error {
 			if !st.NoMenuBar {
 				s.screen.Queue(func() tea.Msg { return kit.MenuBarShown{} })
 			}

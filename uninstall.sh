@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Takes back what install.sh and lazychat put on this Mac.
-#   ./uninstall.sh            the program, the menu bar helper, its permissions,
-#                             the iTerm keys, Warp's launch configuration
+#   ./uninstall.sh            the program, Lazy (the menu bar mascot) and its
+#                             permissions, the iTerm keys, Warp's launch configuration
 #   ./uninstall.sh --purge    also lazychat's data, ~/.lazychat, to the Trash
 #   ./uninstall.sh --dry-run  say what would go, change nothing
 # Projects, Claude Code's and Codex's files, and Go are never touched.
@@ -19,8 +19,9 @@ for arg in "$@"; do
 done
 
 # LAZYCHAT_UNINSTALL_TEST keeps the test off the real Mac: no process is
-# quit and no permission reset, and the iTerm keys are read from
-# LAZYCHAT_ITERM_PLIST.
+# quit and no permission reset, the iTerm keys are read from
+# LAZYCHAT_ITERM_PLIST, and LAZYCHAT_APPLICATIONS stands in for
+# /Applications.
 testing="${LAZYCHAT_UNINSTALL_TEST:-}"
 darwin=0
 [ "$(uname)" = Darwin ] && darwin=1
@@ -58,17 +59,23 @@ gone() {
 
 gone "program" "$PREFIX/lazychat"
 
-bar="$HOME/Applications/LazychatBar.app"
+# Lazy, wherever install.sh put it, and LazychatBar, its name before.
+apps="${LAZYCHAT_APPLICATIONS:-/Applications}"
 if [ "$darwin" = 1 ] && [ -z "$testing" ] && [ "$dry" = 0 ]; then
+  pkill -x Lazy 2>/dev/null || true
   pkill -x LazychatBar 2>/dev/null || true
 fi
-gone "menu bar" "$bar"
+gone "menu bar" "$apps/Lazy.app"
+gone "menu bar" "$HOME/Applications/Lazy.app"
+gone "menu bar" "$HOME/Applications/LazychatBar.app"
 if [ "$darwin" = 1 ] && [ -z "$testing" ]; then
-  if [ "$dry" = 1 ]; then
-    say "would" "reset" "macOS permissions of dev.lazychat.bar"
-  elif tccutil reset All dev.lazychat.bar >/dev/null 2>&1; then
-    say "ok" "reset" "macOS permissions of dev.lazychat.bar"
-  fi
+  for id in dev.lazychat.lazy dev.lazychat.bar; do
+    if [ "$dry" = 1 ]; then
+      say "would" "reset" "macOS permissions of $id"
+    elif tccutil reset All "$id" >/dev/null 2>&1; then
+      say "ok" "reset" "macOS permissions of $id"
+    fi
+  done
 fi
 
 gone "warp" "$HOME/.warp/launch_configurations/lazychat.yaml"
@@ -147,5 +154,5 @@ elif [ -e "$data" ]; then
 fi
 
 echo "kept  untouched   your projects, Claude Code's and Codex's files, and Go"
-[ "$darwin" = 1 ] && echo "note  login item  one you added for LazychatBar in System Settings › General › Login Items is removed there"
+[ "$darwin" = 1 ] && echo "note  login item  one you added for Lazy in System Settings › General › Login Items is removed there"
 exit 0
