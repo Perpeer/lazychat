@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"lazychat/internal/core/state"
+	"lazychat/internal/core/status"
 	"lazychat/internal/ui/chat/actions"
 	"lazychat/internal/ui/chat/model"
 	"lazychat/internal/ui/kit"
@@ -16,12 +17,12 @@ import (
 type treeView struct {
 	tree   *model.Tree
 	live   *actions.Live
-	asking func(key string) bool                             // the session has a question up; nil for none
-	done   func(key string) bool                             // the session finished and was not looked at since
-	seen   func(key string) bool                             // the session finished and was looked at, waiting for a prompt
-	branch func(path string) string                          // what the project's folder is on; nil for none
-	turn   func(key string) (time.Duration, model.TurnState) // the session's turn time; nil for none
-	draft  func(r state.Session) bool                        // the session has a draft waiting; nil for none
+	asking func(key string) bool                              // the session has a question up; nil for none
+	done   func(key string) bool                              // the session finished and was not looked at since
+	seen   func(key string) bool                              // the session finished and was looked at, waiting for a prompt
+	branch func(path string) string                           // what the project's folder is on; nil for none
+	turn   func(key string) (time.Duration, status.TurnState) // the session's turn time; nil for none
+	draft  func(r state.Session) bool                         // the session has a draft waiting; nil for none
 	tick   int
 	scroll kit.Scroller
 	follow kit.Follow
@@ -98,15 +99,15 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 // turnFoot is a session's turn time after its tool: counting while it
 // works, held in the accent while a question waits, dim once done, and
 // nothing before its first prompt.
-func turnFoot(d time.Duration, st model.TurnState) (styled, plain string) {
+func turnFoot(d time.Duration, st status.TurnState) (styled, plain string) {
 	switch st {
-	case model.TurnRunning:
+	case status.TurnRunning:
 		p := " · ◷ " + text.Span(d)
 		return kit.StyleDim.Render(" · ") + "◷ " + text.Span(d), p
-	case model.TurnHeld:
+	case status.TurnHeld:
 		p := " · ⏸ " + text.Span(d)
 		return kit.StyleDim.Render(" · ") + kit.StyleAccent.Render("⏸ "+text.Span(d)), p
-	case model.TurnDone:
+	case status.TurnDone:
 		p := " · " + text.Span(d)
 		return kit.StyleDim.Render(p), p
 	}

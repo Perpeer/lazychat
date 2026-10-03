@@ -125,9 +125,8 @@ func (c *Chat) sendDraft() tea.Cmd {
 	s, live := c.act.Live.Get(r.Key)
 	// The screen and the hook are read now, not the last tick's view: a
 	// question drawn a moment ago must not take the draft as its answer.
-	_, asks := c.watch.asking[r.Key]
 	_, hooked := c.act.Asked(r.Key)
-	asks = asks || hooked || (live && c.act.ScreenAsks(r))
+	asks := c.board.Asking(r.Key) || hooked || (live && c.act.ScreenAsks(r))
 	switch {
 	case text == "":
 		c.screen.Note("%s has no draft: d writes one", r.Name)
@@ -138,8 +137,8 @@ func (c *Chat) sendDraft() tea.Cmd {
 	case asks:
 		c.screen.Note("%s asks something: answer it first, the draft waits", r.Name)
 		return nil
-	case s.Working() || c.watch.working[r.Key]:
-		// The watcher still counts it working for a moment after the title
+	case s.Working() || c.board.Working(r.Key):
+		// The board still counts it working for a moment after the title
 		// stops: a question may be on its way.
 		c.screen.Note("%s is working: the draft can go once it is done", r.Name)
 		return nil

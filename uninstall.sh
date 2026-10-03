@@ -59,27 +59,20 @@ gone() {
 
 gone "program" "$PREFIX/lazychat"
 
-# Lazychat.app, wherever install.sh put it, and Lazy and LazychatBar, its
-# names before.
+# Lazychat.app, wherever install.sh put it.
 apps="${LAZYCHAT_APPLICATIONS:-/Applications}"
 if [ "$darwin" = 1 ] && [ -z "$testing" ] && [ "$dry" = 0 ]; then
   pkill -x Lazychat 2>/dev/null || true
-  pkill -x Lazy 2>/dev/null || true
-  pkill -x LazychatBar 2>/dev/null || true
 fi
 gone "menu bar" "$apps/Lazychat.app"
 gone "menu bar" "$HOME/Applications/Lazychat.app"
-gone "menu bar" "$apps/Lazy.app"
-gone "menu bar" "$HOME/Applications/Lazy.app"
-gone "menu bar" "$HOME/Applications/LazychatBar.app"
 if [ "$darwin" = 1 ] && [ -z "$testing" ]; then
-  for id in dev.lazychat.lazy dev.lazychat.bar; do
-    if [ "$dry" = 1 ]; then
-      say "would" "reset" "macOS permissions of $id"
-    elif tccutil reset All "$id" >/dev/null 2>&1; then
-      say "ok" "reset" "macOS permissions of $id"
-    fi
-  done
+  id=dev.lazychat.app
+  if [ "$dry" = 1 ]; then
+    say "would" "reset" "macOS permissions of $id"
+  elif tccutil reset All "$id" >/dev/null 2>&1; then
+    say "ok" "reset" "macOS permissions of $id"
+  fi
 fi
 
 gone "warp" "$HOME/.warp/launch_configurations/lazychat.yaml"

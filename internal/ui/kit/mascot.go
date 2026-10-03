@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"lazychat/internal/core/status"
 	"lazychat/internal/ui/text"
 )
 
@@ -40,12 +41,10 @@ type MascotState struct {
 	Sessions []SessionNews
 }
 
-// SessionNews is one running session's state: at work, done and waiting
-// for a prompt, asking, or none of them.
+// SessionNews is one running session and its state.
 type SessionNews struct {
 	Key, Name, Project string
-	// Done is finished and not looked at; Seen finished and looked at.
-	Working, Done, Seen, Asks bool
+	State              status.State
 }
 
 // Question is a session that asks the user something.

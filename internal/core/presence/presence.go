@@ -14,24 +14,24 @@ import (
 	"strconv"
 
 	"lazychat/internal/core/files"
+	"lazychat/internal/core/status"
 )
 
-// The states a session or the whole lazychat can be in, by the helper's
-// words for them.
+// The states a session can be in, decided by package status.
 const (
-	Rest    = "rest"
-	Working = "working"
-	Done    = "done" // finished, not looked at yet
-	Idle    = "idle" // finished and looked at, waiting for its next prompt
-	Asks    = "asks" // a question is up
+	Rest    = status.Rest
+	Working = status.Working
+	Done    = status.Done
+	Idle    = status.Idle
+	Asks    = status.Asks
 )
 
 // Session is one session's line in the helper's menu.
 type Session struct {
-	Key     string `json:"key"`
-	Name    string `json:"name"`
-	Project string `json:"project"`
-	State   string `json:"state"`
+	Key     string       `json:"key"`
+	Name    string       `json:"name"`
+	Project string       `json:"project"`
+	State   status.State `json:"state"`
 }
 
 // Snapshot is one lazychat as the helper sees it: which workspace, in which

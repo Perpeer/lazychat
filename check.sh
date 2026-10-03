@@ -38,7 +38,7 @@ ok "go vet"
 
 # 2b. The macOS menu bar helper compiles, where swiftc is there to say so.
 if command -v swiftc >/dev/null 2>&1; then
-  swiftc -typecheck macos/Lazy/*.swift || fail "swift: macos/Lazy does not compile"
+  swiftc -typecheck macos/Lazychat/*.swift || fail "swift: macos/Lazychat does not compile"
   ok "swift helper"
 fi
 

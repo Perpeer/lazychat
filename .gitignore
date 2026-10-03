@@ -3,10 +3,12 @@
 .vscode/
 .DS_Store
 
-# Local secrets, and Claude Code's per-machine settings, plans and notes
+# Local secrets, and Claude Code's per-machine settings, plans and notes;
+# the rules are the project's and are kept
 .env
 .env.*
-.claude/
+.claude/*
+!.claude/rules/
 
 # Build and test output
 /lazychat

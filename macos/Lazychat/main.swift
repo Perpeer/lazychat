@@ -8,11 +8,24 @@
 // (no_menu_bar in settings.json) hides it.
 import AppKit
 
+// SessionStatus and the two orders below mirror lazychat's
+// internal/core/status, which decides them for one lazychat; this app
+// applies them across every lazychat and Claude desktop, which only it sees.
+enum SessionStatus: String, Decodable {
+    case rest, working, done, idle, asks
+}
+
+// moodOrder is what the mascot shows: a question over work over a finished
+// session not looked at. clickOrder is what a click opens: a question, then
+// a finished session, then one at work.
+let moodOrder: [SessionStatus] = [.asks, .working, .done]
+let clickOrder: [SessionStatus] = [.asks, .done, .working]
+
 struct SessionState: Decodable {
     let key: String
     let name: String
     let project: String
-    let state: String
+    let state: SessionStatus
 }
 
 struct Snapshot: Decodable {
@@ -165,7 +178,14 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 menu.addItem(withTitle: "    no session running", action: nil, keyEquivalent: "")
             }
             for x in s.sessions {
-                let mark = ["working": "◐", "done": "✦", "idle": "✓", "asks": "?"][x.state] ?? "○"
+                let mark: String
+                switch x.state {
+                case .working: mark = "◐"
+                case .done: mark = "✦"
+                case .idle: mark = "✓"
+                case .asks: mark = "?"
+                case .rest: mark = "○"
+                }
                 let entry = menu.addItem(withTitle: "    \(mark) \(x.name) · \(x.project)", action: #selector(open(_:)), keyEquivalent: "")
                 entry.target = self
                 entry.tag = Int(s.pid)
@@ -246,7 +266,7 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let d = snapshots.first(where: { $0.pid == desktopPid }) else { return }
         let pick = d.sessions.first { $0.key == key } ?? pickDesktop(d)
         guard let x = pick else { return }
-        desktop.open(x.key, asks: x.state == "asks")
+        desktop.open(x.key, asks: x.state == .asks)
     }
 
     // ttyOf is the terminal device a process runs on, as ps names it.
@@ -269,37 +289,35 @@ let cheerTime: TimeInterval = 2
 
 // working is every session at work now, across the lazychats.
 func working(_ snapshots: [Snapshot]) -> Set<String> {
-    Set(snapshots.flatMap { s in s.sessions.filter { $0.state == "working" }.map { "\(s.pid)/\($0.key)" } })
+    Set(snapshots.flatMap { s in s.sessions.filter { $0.state == .working }.map { "\(s.pid)/\($0.key)" } })
 }
 
-// weigh is the mood for every session at once, as the app's mascot weighs
-// them — a question over work over a finished session not looked at over
-// rest — and how many work, for the badges.
+// weigh is the mood for every session at once, by moodOrder, and how many
+// work, for the badges; badges show only while work is the mood.
 func weigh(_ snapshots: [Snapshot]) -> (Mood, Int) {
     let all = snapshots.flatMap { $0.sessions }
-    let busy = all.filter { $0.state == "working" }.count
-    if all.contains(where: { $0.state == "asks" }) { return (.asks, busy) }
-    if busy > 0 { return (.working, busy) }
-    return (all.contains { $0.state == "done" } ? .done : .rest, 0)
+    let busy = all.filter { $0.state == .working }.count
+    guard let top = moodOrder.first(where: { st in all.contains { $0.state == st } }) else { return (.rest, 0) }
+    let mood = Mood(rawValue: top.rawValue) ?? .rest
+    return (mood, mood == .done ? 0 : busy)
 }
 
-// target is the lazychat a click opens: the one with a question up, else
-// one with a finished session not looked at, else one at work, else the
-// one that wrote last.
+// target is the lazychat a click opens, by clickOrder, else the one that
+// wrote last.
 func target(_ snapshots: [Snapshot], _ written: [Int32: Date]) -> Int32? {
-    for state in ["asks", "done", "working"] {
-        if let s = snapshots.first(where: { $0.sessions.contains { $0.state == state } }) {
+    for st in clickOrder {
+        if let s = snapshots.first(where: { $0.sessions.contains { $0.state == st } }) {
             return s.pid
         }
     }
     return snapshots.max { (written[$0.pid] ?? .distantPast) < (written[$1.pid] ?? .distantPast) }?.pid
 }
 
-// pickDesktop is the desktop session a click on the icon opens: one that
-// asks, else one done, else one at work, else the first.
+// pickDesktop is the desktop session a click on the icon opens, by
+// clickOrder, else the first.
 func pickDesktop(_ d: Snapshot) -> SessionState? {
-    for state in ["asks", "done", "working"] {
-        if let x = d.sessions.first(where: { $0.state == state }) { return x }
+    for st in clickOrder {
+        if let x = d.sessions.first(where: { $0.state == st }) { return x }
     }
     return d.sessions.first
 }
@@ -319,10 +337,10 @@ func status(_ b: Bar) -> String {
         out.append(s.pid == desktopPid ? "Claude app · \(b.desktop.config.appendingPathComponent("sessions").path)" : "pid \(s.pid) · \(s.workspace) · \(s.terminal)")
         for x in s.sessions {
             if s.pid == desktopPid {
-                let link = b.desktop.link(x.key, asks: x.state == "asks")?.absoluteString ?? "brings Claude to the front"
-                out.append("  \(x.state) \(x.name) · \(x.project) · a click: \(link)")
+                let link = b.desktop.link(x.key, asks: x.state == .asks)?.absoluteString ?? "brings Claude to the front"
+                out.append("  \(x.state.rawValue) \(x.name) · \(x.project) · a click: \(link)")
             } else {
-                out.append("  \(x.state) \(x.name) · \(x.project)")
+                out.append("  \(x.state.rawValue) \(x.name) · \(x.project)")
             }
         }
     }

@@ -218,7 +218,7 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 		c.selectRow(hit.N)
 		// A click on a finished session is looking at it: it stops calling.
 		if r, ok := c.tree.Current(); ok && r.Session != nil {
-			c.watch.see(r.Session.Key)
+			c.board.See(r.Session.Key)
 		}
 	case kit.HitHeading:
 		c.capture.Drop()
@@ -252,6 +252,6 @@ func (c *Chat) pointAt(msg tea.MouseMsg) {
 // finished one stops calling at once, and waits quietly for its prompt.
 func (c *Chat) takeKeys() {
 	if c.capture.Take() {
-		c.watch.see(c.pane.Key)
+		c.board.See(c.pane.Key)
 	}
 }

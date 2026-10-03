@@ -462,18 +462,7 @@ func (a *App) tellMenuBar() {
 	snap := presence.Snapshot{Pid: os.Getpid(), Workspace: a.core.Workspace.Name, Terminal: os.Getenv("TERM_PROGRAM"), Sessions: []presence.Session{}}
 	if st, ok := a.mascotState(); ok {
 		for _, s := range st.Sessions {
-			state := presence.Rest
-			switch {
-			case s.Asks:
-				state = presence.Asks
-			case s.Done:
-				state = presence.Done
-			case s.Seen:
-				state = presence.Idle
-			case s.Working:
-				state = presence.Working
-			}
-			snap.Sessions = append(snap.Sessions, presence.Session{Key: s.Key, Name: s.Name, Project: s.Project, State: state})
+			snap.Sessions = append(snap.Sessions, presence.Session{Key: s.Key, Name: s.Name, Project: s.Project, State: s.State})
 		}
 	}
 	_ = a.news.Write(snap)

@@ -71,11 +71,11 @@ final class Desktop {
     func snapshot() -> Snapshot? {
         let sessions = files.compactMap { f -> SessionState? in
             guard let id = f.sessionId else { return nil }
-            let state: String
+            let state: SessionStatus
             switch f.status {
-            case "busy": state = "working"
-            case "waiting": state = "asks"
-            default: state = unseen.contains(id) ? "done" : "idle"
+            case "busy": state = .working
+            case "waiting": state = .asks
+            default: state = unseen.contains(id) ? .done : .idle
             }
             let folder = ((f.cwd ?? "") as NSString).lastPathComponent
             return SessionState(key: id, name: f.name ?? folder, project: folder, state: state)

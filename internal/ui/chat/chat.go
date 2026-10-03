@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"lazychat/internal/core/api"
+	"lazychat/internal/core/status"
 	"lazychat/internal/ui/chat/actions"
 	"lazychat/internal/ui/chat/model"
 	"lazychat/internal/ui/kit"
@@ -32,7 +33,7 @@ type Chat struct {
 	list    treeView
 	pane    kit.TermPane
 	capture *kit.Capture
-	watch   watcher // what each running session is doing, for the mascot
+	board   status.Board // what each running session is doing
 	// drafts are the next prompts being written, per session; drafting is
 	// the draft box under the pane having the keys.
 	drafts   map[string]*kit.Editor
@@ -46,9 +47,9 @@ func New(core *api.Core, screen kit.Screen) *Chat {
 	c.act = actions.New(core, c, func() { screen.Send(termMsg{}) })
 	c.tree = &model.Tree{Store: core.Store}
 	c.list = treeView{tree: c.tree, live: c.act.Live,
-		asking: func(key string) bool { _, ok := c.watch.asking[key]; return ok },
-		done:   func(key string) bool { return c.watch.news(key) },
-		seen:   func(key string) bool { _, ok := c.watch.waiting[key]; return ok && c.watch.seen[key] },
+		asking: c.board.Asking,
+		done:   c.board.News,
+		seen:   c.board.Seen,
 		branch: func(path string) string { return kit.HeadLabel(core.Head(path)) },
 	}
 	c.list.turn = c.turnTime

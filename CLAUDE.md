@@ -23,8 +23,10 @@ enforces the lines, so a wrong import fails the check.
 - `internal/ui/kit` — shared parts; `internal/ui/vm` — shared plain-Go
   state (the list cursor).
 - `internal/term` — the only package that touches ptys and the emulator.
-- `internal/core` — state, workspaces, history, AI tools (`agent`), `api`. No
-  terminal packages; `api` runs no subprocess.
+- `internal/core` — state, workspaces, history, AI tools (`agent`), session
+  status (`status`), `api`. No terminal packages; `api` runs no subprocess.
+- `macos/Lazychat` — the menu bar app, Swift. The app is Lazychat; Lazy is
+  only the mascot.
 
 ## Write it once
 
@@ -34,6 +36,9 @@ enforces the lines, so a wrong import fails the check.
 - What a mouse event is over is `kit.Hits`. A tab never loops over zones.
 - Colours come from `kit.Theme`; keys from the tab's `keymap.go`, which
   also feeds the footer and `?` help.
+- What a session is doing — working, done, looked at, asking, its turn,
+  what calls first — is `status.Board`. A tool adds its signals through
+  its capabilities; nothing else derives a state.
 - A difference between tabs that should not exist is a bug in the shared
   part's use, not a reason for a second copy.
 
@@ -49,6 +54,22 @@ enforces the lines, so a wrong import fails the check.
   at the footer's right end first.
 - Zones are one global manager: tests in `internal/ui` never run in
   parallel.
+
+## Rules by area
+
+`.claude/rules/` holds what each area has learned, loaded when its files
+are read; add a rule there, with its why, when a change settles one.
+
+| File | Area |
+| --- | --- |
+| `session-status.md` | the board, its states and orders, the Swift mirror |
+| `menu-bar.md` | Lazychat.app, the state files, clicks, permissions |
+| `ai-tools.md` | the tool gateway, the claude overlay, resume |
+| `workspaces.md` | locks, switching in place, broken files |
+| `git-tab.md` | push, pull, branch, what git may never do |
+| `keys-and-layout.md` | leave key, footers, widths |
+| `tests.md` | the test layers' traps |
+| `install.md` | install and uninstall, nothing legacy |
 
 ## Tests
 
@@ -84,4 +105,7 @@ missing or bad objects, look for iCloud's copies inside `.git`
 (`find .git -name "* [0-9]*"`: `objects/30 2`, `index 2`): after a backup
 of `.git`, move each object back into its own folder when that one lacks
 it, then delete the copies. Two devices committing the same branch
-diverge; which side is kept is the user's call.
+diverge; which side is kept is the user's call. `./sync-wait.sh` waits
+until iCloud has sent or fetched everything under the checkout (macOS
+cannot be made to sync now): run it after a commit or an install, and
+before work on the other Mac.

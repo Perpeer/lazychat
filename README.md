@@ -158,9 +158,7 @@ On macOS with `swiftc` (Xcode or its Command Line Tools) it also builds
 bar) — so Finder, Launchpad and Spotlight show it and it starts from there
 — with the mascot as its icon; a user who may not write `/Applications`
 gets it in `~/Applications`. It is signed for this Mac only (`codesign -s -`, no
-Apple account needed) and started again when its source changed. An
-earlier `~/Applications/LazychatBar.app`, its name before, is quit and
-replaced.
+Apple account needed) and started again when its source changed.
 
 `./install.sh --iterm-keys` also makes iTerm send `⌘1`–`⌘4` as lazychat's
 tab keys, taking them from iTerm's own tab switching; your other iTerm keys
@@ -185,8 +183,7 @@ back what installing and running put on the Mac, one line per piece:
 
 - `$PREFIX/lazychat` (by default `~/.local/bin/lazychat`);
 - `Lazychat.app` from `/Applications` (or `~/Applications`), quit first, and
-  its macOS permissions (`tccutil reset All dev.lazychat.lazy`); an old
-  `Lazy.app` or `~/Applications/LazychatBar.app` too;
+  its macOS permissions (`tccutil reset All dev.lazychat.app`);
 - the iTerm keys `--iterm-keys` added — only `⌘1`–`⌘4`, and only those that
   still send lazychat's tab keys; quit iTerm first, as for installing them;
 - Warp's launch configuration, `~/.warp/launch_configurations/lazychat.yaml`;
@@ -665,7 +662,7 @@ in lazychat they are. Claude desktop's chat is not followed either: it
 leaves nothing to read, and reading its window would need the Accessibility
 permission.
 
-The mascot is drawn once, in code (`macos/Lazy/mascot.swift`): the
+The mascot is drawn once, in code (`macos/Lazychat/mascot.swift`): the
 menu bar draws its frames live, and `install.sh` renders the app's icon
 from the same drawing (`Lazychat --icon`, then `iconutil`), so Finder,
 System Settings and macOS's dialogs show the same face. `Lazychat
@@ -677,6 +674,15 @@ and start it again. `/Applications/Lazychat.app/Contents/MacOS/Lazychat
 --status` says what the menu bar would show now and every lazychat and
 Claude desktop session it sees, with their states and what a click opens;
 `--status <seconds>` keeps reading and prints each change.
+
+What it asks macOS for is one thing: Automation, once per terminal app,
+the first time a click brings a Terminal or iTerm tab to the front or opens
+lazychat in one (AppleScript is the only way to pick a tab by its tty).
+Nothing else — no Accessibility, Screen Recording, notifications, Full Disk
+Access or entitlements; Warp, Ghostty, kitty, WezTerm, Alacritty and Claude
+desktop are opened with `open` or a URL, which asks for nothing. Removing
+`NSAppleEventsUsageDescription` from `Info.plist` is safe only together
+with the last AppleScript call.
 
 Settings' `menu bar` row turns it off and on: off, the helper reads
 `settings.json` within a second and takes its icon away, and lazychat does
@@ -759,8 +765,8 @@ internal/ui/kit           what tabs share
 internal/ui/vm            shared plain-Go state: the list cursor
 internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
-internal/core             agent, api, files, git, history, keylayout, presence, settings, state, workspace — no terminal packages; api runs no subprocess
-macos/Lazy                Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions
+internal/core             agent, api, files, git, history, keylayout, presence, settings, state, status, workspace — no terminal packages; api runs no subprocess
+macos/Lazychat            Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions
 assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
 ```
 
@@ -789,6 +795,17 @@ Git is on screen; only the selected tab gets keys and the mouse.
 | `TermPane`, `CopyMode` | the terminal pane with its scrolling and mouse, and row selection |
 | `InputRouter` | hands raw bytes to a captured pty, takes out the leave key, the tab keys and mouse reports, turns kitty text reports back into characters |
 | `Mascot`, headings, `ReorderKeys`, `ProjectRow` | the face, the project heading and tree rows, move mode, the project keys row |
+
+### Session status
+
+`internal/core/status` decides what every running session is doing —
+working, done and not looked at, looked at, asking — its turn's time, the
+mascot's mood and what a click on it opens. Chat reads each session's
+signals on the tick (its process, its tool's capabilities, the notice
+hook, whether its pane has the keys) and hands them to the `Board`;
+everything that shows a state reads it back from there. The menu bar app
+gets the same states through `presence` and applies the same two orders
+across every lazychat and Claude desktop.
 
 ### AI tools
 

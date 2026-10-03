@@ -78,22 +78,6 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
   apps="${LAZYCHAT_APPLICATIONS:-/Applications}"
   [ -w "$apps" ] || apps="$HOME/Applications"
   bar="$apps/Lazychat.app"
-  # The helper was LazychatBar.app in ~/Applications, then Lazy.app; an
-  # old one is taken away so only Lazychat is left (LazychatBar's
-  # permissions too: it had another bundle id).
-  old="$HOME/Applications/LazychatBar.app"
-  if [ -e "$old" ]; then
-    pkill -x LazychatBar 2>/dev/null || true
-    rm -rf "$old"
-    tccutil reset All dev.lazychat.bar >/dev/null 2>&1 || true
-    echo "ok    replaced    LazychatBar.app by Lazychat.app; a Login Item you added for it is added again for Lazychat"
-  fi
-  for old in "/Applications/Lazy.app" "$HOME/Applications/Lazy.app"; do
-    [ -e "$old" ] && [ -w "$(dirname "$old")" ] || continue
-    pkill -x Lazy 2>/dev/null || true
-    rm -rf "$old"
-    echo "ok    replaced    Lazy.app by Lazychat.app; a Login Item you added for it is added again for Lazychat"
-  done
   # One copy only: a Lazychat in the other Applications folder goes.
   for other in "/Applications/Lazychat.app" "$HOME/Applications/Lazychat.app"; do
     [ "$other" != "$bar" ] && [ -e "$other" ] && [ -w "$(dirname "$other")" ] && rm -rf "$other"
@@ -111,17 +95,17 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
   target="$(uname -m)-apple-macos13.0"
   # The sum covers what the app is built from and with — its files, the SDK
   # and the target — so a change to any of them rebuilds it.
-  barsum="$( { cat macos/Lazy/*.swift macos/Lazy/Info.plist; echo "$sdk $target"; } | shasum | cut -c1-12)"
+  barsum="$( { cat macos/Lazychat/*.swift macos/Lazychat/Info.plist; echo "$sdk $target"; } | shasum | cut -c1-12)"
   if [ -f "$bar/Contents/Resources/source.sum" ] && [ "$(cat "$bar/Contents/Resources/source.sum")" = "$barsum" ]; then
     echo "ok    up to date  Lazychat.app, Lazy in the menu bar, at ${bar/#$HOME/~}"
   else
     mkdir -p "$bar/Contents/MacOS" "$bar/Contents/Resources"
     # SDKROOT, not -sdk: the SDK version the linker writes into the app
     # comes from SDKROOT; -sdk alone still left the newer one there.
-    SDKROOT="${sdk:-${SDKROOT:-}}" swiftc -O -target "$target" -o "$bar/Contents/MacOS/Lazychat" macos/Lazy/*.swift
+    SDKROOT="${sdk:-${SDKROOT:-}}" swiftc -O -target "$target" -o "$bar/Contents/MacOS/Lazychat" macos/Lazychat/*.swift
     # install -m, not cp: a checkout's own modes (iCloud leaves some files
     # 600) must not reach the bundle, or Finder marks it as one it cannot open.
-    install -m 644 macos/Lazy/Info.plist "$bar/Contents/Info.plist"
+    install -m 644 macos/Lazychat/Info.plist "$bar/Contents/Info.plist"
     # The app's icon is the mascot the helper draws, so it is one drawing
     # everywhere: rendered as an iconset, made an .icns by macOS's iconutil.
     iconset="$(mktemp -d)/AppIcon.iconset"

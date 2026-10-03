@@ -35,20 +35,14 @@ func seedUninstall(t *testing.T) uninstallSeed {
 	}
 	s.gone = []string{
 		put(filepath.Join(s.prefix, "lazychat"), "bin"),
-		put(filepath.Join(s.home, "Applications", "LazychatBar.app", "Contents", "Info.plist"), "app"),
-		put(filepath.Join(s.apps, "Lazy.app", "Contents", "Info.plist"), "app"),
-		put(filepath.Join(s.home, "Applications", "Lazy.app", "Contents", "Info.plist"), "app"),
 		put(filepath.Join(s.apps, "Lazychat.app", "Contents", "Info.plist"), "app"),
 		put(filepath.Join(s.home, "Applications", "Lazychat.app", "Contents", "Info.plist"), "app"),
 		put(filepath.Join(s.home, ".warp", "launch_configurations", "lazychat.yaml"), "yaml"),
 		put(filepath.Join(s.tmp, "lazychat-notices-99999999-1", "k"), ""),
 		put(filepath.Join(s.tmp, "lazychat-questions-1", "k"), ""),
 	}
-	s.gone[1] = filepath.Join(s.home, "Applications", "LazychatBar.app")
-	s.gone[2] = filepath.Join(s.apps, "Lazy.app")
-	s.gone[3] = filepath.Join(s.home, "Applications", "Lazy.app")
-	s.gone[4] = filepath.Join(s.apps, "Lazychat.app")
-	s.gone[5] = filepath.Join(s.home, "Applications", "Lazychat.app")
+	s.gone[1] = filepath.Join(s.apps, "Lazychat.app")
+	s.gone[2] = filepath.Join(s.home, "Applications", "Lazychat.app")
 	s.kept = []string{
 		put(filepath.Join(s.home, ".lazychat", "settings.json"), "{}"),
 		put(filepath.Join(s.home, "code", "project", "main.go"), "package main"),
@@ -106,8 +100,7 @@ func (s uninstallSeed) itermKeys(t *testing.T) string {
 }
 
 // uninstall.sh takes back the program, Lazychat.app (from /Applications
-// and ~/Applications), and Lazy.app and LazychatBar.app, its old names, Warp's launch
-// configuration, dead lazychats' notices and the iTerm keys still
+// and ~/Applications), Warp's launch configuration, dead lazychats' notices and the iTerm keys still
 // lazychat's, and leaves the data, projects, Claude Code's settings, other
 // keys and a running lazychat's notices; run again, it finds nothing left.
 func TestUninstall(t *testing.T) {
