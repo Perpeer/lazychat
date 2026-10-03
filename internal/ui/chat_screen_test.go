@@ -46,7 +46,7 @@ func TestChatFlow(t *testing.T) {
 	d.expectCount(1, 1)
 	d.leave()
 
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (s) send draft · (m) move · (x) close · (wheel) scroll · (?) help",
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help",
 		"project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+x) remove")
 	d.key("p", "s", "K", "J", "ctrl+k", "ctrl+j") // no menus, no second way to move: nothing happens
 	d.expectNot("project · demo")
@@ -75,7 +75,7 @@ func TestChatFlow(t *testing.T) {
 	d.raw("hello\r")
 	d.expect("got: hello")
 	d.leave()
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (s) send draft · (m) move · (x) close · (wheel) scroll · (?) help", "ivy")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help", "ivy")
 	d.key("ctrl+c")
 	d.expect("stop 2 running session(s) and quit?")
 	d.key("n")
@@ -101,13 +101,13 @@ func TestChatFlow(t *testing.T) {
 	d.key("tab", "tab") // Chat → Git → Terminal
 	d.expect("demo2 · terminals (0)")
 	d.key("tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (s) send draft · (m) move · (x) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help")
 	d.key("shift+tab") // back around the rail: Chat → Terminal, then Terminal → Git
 	d.expect("demo2 · terminals (0)")
 	d.key("shift+tab")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) switch")
 	d.key("tab", "tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (s) send draft · (m) move · (x) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (d) draft · (shift+s) paste draft · (m) move · (x) close · (wheel) scroll · (?) help")
 	d.click(79, 14)
 	d.expect("(ctrl+q) back to lazychat")
 	d.click(9, 4) // the project's heading, beside the pane: its first session
@@ -410,8 +410,9 @@ func TestResumeAtStart(t *testing.T) {
 }
 
 // A draft of the next prompt is written under the pane while the session
-// works, survives the answer to its question, and is sent once it is free;
-// it is refused while the session works, and kept across a reopen of the box.
+// works, survives the answer to its question, and is pasted into the session
+// once it is free, with the keys, so Enter is the user's after a last edit;
+// it is refused while the session works or asks.
 func TestDraft(t *testing.T) {
 	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
 	e.vars = map[string]string{"FAKE_CLAUDE_BRACKETS": "1"}
@@ -424,10 +425,10 @@ func TestDraft(t *testing.T) {
 	d.leave()
 
 	d.key("d")
-	d.expect("[3] draft · ivy", "(ctrl+s) send · (esc) back")
+	d.expect("[3] draft · ivy", "(ctrl+s) paste in · (esc) back")
 	d.typ("next: the README")
 	d.key("ctrl+s")
-	d.expect("ivy is working: the draft goes once it is done")
+	d.expect("ivy is working: the draft can go once it is done")
 	d.expect("Tea or coffee?")
 	d.key("ctrl+s")
 	d.expect("ivy asks something: answer it first, the draft waits")
@@ -450,8 +451,13 @@ func TestDraft(t *testing.T) {
 		}
 	}
 
-	d.key("s")
-	d.expect("draft sent", "got: next: the README")
+	d.key("S")
+	// Pasted into the input and echoed there, with the keys in the pane.
+	d.expect("(ctrl+q) back to lazychat", "next: the README")
+	d.expectNot("got: next: the README")
 	d.expectNot("✎")
+	d.raw(" now\r")
+	d.expect("got: next: the README now")
+	d.leave()
 	d.quitApp()
 }

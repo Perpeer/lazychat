@@ -13,8 +13,8 @@ import (
 
 // A session's draft is the next prompt written while the agent works, in a
 // box under its pane: kept apart from the tool's own input, an answer the
-// agent asks for never takes its place, and it is sent once the session is
-// free. The box shows only while it has the keys, so the sessions' ptys are
+// agent asks for never takes its place, and it is pasted into the session
+// once that is free, where the user gives it a last look and sends it. The box shows only while it has the keys, so the sessions' ptys are
 // not resized as the cursor walks the tree.
 
 // draftSentMsg is a draft's paste ending.
@@ -112,9 +112,10 @@ func (c *Chat) draftKey(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-// sendDraft pastes the cursor's session's draft into it and presses Enter,
-// only while the session runs, does not work and asks nothing: a question
-// is answered first, and a prompt sent mid-answer would be taken as one.
+// sendDraft pastes the cursor's session's draft into its input, only while
+// the session runs, does not work and asks nothing: a question is answered
+// first, and a prompt pasted into one would be taken as its answer. Enter is
+// left to the user, after a last edit.
 func (c *Chat) sendDraft() tea.Cmd {
 	r, ok := c.draftRecord()
 	if !ok {
@@ -140,27 +141,24 @@ func (c *Chat) sendDraft() tea.Cmd {
 	case s.Working() || c.watch.working[r.Key]:
 		// The watcher still counts it working for a moment after the title
 		// stops: a question may be on its way.
-		c.screen.Note("%s is working: the draft goes once it is done", r.Name)
+		c.screen.Note("%s is working: the draft can go once it is done", r.Name)
 		return nil
 	}
 	c.saveDraft()
 	return func() tea.Msg {
-		err := <-s.PasteWhenReady(text, pasteLimit)
-		if err == nil {
-			err = s.Write([]byte("\r"))
-		}
-		return draftSentMsg{key: r.Key, err: err}
+		return draftSentMsg{key: r.Key, err: <-s.PasteWhenReady(text, pasteLimit)}
 	}
 }
 
-// draftSent clears a draft that reached its session; one that did not stays.
+// draftSent clears a draft that reached its session's input and gives the
+// session the keys, for the last edit and Enter; one that did not stays.
 func (c *Chat) draftSent(msg draftSentMsg) {
 	if msg.err != nil {
 		if errors.Is(msg.err, term.ErrNoPaste) {
-			c.screen.Note("draft not sent: the tool takes no pasted text yet; it is kept")
+			c.screen.Note("draft not pasted: the tool takes no pasted text yet; it is kept")
 			return
 		}
-		c.screen.Note("draft not sent: %v; it is kept", msg.err)
+		c.screen.Note("draft not pasted: %v; it is kept", msg.err)
 		return
 	}
 	delete(c.drafts, msg.key)
@@ -170,7 +168,11 @@ func (c *Chat) draftSent(msg draftSentMsg) {
 	if r, ok := c.draftRecord(); ok && r.Key == msg.key && c.drafting {
 		c.closeDraft()
 	}
-	c.screen.Note("draft sent")
+	if s, ok := c.act.Live.Get(msg.key); ok && s.Alive() {
+		c.point(msg.key, s)
+		c.takeKeys()
+	}
+	c.screen.Note("draft pasted: edit it if need be, Enter sends it")
 }
 
 // draftView is the box under the pane while it has the keys.
@@ -183,7 +185,7 @@ func (c *Chat) draftView(w, h int) string {
 	e.SetSize(w-2, h-2)
 	lines := e.View(c.tick%2 == 0)
 	if e.Value() == "" {
-		lines = []string{kit.StyleDim.Render("the next prompt for " + r.Name + ", written while it works; Ctrl+S sends it once it is free")}
+		lines = []string{kit.StyleDim.Render("the next prompt for " + r.Name + ", written while it works; Ctrl+S pastes it in once it is free")}
 	}
 	return hits.Panel(3, kit.Box(kit.PanelTitle(3, "draft · "+r.Name), lines, w, h, true, false))
 }
