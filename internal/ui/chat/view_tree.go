@@ -15,17 +15,18 @@ import (
 // treeView draws the model's tree: projects as headings, sessions hanging
 // off them on connector lines, the running ones spinning.
 type treeView struct {
-	tree   *model.Tree
-	live   *actions.Live
-	asking func(key string) bool                              // the session has a question up; nil for none
-	done   func(key string) bool                              // the session finished and was not looked at since
-	seen   func(key string) bool                              // the session finished and was looked at, waiting for a prompt
-	branch func(path string) string                           // what the project's folder is on; nil for none
-	turn   func(key string) (time.Duration, status.TurnState) // the session's turn time; nil for none
-	draft  func(r state.Session) bool                         // the session has a draft waiting; nil for none
-	tick   int
-	scroll kit.Scroller
-	follow kit.Follow
+	tree     *model.Tree
+	live     *actions.Live
+	asking   func(key string) bool                              // the session has a question up; nil for none
+	done     func(key string) bool                              // the session finished and was not looked at since
+	seen     func(key string) bool                              // the session finished and was looked at, waiting for a prompt
+	branch   func(path string) string                           // what the project's folder is on; nil for none
+	worktree func(path string) string                           // the worktree a project's folder is, "" for a repository's own; nil for none
+	turn     func(key string) (time.Duration, status.TurnState) // the session's turn time; nil for none
+	draft    func(r state.Session) bool                         // the session has a draft waiting; nil for none
+	tick     int
+	scroll   kit.Scroller
+	follow   kit.Follow
 }
 
 // nameLines is how many rows a session's name may wrap to under its
@@ -86,6 +87,15 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 	if t.turn != nil {
 		ts, tp := turnFoot(t.turn(s.Key))
 		styled, plain = styled+ts, plain+tp
+	}
+	// A session in a worktree says so on its own row, so it is not taken
+	// for one working in the repository's own folder.
+	if t.worktree != nil {
+		if p, ok := t.tree.Store.ProjectNamed(s.Project); ok {
+			if wt := t.worktree(p.Path); wt != "" {
+				styled, plain = styled+kit.StyleWorktree.Render(" · ⑂ "+wt), plain+" · ⑂ "+wt
+			}
+		}
 	}
 	if t.draft != nil && t.draft(s) {
 		styled, plain = styled+kit.StyleAccent.Render(" ✎"), plain+" ✎"

@@ -28,6 +28,11 @@ paths:
   suggested name counts on from the branch the work started on
   (`git.FreeName`). A new worktree is added as a project so sessions can
   run in it.
+- Which checkout is never a guess: rows say `main checkout` or
+  `worktree <folder>` and list the sessions running there (store sessions
+  marked Running, by project, or by a project opened on that folder);
+  `kit.WhereLine` (repository · worktree · branch, from `git.Head`'s Repo
+  and Worktree) tops Git's right side and Chat's pane, one row each.
 - The cursor sits on checkouts, never headings: `●` current, `⑂`
   worktree, "from X" read from the reflog. Digits pick panels in Git but
   projects in Chat.

@@ -111,6 +111,13 @@ func TestHeadOf(t *testing.T) {
 	if h, ok := HeadOf(wt); !ok || h.Branch != "feature" || !h.Linked {
 		t.Errorf("worktree: %+v %v", h, ok)
 	}
+	// Each names the repository; only the added one has a worktree name.
+	if h, _ := HeadOf(dir); h.Repo != filepath.Base(dir) || h.Worktree != "" {
+		t.Errorf("main checkout's names: %+v", h)
+	}
+	if h, _ := HeadOf(wt); h.Repo != filepath.Base(dir) || h.Worktree != "wt" {
+		t.Errorf("worktree's names: %+v, want repository %q and worktree wt", h, filepath.Base(dir))
+	}
 	sh(t, wt, "checkout", "-q", "--detach")
 	if h, _ := HeadOf(wt); !strings.HasPrefix(h.Branch, "@ ") || len(h.Branch) != 9 {
 		t.Errorf("detached: %+v", h)

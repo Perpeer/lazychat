@@ -39,12 +39,27 @@ func (g *Git) widths() (projects, changes, diffW int) {
 	return list, 0, cols - list
 }
 
-// diffH is the diff box's height: the tab's, less the commit box under it.
+// diffH is the diff box's height: the right column less the where line
+// over it and the commit box under it while that shows.
 func (g *Git) diffH() int {
 	if g.boxShown() {
-		return max(3, g.bodyH()-kit.CommitBoxHeight)
+		return max(3, g.bodyH()-whereRows-kit.CommitBoxHeight)
 	}
-	return g.bodyH()
+	return g.bodyH() - whereRows
+}
+
+// whereRows is the line over the right side naming the cursor's checkout.
+const whereRows = 1
+
+// where is that line: which repository, worktree and branch the cursor's
+// row is, so a commit is never made in the other checkout by mistake.
+func (g *Git) where(w int) string {
+	at, ok := g.cursorRow()
+	if !ok {
+		return text.Pad("", w)
+	}
+	h, inRepo := g.core.Head(at.path)
+	return text.Pad(kit.WhereLine(h, inRepo, w), w)
 }
 
 func (g *Git) diffRows() int { return max(1, g.diffH()-2) }
@@ -60,7 +75,7 @@ func (g *Git) View() string {
 	if cw > 0 {
 		parts = append(parts, g.changesBox(cw, h))
 	}
-	right := hits.Panel(int(panelDiff), g.diffBox(dw, g.diffH()))
+	right := g.where(dw) + "\n" + hits.Panel(int(panelDiff), g.diffBox(dw, g.diffH()))
 	if g.boxShown() {
 		right += "\n" + hits.Panel(int(panelCommit), g.box().View(panelCommit.title("commit"), dw, g.focus == panelCommit, g.box().Enabled(g.staged()), g.tick%2 == 0))
 	}
@@ -98,9 +113,9 @@ func (g *Git) projectsBox(w, h int) string {
 			blocks[r.index] = append(blocks[r.index], kit.ChildGap())
 		}
 		last := i+1 == len(rs) || rs[i+1].index != r.index
-		entry := branchEntry(st, w-2, last)
+		entry := branchEntry(st, r.path, g.runningIn(r.name, r.path), w-2, last)
 		if r.wt != nil {
-			entry = worktreeEntry(r, st, w-2, last)
+			entry = worktreeEntry(r, st, g.runningIn("", r.path), w-2, last)
 		}
 		blocks[r.index] = append(blocks[r.index], kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), kit.DrawEntry(entry, w-2, i == g.projects.Sel, focused), w-2)...)
 	}
@@ -138,25 +153,29 @@ func (g *Git) shownStatus(key string) *project {
 }
 
 // branchEntry hangs a project's branch off its heading the way Chat hangs a
-// session: the branch on the connector row, how far it is from its upstream
-// and how much changed on the row under it. It is the checkout the project
-// works in — Chat's sessions and Terminal's shells start in its folder — so
-// it is marked "here", with ⑂ when that folder is itself a worktree. A
-// project still loading (nil) or one git can not read shows that on the
-// connector row instead; last says no worktree follows it.
-func branchEntry(p *project, w int, last bool) []kit.TreeLine {
-	glyph := "●"
+// session: the branch on the connector row, which checkout it is, how far it
+// is from its upstream and how much changed on the row under it, then the
+// sessions running in it. It is the checkout the project works in — Chat's
+// sessions and Terminal's shells start in its folder — named "main checkout"
+// for the repository's own folder and "worktree" with ⑂ for an added one, so
+// where a change lands is never a guess. A project still loading (nil) or
+// one git can not read shows that on the connector row instead; last says
+// no worktree follows it.
+func branchEntry(p *project, path string, sessions []string, w int, last bool) []kit.TreeLine {
 	if p != nil && p.linked {
-		glyph = "⑂"
+		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, "worktree "+filepath.Base(path), sessions)
 	}
-	return checkoutEntry(p, w, last, glyph, kit.StyleAccent, "here")
+	return checkoutEntry(p, w, last, "●", kit.StyleAccent, "main checkout", sessions)
 }
 
 // worktreeEntry is one of the repository's other checkouts under the
 // project's branch: its branch after ⑂ (○ for the main checkout) and its
 // folder, its counts under it.
-func worktreeEntry(r row, p *project, w int, last bool) []kit.TreeLine {
-	where := filepath.Base(r.path)
+func worktreeEntry(r row, p *project, sessions []string, w int, last bool) []kit.TreeLine {
+	where := "worktree " + filepath.Base(r.path)
+	if r.wt.Main {
+		where = "main checkout"
+	}
 	switch {
 	case r.wt.Prunable:
 		where += " · gone"
@@ -170,12 +189,12 @@ func worktreeEntry(r row, p *project, w int, last bool) []kit.TreeLine {
 	if r.wt.Main {
 		glyph = "○"
 	}
-	return checkoutEntry(p, w, last, glyph, kit.StyleDim, where)
+	return checkoutEntry(p, w, last, glyph, kit.StyleDim, where, sessions)
 }
 
-// checkoutEntry is a checkout's row: glyph and branch, where it is beside
-// them on a worktree's, and the counts under.
-func checkoutEntry(p *project, w int, last bool, glyph string, mark lipgloss.Style, where string) []kit.TreeLine {
+// checkoutEntry is a checkout's row: glyph and branch, which checkout it is
+// and the counts under, and a row of the sessions running in its folder.
+func checkoutEntry(p *project, w int, last bool, glyph string, mark lipgloss.Style, where string, sessions []string) []kit.TreeLine {
 	first, rest := "   └─ ", "      "
 	if !last {
 		first, rest = "   ├─ ", "   │  "
@@ -204,7 +223,33 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark lipgloss.Sty
 	}
 	branch := text.FitMiddle(p.st.Branch, w-text.Width(first)-text.Width(glyph+" "))
 	out := kit.TitleRows(first, rest, mark.Render(glyph)+" ", glyph+" ", branch, kit.StyleBold, w, 1)
-	return append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
+	out = append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
+	if len(sessions) > 0 {
+		run := "  ◐ " + strings.Join(sessions, " · ◐ ")
+		out = append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleBusy.Render(run), Plain: run})
+	}
+	return out
+}
+
+// runningIn is the sessions running in a folder: a project's, or those of
+// the projects opened on a worktree's folder.
+func (g *Git) runningIn(project, path string) []string {
+	var out []string
+	for _, s := range g.core.Store.Sessions {
+		if !s.Running {
+			continue
+		}
+		in := project != "" && s.Project == project
+		if project == "" {
+			if p, ok := g.core.Store.ProjectNamed(s.Project); ok && filepath.Clean(p.Path) == filepath.Clean(path) {
+				in = true
+			}
+		}
+		if in {
+			out = append(out, s.Name)
+		}
+	}
+	return out
 }
 
 // problem says why git shows nothing for a project.

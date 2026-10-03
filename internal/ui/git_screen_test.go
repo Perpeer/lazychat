@@ -423,7 +423,7 @@ func TestGitWorktrees(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main", "here · clean", "⑂ feature", "wt-feature · 1 changed")
+	d.expect("● main", "main checkout · clean", "⑂ feature", "worktree wt-feature · 1")
 	d.key("j") // the worktree's row
 	d.expect("vs main", "wt.txt", "loose.txt")
 	d.key("3") // the lower box: what the branch changed
@@ -552,8 +552,8 @@ func TestGitCommits(t *testing.T) {
 }
 
 // A project registered on a worktree's folder works in that worktree: its
-// own row is the one marked here, with ⑂, and the main checkout hangs under
-// it with the other worktrees.
+// own row says so, with ⑂, and the main checkout hangs under it with the
+// other worktrees, named as such.
 func TestGitHereInWorktree(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -575,7 +575,7 @@ func TestGitHereInWorktree(t *testing.T) {
 	}
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("⑂ feature", "here · clean", "○ main")
+	d.expect("⑂ feature", "worktree wt-feature · clean", "○ main", "main checkout")
 	if here, other := lineOf(d.screen(), "⑂ feature"), lineOf(d.screen(), "○ main"); here > other {
 		t.Errorf("the worktree it works in is not first:\n%s", d.screen())
 	}
@@ -603,7 +603,14 @@ func TestHeadingBranch(t *testing.T) {
 	}
 	d := start(t, e, 120, 32)
 	d.expect("│ demo2 ", "⎇ main", "│ plain ")
-	if n := strings.Count(d.screen(), "⎇ "); n != 1 {
+	// The headings only: the where line over the pane names the branch too.
+	n := 0
+	for _, row := range strings.Split(d.screen(), "\n") {
+		if !strings.Contains(row, "repository ") {
+			n += strings.Count(row, "⎇ ")
+		}
+	}
+	if n != 1 {
 		t.Errorf("%d branches named, want demo2's alone:\n%s", n, d.screen())
 	}
 	// The heading is the name alone, no count at its end.
@@ -852,6 +859,49 @@ func TestGitDelete(t *testing.T) {
 		if p.Name == "demo2 · spare" {
 			t.Errorf("the worktree's project is still listed")
 		}
+	}
+	d.quitApp()
+}
+
+// Where a session works is never a guess: over Chat's pane a line names the
+// repository, the worktree — "main checkout" or ⑂ and its name — and the
+// branch; a session in a worktree carries ⑂ on its row; and Git's rows say
+// which checkout each is, with the sessions running in it.
+func TestWhereYouWork(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	e, dir := seeded(t)
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, filepath.Join(dir, "a.txt"), "one\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-qm", "first")
+	wt := filepath.Join(dir, ".worktrees", "blue-door")
+	gitIn(t, dir, "worktree", "add", "-q", "-b", "blue-door", wt)
+	write(t, filepath.Join(dir, ".git", "info", "exclude"), "/.worktrees/\n") // as b's worktrees are kept out
+	st, err := state.Load(e.state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.AddProject(wt, "door"); err != nil {
+		t.Fatal(err)
+	}
+
+	d := start(t, e, 140, 36)
+	d.key("n", "enter", "enter", "enter") // a session in the main checkout
+	d.expect("FAKE CLAUDE READY", "worktree main checkout · branch ⎇ main")
+	d.expectNot("worktree ⑂")
+	d.leave()
+	d.key("j") // the worktree project's row
+	d.key("n", "enter", "enter", "enter")
+	d.expect("FAKE CLAUDE READY", "worktree ⑂ blue-door · branch blue-door")
+	d.leave()
+	d.expect("· ⑂ blue-door") // on the session's own row
+
+	d.tab(2)
+	d.expect("main checkout · clean", "worktree blue-door · clean")
+	if n := strings.Count(d.screen(), "◐ "); n < 2 {
+		t.Errorf("the checkouts do not list their running sessions (%d):\n%s", n, d.screen())
 	}
 	d.quitApp()
 }

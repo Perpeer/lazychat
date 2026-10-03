@@ -11,6 +11,9 @@ import (
 type Head struct {
 	Branch string // the branch, or "@ <short commit>" when detached
 	Linked bool   // the folder is a worktree added to another repository
+	// Repo is the repository's name, its own checkout's folder; Worktree
+	// is an added worktree's folder name, "" for the repository's own.
+	Repo, Worktree string
 }
 
 // HeadOf reads the HEAD of the checkout dir is in; ok is false outside a
@@ -32,6 +35,10 @@ func HeadOf(dir string) (h Head, ok bool) {
 					gitDir = filepath.Join(d, gitDir)
 				}
 				h.Linked = true
+				// <repository>/.git/worktrees/<name> names the repository.
+				h.Repo, h.Worktree = filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(gitDir)))), filepath.Base(d)
+			} else {
+				h.Repo = filepath.Base(d)
 			}
 			b, err := os.ReadFile(filepath.Join(gitDir, "HEAD"))
 			if err != nil {

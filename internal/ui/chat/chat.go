@@ -51,6 +51,12 @@ func New(core *api.Core, screen kit.Screen) *Chat {
 		done:   c.board.News,
 		seen:   c.board.Seen,
 		branch: func(path string) string { return kit.HeadLabel(core.Head(path)) },
+		worktree: func(path string) string {
+			if h, ok := core.Head(path); ok && h.Linked {
+				return h.Worktree
+			}
+			return ""
+		},
 	}
 	c.list.turn = c.turnTime
 	c.list.draft = c.hasDraft

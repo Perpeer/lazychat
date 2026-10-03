@@ -107,7 +107,7 @@ func TestFileHeadings(t *testing.T) {
 func TestBranchOneRow(t *testing.T) {
 	p := &project{}
 	p.st.Branch = "garden-shed-paints/feature/blue-door"
-	rows := branchEntry(p, 30, true)
+	rows := branchEntry(p, "", nil, 30, true)
 	if len(rows) != 2 {
 		t.Fatalf("%d rows: %+v", len(rows), rows)
 	}

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"lazychat/internal/core/git"
 	"lazychat/internal/ui/text"
@@ -83,6 +84,25 @@ func HeadLabel(h git.Head, ok bool) string {
 		return "⑂ " + h.Branch
 	}
 	return "⎇ " + h.Branch
+}
+
+// WhereLine says, in one row w wide, which checkout a folder is: its
+// repository, the worktree — "main checkout" for the repository's own
+// folder, ⑂ and its name in the worktree colour for an added one — and the
+// branch, so what is changed there is never taken for the other.
+func WhereLine(h git.Head, ok bool, w int) string {
+	if !ok {
+		return StyleDim.Render(text.Fit(" not in a git repository", w))
+	}
+	wt, br := StyleBold.Render("main checkout"), StyleAccent.Render("⎇ "+h.Branch)
+	if h.Linked {
+		wt, br = StyleWorktree.Render("⑂ "+h.Worktree), StyleWorktree.Render(h.Branch)
+	}
+	line := StyleDim.Render(" repository ") + StyleBold.Render(h.Repo) + StyleDim.Render(" · worktree ") + wt + StyleDim.Render(" · branch ") + br
+	if text.Width(line) > w {
+		line = ansi.Truncate(line, w-1, "…")
+	}
+	return line
 }
 
 // ListWidth is the projects column's width in a tab cols wide, the same in
