@@ -347,25 +347,40 @@ second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet.
 
 The page has three parts. The first two stand side by side, half the box
-each — what runs now on the left, the context on the right — in a box at
-least 100 columns wide, and one under the other in a narrower one; the
+each — the prompt's flow on the left, the context on the right — in a box
+at least 100 columns wide, and one under the other in a narrower one; the
 prompt reports are under them.
 
-**What runs now.** Lazy at the top left, and one line beside it per worker
-the picked prompt had — its subagents by type (`⌂`), its skills (`≡`), its
-MCP servers (`▭`, its tools one line). Each line says how many ran (`×2`),
-the job given (the newest subagent's description, a server's tools) and
-how it stands: `(••) 11s` at work, `✓ 40s` back, a dim `·` while the
-transcript gives no time. A skill or MCP call has no end in the
-transcript, so it shows no time. At most six lines, the rest `+N more`; a
-prompt that called none says "worked alone". Lazy sits in the middle of
-its column, types while the prompt runs, asks as on the rail while a
-question waits for you, and cheers a moment when it ends.
+**The flow.** The picked prompt, step by step, drawn as `git log --graph`
+draws branches: the prompt on top with when it started (`❯`), then one
+row per tool call in time order, and the end (`●`) with how long it was
+active and its tokens — `in`, `used`, the API price — or `working` with
+a spinner while it runs. Calls of one tool in a row fold into one (`Read
+×3`), the files they read or edited beside it, relative to the session's
+folder, or a shell call's commands by their first words; the right column
+is what the call's results added to the context (`+2.1k`), measured as a
+skill's tokens are. A subagent forks a lane beside the main one (`├─┬`,
+its type and the job it was given, how long it took and what it used),
+its own calls sit in that lane (`│ ├`), and the lane joins back when its
+result comes (`├─┘ back ✓`); two subagents out at once take two lanes. A
+skill is `≡ name`, an MCP call `▭ server` with its tool, a question to
+you `? asked you` with how long you took. A call still out turns the
+spinner; one that never got its answer shows a dim `·`. At most fourteen
+steps show; the earlier ones are one dim row, `⋮ N earlier steps`.
 
 ```
- ╭────╮  ⌂ Explore     ×2  find the brushes   (••) 11s
- │ ^^ │  ≡ brush-care      rinse twice        ✓
- ╰────╯  ▭ paint-shop  ×3  list_colours, mix  ✓
+ ❯   paint the garden shed                        14:02:10
+ ├   Read ×3       door.go · hinge.go                +2.1k
+ ├   Bash ×2       go test · go vet                    +9k
+ ├─┬ ⌂ Explore     find the brushes             11s · 21k
+ │ ├ Grep ×4
+ │ ├ Read ×6
+ ├─┘ back                                                ✓
+ ├   ≡ brush-care                                    +1.5k
+ ├   ▭ paint-shop  list_colours · mix                +3.0k
+ ├   Edit ×4       door.go
+ ├   Bash          go test                               ◐
+ ●   done · 2m10s · in 12k · used 13k · $0.42
 ```
 
 **The context.** The session's, as its newest call sent it, drawn as
@@ -416,7 +431,8 @@ time and tokens are its row in the table under it:
 - tools: every tool call of the prompt, by tool, the most used first;
 - commands: the shell commands it ran, by their first words (`go test`,
   `git status`), with `cd` and `echo` left out;
-- files: its edits by tool and the lines its subagents say they changed.
+- files: the files it edited, by name (`×2` when more than once), and the
+  lines its subagents say they changed.
 
 At the box's bottom, held there while the rest scrolls above it, the
 prompts as a table: ten around the picked one, newest first, two rows each

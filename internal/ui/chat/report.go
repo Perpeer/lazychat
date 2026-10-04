@@ -42,7 +42,7 @@ type report struct {
 
 	scroll int
 	back   int  // the prompt shown in full, counted back from the newest
-	moving bool // the picked prompt's village shows motion, at the last draw
+	moving bool // the picked prompt ran at the last draw, so its spinners turn
 	// backFor and back are the newest prompt read last and how many of its
 	// subagents had come back then: one more is a worker's tick.
 	backFor time.Time
@@ -235,4 +235,9 @@ func (c *Chat) tabClick(msg tea.MouseMsg) bool {
 		c.showChat()
 	}
 	return true
+}
+
+// playSound asks the shell for one of Lazy's sounds.
+func playSound(n sound.Name) tea.Cmd {
+	return func() tea.Msg { return kit.PlaySound{Name: n} }
 }

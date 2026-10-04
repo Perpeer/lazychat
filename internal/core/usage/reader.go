@@ -71,6 +71,7 @@ type Reader struct {
 	s       *Session
 	uuids   map[string]bool
 	tools   map[string]bool // tool_use ids counted
+	steps   map[string]int  // tool_use id → its index in s.ToolUses
 	agents  map[string]*agentFile
 	origins map[string]string // agent type → its origin
 	last    time.Time
@@ -101,6 +102,7 @@ type result struct {
 	use  *Use
 	size int64
 	tool string // what brought it in: a tool's name, "prompt" for text
+	id   string // the tool_use it answers; "" for text
 }
 
 type tool struct {
@@ -125,6 +127,7 @@ func Open(path string) *Reader {
 		s:       &Session{ID: id, Tools: map[string]int{}},
 		uuids:   map[string]bool{},
 		tools:   map[string]bool{},
+		steps:   map[string]int{},
 		agents:  map[string]*agentFile{},
 		origins: map[string]string{},
 	}
@@ -241,6 +244,8 @@ type block struct {
 		Description  string `json:"description"`
 		Skill        string `json:"skill"`
 		Command      string `json:"command"`
+		FilePath     string `json:"file_path"`
+		NotebookPath string `json:"notebook_path"`
 	} `json:"input"`
 	ToolUseID string          `json:"tool_use_id"`
 	Content   json.RawMessage `json:"content"`
@@ -410,7 +415,10 @@ func (r *Reader) userBlocks(run *stream, rec *record, bs []block) {
 			if t.name == "AskUserQuestion" && run.agent == "" && t.wait < len(r.s.Waits) && r.s.Waits[t.wait].To.IsZero() {
 				r.s.Waits[t.wait].To = rec.Timestamp
 			}
-			run.waiting = append(run.waiting, result{use: t.use, size: int64(len(b.Content)), tool: t.name})
+			if i, ok := r.steps[b.ToolUseID]; ok && r.s.ToolUses[i].Back.IsZero() {
+				r.s.ToolUses[i].Back = rec.Timestamp
+			}
+			run.waiting = append(run.waiting, result{use: t.use, size: int64(len(b.Content)), tool: t.name, id: b.ToolUseID})
 		case "text":
 			first, _, _ := strings.Cut(b.Text, "\n")
 			dir, ok := strings.CutPrefix(first, skillText)
@@ -455,6 +463,11 @@ func (r *Reader) assistant(run *stream, rec *record, counts map[string]int) {
 				}
 				r.s.Fed[w.tool] += grew * max(1, w.size) / total
 			}
+			// A subagent's step grew its own context: the flow shows it in
+			// the subagent's lane, so every stream's steps are measured.
+			if i, ok := r.steps[w.id]; ok {
+				r.s.ToolUses[i].Added += grew * max(1, w.size) / total
+			}
 			if w.use == nil {
 				continue
 			}
@@ -472,7 +485,20 @@ func (r *Reader) assistant(run *stream, rec *record, counts map[string]int) {
 		}
 		r.tools[b.ID] = true
 		counts[b.Name]++
-		r.s.ToolUses = append(r.s.ToolUses, ToolUse{Name: b.Name, Agent: run.agent, Time: rec.Timestamp, Commands: commandHeads(b.Input.Command)})
+		step := ToolUse{ID: b.ID, Name: b.Name, Agent: run.agent, Time: rec.Timestamp, Commands: commandHeads(b.Input.Command)}
+		for _, f := range []string{b.Input.FilePath, b.Input.NotebookPath} {
+			if f != "" {
+				step.Files = append(step.Files, f)
+			}
+		}
+		switch b.Name {
+		case "Skill":
+			step.Detail = b.Input.Skill
+		case "Agent", "Task":
+			step.Detail = b.Input.SubagentType
+		}
+		r.steps[b.ID] = len(r.s.ToolUses)
+		r.s.ToolUses = append(r.s.ToolUses, step)
 		t := tool{name: b.Name, at: rec.Timestamp}
 		switch {
 		case b.Name == "Skill":

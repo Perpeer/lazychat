@@ -85,7 +85,7 @@ func section(title, note string) string {
 const promptRows = 10
 
 // pageView is the session prompt by prompt: on top the picked prompt's
-// village and its report, which scroll; under them the prompts as a table,
+// flow and its report, which scroll; under them the prompts as a table,
 // held at the box's bottom.
 func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	now := time.Now()
@@ -107,13 +107,12 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	picked := last - c.rep.back
 	t := turns[picked]
 	running := picked == last && working
-	v := villageOf(t, now, running, running && openWait(t))
-	c.rep.moving = moving(v)
+	c.rep.moving = running
 	costs := c.costs(s, turns)
-	// Three parts: Lazy with what runs now, the session's context, then the
+	// Three parts: the picked prompt's flow, the session's context, then the
 	// prompt reports — the picked one's, over the table held at the bottom.
-	top = append(top, nowAndContext(v, c.beat, s, w)...)
-	top = append(top, c.report(turns, picked, working, now, w)...)
+	top = append(top, flowAndContext(flowOf(t, now, running, costs[picked], s.Dir), c.beat, s, w)...)
+	top = append(top, c.report(turns, picked, working, now, s.Dir, w)...)
 	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
 		c.promptTable(turns, picked, working, now, costs, w)...)
 	return top, table
@@ -132,24 +131,24 @@ func ownTokens(t usage.Turn) string {
 // space each, so a prompt written over several lines shows whole.
 func flat(s string) string { return strings.Join(strings.Fields(s), " ") }
 
-// sideBySide is the narrowest box whose halves hold the village and the
+// sideBySide is the narrowest box whose halves hold the flow and the
 // context's grid with its legend.
 const sideBySide = 100
 
-// nowAndContext are the page's first two parts: Lazy with what runs now on
-// the left half and the session's context on the right, top-aligned; one
-// under the other in a box too narrow for two halves.
-func nowAndContext(v kit.Village, beat int, s *usage.Session, w int) []string {
+// flowAndContext are the page's first two parts: the picked prompt's flow
+// on the left half and the session's context on the right, top-aligned;
+// one under the other in a box too narrow for two halves.
+func flowAndContext(nodes []kit.FlowNode, beat int, s *usage.Session, w int) []string {
 	if w < sideBySide {
-		out := []string{""}
-		for _, row := range kit.DrawVillage(v, beat, w-1) {
+		out := []string{"", section("flow", "what the picked prompt did, step by step")}
+		for _, row := range kit.DrawFlow(nodes, beat, w-1) {
 			out = append(out, " "+row)
 		}
 		return append(out, contextPart(s, w)...)
 	}
 	half := w / 2
-	left := []string{"", section("now", "what the picked prompt runs")}
-	for _, row := range kit.DrawVillage(v, beat, half-2) {
+	left := []string{"", section("flow", "what the picked prompt did, step by step")}
+	for _, row := range kit.DrawFlow(nodes, beat, half-2) {
 		left = append(left, " "+row)
 	}
 	right := contextPart(s, w-half)
@@ -165,16 +164,6 @@ func nowAndContext(v kit.Village, beat int, s *usage.Session, w int) []string {
 		out[i] = text.Pad(text.Fit(l, half), half) + text.Fit(r, w-half)
 	}
 	return out
-}
-
-// openWait says a question of the turn waits for the user's answer now.
-func openWait(t usage.Turn) bool {
-	for _, wt := range t.Waits {
-		if wt.To.IsZero() {
-			return true
-		}
-	}
-	return false
 }
 
 // promptTable is promptRows prompts around the picked one, newest first,
@@ -297,7 +286,7 @@ func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 // report is what the picked prompt ran: its workers as a table, the tools
 // and shell commands and the files it changed.
 // What the transcript does not say is a dash.
-func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, w int) []string {
+func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, dir string, w int) []string {
 	t := turns[i]
 	newest := i == len(turns)-1
 	// Its time, text and tokens are the table's row; this is what it ran.
@@ -306,7 +295,7 @@ func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, w 
 	out = append(out, workerRows(t, now, newest && working, w)...)
 	out = append(out, "", section("tools", "every call of the prompt, by tool"), " "+text.Fit(counted(t.Tools, "×"), max(10, w-2)))
 	out = append(out, "", section("commands", "the shell commands run, by their first words"), " "+text.Fit(counted(t.Commands, "×"), max(10, w-2)))
-	out = append(out, "", section("files", "edits, and lines the subagents changed"), " "+text.Fit(filesLine(t), max(10, w-2)))
+	out = append(out, "", section("files", "the files it edited, and lines the subagents changed"), " "+text.Fit(filesLine(t, dir), max(10, w-2)))
 	return out
 }
 
@@ -405,14 +394,34 @@ func counted(m map[string]int, mark string) string {
 	return strings.Join(parts, kit.StyleDim.Render(" · "))
 }
 
-// filesLine is the prompt's edits by tool and the lines its subagents say
-// they changed.
-func filesLine(t usage.Turn) string {
-	var parts []string
-	for _, name := range []string{"Edit", "MultiEdit", "Write", "NotebookEdit"} {
-		if n := t.Tools[name]; n > 0 {
-			parts = append(parts, fmt.Sprintf("%s ×%d", name, n))
+// filesLine is the files the prompt edited, by name (×N when more than
+// once), and the lines its subagents say they changed.
+func filesLine(t usage.Turn, dir string) string {
+	edits := map[string]int{}
+	var order []string
+	for _, st := range t.Steps {
+		switch st.Name {
+		case "Edit", "MultiEdit", "Write", "NotebookEdit":
+		default:
+			continue
 		}
+		files := relFiles(st.Files, dir)
+		if len(files) == 0 {
+			files = []string{st.Name}
+		}
+		for _, f := range files {
+			if edits[f] == 0 {
+				order = append(order, f)
+			}
+			edits[f]++
+		}
+	}
+	var parts []string
+	for _, f := range order {
+		if edits[f] > 1 {
+			f += " " + kit.StyleDim.Render(fmt.Sprintf("×%d", edits[f]))
+		}
+		parts = append(parts, f)
 	}
 	added, removed := 0, 0
 	for _, a := range t.Agents {
@@ -427,7 +436,7 @@ func filesLine(t usage.Turn) string {
 	if len(parts) == 0 {
 		return kit.StyleDim.Render("—")
 	}
-	return strings.Join(parts, " · ")
+	return strings.Join(parts, kit.StyleDim.Render(" · "))
 }
 
 // own says an origin is the user's or a project's, not what comes with

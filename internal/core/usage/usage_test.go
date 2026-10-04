@@ -499,3 +499,63 @@ func TestOwnTokens(t *testing.T) {
 		t.Fatalf("own %d, %d", turns[0].Own, turns[1].Own)
 	}
 }
+
+// Every tool call is a step the flow can draw: it knows its file, when its
+// result came, what that result grew the context by — a subagent's steps
+// measured in the subagent's own transcript — and the skill or subagent
+// type it was given.
+func TestFlowSteps(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "s-7.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "paint the door"}})
+	w.reply("c1", 1000, 0, 50, use("r1", "Read", map[string]any{"file_path": "/garden/shed/door.go"}))
+	w.results(nil, res("r1", 300))
+	back := w.at
+	w.reply("c2", 400, 1000, 20, use("e1", "Edit", map[string]any{"file_path": "/garden/shed/door.go"}), use("a1", "Agent", map[string]any{"subagent_type": "shed-painter"}))
+	w.results(nil, res("e1", 100))
+	left := w.at
+	w.results(map[string]any{"toolUseResult": map[string]any{"status": "completed", "agentId": "p1", "agentType": "shed-painter", "totalDurationMs": 20000}}, res("a1", 100))
+	w.reply("c3", 10, 1501, 5, use("s1", "Skill", map[string]any{"skill": "brush-care"}))
+	w.flush()
+	sub := newTranscript(t, filepath.Join(root, "s-7", "subagents", "agent-p1.jsonl"))
+	sub.at = left
+	sub.reply("p1-a", 500, 0, 30, use("g1", "Grep", map[string]any{"pattern": "hinge", "path": "/garden/shed"}))
+	sub.results(nil, res("g1", 60))
+	sub.reply("p1-b", 100, 500, 10)
+	sub.flush()
+	if err := os.WriteFile(filepath.Join(root, "s-7", "subagents", "agent-p1.meta.json"), []byte(`{"agentType":"shed-painter","toolUseId":"a1"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := Open(path).Update()
+	turns := s.Clone().Turns()
+	if len(turns) != 1 {
+		t.Fatalf("turns %+v", turns)
+	}
+	steps := map[string]ToolUse{}
+	for _, st := range turns[0].Steps {
+		steps[st.ID] = st
+	}
+	if len(steps) != 5 {
+		t.Fatalf("steps %+v", turns[0].Steps)
+	}
+	// c2 grew by 1401-1001-50 = 350, all of it the Read's; c3 by
+	// 1512-1401-20 = 91, half of it the Edit's.
+	rd := steps["r1"]
+	if rd.Name != "Read" || len(rd.Files) != 1 || rd.Files[0] != "/garden/shed/door.go" || !rd.Back.Equal(back) || rd.Added != 350 || rd.Agent != "" {
+		t.Errorf("read %+v", rd)
+	}
+	if ed := steps["e1"]; ed.Added != 45 || ed.Back.IsZero() || ed.Files[0] != "/garden/shed/door.go" {
+		t.Errorf("edit %+v", ed)
+	}
+	if ag := steps["a1"]; ag.Detail != "shed-painter" || ag.Back.IsZero() {
+		t.Errorf("agent %+v", ag)
+	}
+	if sk := steps["s1"]; sk.Detail != "brush-care" || !sk.Back.IsZero() || sk.Added != 0 {
+		t.Errorf("skill, no result yet %+v", sk)
+	}
+	// The subagent's Grep: its own context grew by 601-501-30 = 70.
+	if gr := steps["g1"]; gr.Agent != "p1" || gr.Added != 70 || gr.Back.IsZero() || len(gr.Files) != 0 {
+		t.Errorf("grep %+v", gr)
+	}
+}

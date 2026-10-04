@@ -18,8 +18,8 @@ import (
 
 // writeTranscript lays an invented Claude transcript in the stand-in home:
 // a first prompt that loads a skill of the project's, calls an MCP tool,
-// asks the user a question and sends an agent that comes back, then a
-// second prompt whose agent is still at work.
+// reads a file, asks the user a question and sends an agent that comes
+// back, then a second prompt whose agent and edit are still at work.
 func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 	t.Helper()
 	folder := filepath.Join(e.history, history.Slug(dir))
@@ -61,8 +61,9 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 	reply("m1", 900, 20000, 40, call("s1", "Skill", map[string]any{"skill": "brush-care"}))
 	result("s1", "Launching skill: brush-care", nil)
 	add(map[string]any{"type": "user", "isMeta": true, "sourceToolUseID": "s1", "message": map[string]any{"content": []any{map[string]any{"type": "text", "text": "Base directory for this skill: " + filepath.Join(dir, ".claude", "skills", "brush-care") + "\n\nrinse twice"}}}})
-	reply("m2", 1500, 20900, 30, call("m", "mcp__paint-shop__list_colours", map[string]any{}))
+	reply("m2", 1500, 20900, 30, call("m", "mcp__paint-shop__list_colours", map[string]any{}), call("r1", "Read", map[string]any{"file_path": filepath.Join(dir, "paint", "door.go")}))
 	result("m", strings.Repeat("blue ", 200), nil)
+	result("r1", "package paint", nil)
 	reply("m3", 3000, 22400, 20, call("q", "AskUserQuestion", map[string]any{}))
 	wait = 40 * time.Second
 	result("q", "Your questions have been answered", nil)
@@ -71,7 +72,7 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 	reply("m5", 100, 25600, 700)
 	add(map[string]any{"type": "system", "subtype": "turn_duration", "durationMs": 60000})
 	prompt("now the fence")
-	reply("m6", 300, 26400, 60, call("t2", "Agent", map[string]any{"subagent_type": "Explore"}))
+	reply("m6", 300, 26400, 60, call("t2", "Agent", map[string]any{"subagent_type": "Explore"}), call("e1", "Edit", map[string]any{"file_path": filepath.Join(dir, "paint", "door.go")}))
 	write := func(name, body string) {
 		if err := os.WriteFile(filepath.Join(folder, name), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
@@ -90,11 +91,12 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 
 // Chat's right side has two tabs, the chat and the report; 3 opens the
 // report on the tree cursor's session alone, in three parts top to bottom:
-// Lazy, unnamed, with what runs now — the agent at work; the session's
-// context as a grid with its parts and where it went; the picked prompt's
-// report over the prompts' table held at the box's bottom, nothing of a
-// prompt above the context. ↓ picks the one before, its workers done — a
-// subagent, a skill, an MCP server — and its tools; a click on the
+// the picked prompt's flow — its steps in order, the agent at work forked
+// beside the main lane, the edit naming its file; the session's context as
+// a grid with its parts and where it went; the picked prompt's report over
+// the prompts' table held at the box's bottom, nothing of a prompt above
+// the context. ↓ picks the one before, its steps done — a skill, an MCP
+// server, a read, a question, a subagent back — and its tools; a click on the
 // session's row in the tree brings its chat back.
 func TestReport(t *testing.T) {
 	e, dir := seeded(t, state.Session{Tool: "claude", Name: "shed work", ID: "garden-1"})
@@ -103,17 +105,19 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect("⌂ Explore", "find the brushes", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "today ", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API $", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes")
+	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "today ", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API $", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes", "files")
+	d.expectNot(" now  ")
+	d.expectNot("worked alone")
 	d.expect("(↑↓) pick prompt · (esc) back")
 	sc := d.screen()
 	if strings.Contains(sc, " Lazy ") {
 		t.Errorf("Lazy is named on the page:\n%s", sc)
 	}
-	// Wide: what runs now on the left half, the context on the right, on
-	// the same rows; the reports under both.
-	village, ctx, report, table := lineOf(sc, "⌂ Explore"), lineOf(sc, " context  "), lineOf(sc, "prompt 2  what it ran"), lineOf(sc, "│ ▶ 2 ")
-	if row := strings.Split(sc, "\n")[village]; ctx != lineOf(sc, " now  ") || !strings.ContainsAny(row[strings.Index(row, "⌂ Explore"):], "⛁⛶") || !(village < report && report < table) {
-		t.Errorf("not side by side: now %d, context %d, village %d, report %d, table %d\n%s", lineOf(sc, " now  "), ctx, village, report, table, sc)
+	// Wide: the flow on the left half, the context on the right, on the
+	// same rows; the reports under both.
+	flow, ctx, report, table := lineOf(sc, "⌂ Explore"), lineOf(sc, " context  "), lineOf(sc, "prompt 2  what it ran"), lineOf(sc, "│ ▶ 2 ")
+	if row := strings.Split(sc, "\n")[flow]; ctx != lineOf(sc, " flow  ") || !strings.ContainsAny(row[strings.Index(row, "⌂ Explore"):], "⛁⛶") || !(flow < report && report < table) {
+		t.Errorf("not side by side: flow %d, context %d, fork %d, report %d, table %d\n%s", lineOf(sc, " flow  "), ctx, flow, report, table, sc)
 	}
 	rows := strings.Split(d.screen(), "\n")
 	bottom := lineOf(d.screen(), "┴")
@@ -121,8 +125,9 @@ func TestReport(t *testing.T) {
 		t.Fatalf("the prompts table is not at the box's bottom:\n%s", d.screen())
 	}
 	d.key("down")
-	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "⌂ Explore", "count the boards", "≡ brush-care", "▭ paint-shop", "list_colours", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
+	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "≡ brush-care", "▭ paint-shop", "list_colours", "├   Read", "paint/door.go", "? asked you", "├─┬ ⌂ Explore", "count the boards", "├─┘ back", "●   done · ", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
 	d.expectNot("find the brushes")
+	d.expectNot("working · ")
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {
 		d.expectNot(gone)
 	}
@@ -130,7 +135,7 @@ func TestReport(t *testing.T) {
 	d.deliver(tea.WindowSizeMsg{Width: 110, Height: 90})
 	d.expect("⌂ Explore", " context  ")
 	sc = d.screen()
-	if lineOf(sc, "⌂ Explore") > lineOf(sc, " context  ") || strings.Contains(sc, " now  ") {
+	if lineOf(sc, "⌂ Explore") > lineOf(sc, " context  ") || lineOf(sc, " flow  ") > lineOf(sc, "⌂ Explore") || lineOf(sc, " flow  ") == lineOf(sc, " context  ") {
 		t.Errorf("a narrow box is not stacked:\n%s", sc)
 	}
 	d.deliver(tea.WindowSizeMsg{Width: 180, Height: 90})

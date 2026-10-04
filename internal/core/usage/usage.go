@@ -122,12 +122,21 @@ type Session struct {
 }
 
 // ToolUse is one tool call: which tool, by whom, when, and for a shell
-// call the commands it ran, by their first words.
+// call the commands it ran, by their first words. Back is when its result
+// came, zero while none has; Added is what that result grew the context
+// by, measured as a Use's Added is, so a step shows what it cost.
 type ToolUse struct {
+	ID       string // the tool_use id its result answers
 	Name     string
 	Agent    string // the subagent that called it; "" the session
 	Time     time.Time
+	Back     time.Time
 	Commands []string
+	// Files is the file a Read, Edit, Write or NotebookEdit names; Detail
+	// is a Skill call's skill or an Agent call's subagent type.
+	Files  []string
+	Detail string
+	Added  int64
 }
 
 // Span is a stretch of time; To is zero while it lasts.
@@ -186,8 +195,10 @@ type Turn struct {
 	Agents []*Agent // started in the turn
 	Uses   []*Use
 	// Tools counts the turn's tool calls by tool, Commands its shell
-	// commands by their first words.
+	// commands by their first words; Steps are the calls themselves, the
+	// subagents' too, in the order read.
 	Tools, Commands map[string]int
+	Steps           []ToolUse
 }
 
 // Ended says the turn is over: Claude Code said so, or the turn's end was
@@ -282,6 +293,7 @@ func (s *Session) Turns() []Turn {
 		for _, c := range tu.Commands {
 			out[i].Commands[c]++
 		}
+		out[i].Steps = append(out[i].Steps, tu)
 	}
 	for _, w := range s.Waits {
 		if i := at(w.From); i >= 0 {

@@ -96,9 +96,10 @@ next prompt while the agent is still busy. `/` finds a session by name
 across every project; `i`, or a click on Lazy while several wait, opens
 the inbox: the sessions asking you something or finished, Enter opens
 one. Under each project the tree says what its sessions used today. Press `3` for the details. At
-the top is Lazy with a line for each subagent, skill and MCP server the
-prompt used: how many ran, the job each was given, and whether it is
-still working. Below that is the session's context, drawn like Claude
+the top is the prompt's flow, drawn like `git log --graph`: each tool it
+called in order with the file it touched or the command it ran, a
+subagent as a branch that forks off and joins back when it returns, a
+question to you, and what each step added to the context. Beside it is the session's context, drawn like Claude
 Code's `/context`: how full the window is, what fills it, which tool's
 results took the most, and how many more prompts fit at this pace. At the
 bottom are your prompt reports: what the picked prompt ran, and your last

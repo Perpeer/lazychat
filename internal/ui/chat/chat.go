@@ -41,7 +41,7 @@ type Chat struct {
 		st    kit.MascotState
 	}
 	clocks   clocks
-	beat     int // the shell's fast beat, moving the village
+	beat     int // the shell's fast beat, turning the flow's spinners
 	use      usagePool
 	repFocus bool
 }

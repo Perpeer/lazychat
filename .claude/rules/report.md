@@ -4,8 +4,8 @@ paths:
   - "internal/ui/chat/report*.go"
   - "internal/ui/chat/view_report.go"
   - "internal/ui/kit/tabstrip.go"
-  - "internal/ui/kit/village.go"
-  - "internal/ui/chat/village.go"
+  - "internal/ui/kit/flow.go"
+  - "internal/ui/chat/flow.go"
 ---
 
 # Report
@@ -25,8 +25,8 @@ paths:
   skipped, bad lines counted. Subagent tokens are only in their own files;
   a background agent first writes `async_launched` with no totals, and
   its result's totalTokens is the last call's context, not a sum.
-- The page is three parts (the user's): Lazy, unnamed, with what runs now,
-  and the context side by side, half each, from 100 inner columns
+- The page is three parts (the user's): the picked prompt's flow and the
+  context side by side, half each, from 100 inner columns
   (chat.sideBySide; one under the other below it, the user's choice);
   the session's context, /context-like, measured only (usage.Context: the
   newest main call; base = the first call since the start or the last
@@ -43,23 +43,36 @@ paths:
   no line without a call. One dim row, not a chart — the user dropped the
   session-wide charts.
 - The report is the tree cursor's session prompt by prompt: the picked
-  prompt's village, the context and its report on top, which scroll, and the prompts as a
+  prompt's flow, the context and its report on top, which scroll, and the prompts as a
   two-row table of ten held at the box's bottom (the user's "en altta 10
   tane sabit"); a box too short for both scrolls the whole page. Table
   columns are as wide as their longest value: fixed widths cut "245" and
   "20m 50s". ↑↓ pick; the newest is followed. On a project, its newest
   session.
-- The village is a roster, not a map: the user found a ring of eight
-  building plots took half the screen and said nothing. Lazy at the left,
-  a line per worker (subagents by type, skills by name, MCP by server),
-  ×N, the newest job, its state; as tall as Lazy or its lines, six at
-  most. Every field may be missing in another Claude Code version: no
-  time is a dim `·`, no type "agent", a nameless MCP call left out, a turn
-  not running all done. A skill's or MCP call's end is not recorded, so
-  they show no time.
+- The flow (chat/flow.go flowOf → kit.DrawFlow) is the prompt's steps as
+  git log draws branches, the user's choice over a roster of workers and a
+  ring of building plots before it: Turn.Steps (every ToolUse, the
+  subagents' too) in time order, calls of one tool in a row folded ×N
+  with their files or command heads joined, a subagent a fork (its lane
+  from laneMap: the lowest free while it is out) with its own steps in
+  the lane and a join at Agent.Back, a question with its wait, the end
+  row with the turn's time and tokens. Fourteen steps at most, the rest
+  "⋮ N earlier steps" on top (the user picked the cap over a long page).
+  A step's right column is ToolUse.Added, measured in the reader as a
+  Use's Added is, in subagent streams too; Back comes from its
+  tool_result. Files are `file_path` / `notebook_path` of the tool_use
+  input, shown relative to Session.Dir; Grep's and Glob's paths are not
+  files. A step still out turns the spinner (busy only while the turn
+  runs), one never answered a dim ·. A background agent never joins: its
+  lane ends at its last step.
+- kit.DrawFlow knows lanes and three text columns, nothing of usage, so a
+  git log graph can use it later (the user's wish): lane 0 the main line,
+  a lane open from its fork (or first row, when the fork was cut above)
+  to its join (or last row); ├─┬ opens, ├─┘ closes, ┼ crosses an open
+  lane, ─ a closed one. Rows are exactly w wide.
 - The fast beat (animBeat) reaches the active tab as kit.Beat only while
-  it is a kit.Animator saying so: Chat says so while a worker is at work
-  or Lazy moves, so an idle page costs no redraws.
+  it is a kit.Animator saying so: Chat says so while the picked prompt
+  runs (its spinners turn), so an idle page costs no redraws.
 - A prompt's own tokens (Turn.Own) are its first main call's In: the
   transcript counts no message alone. Prompt text is flattened (line
   breaks and runs of spaces to one space): a newline cut it off.
