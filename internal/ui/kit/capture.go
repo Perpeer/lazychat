@@ -87,8 +87,8 @@ func (c *Capture) Take() bool {
 		func(b []byte) {
 			_ = s.Write(c.newline(b, s.Kitty()))
 			c.screen.Send(captureTyped{c})
-			if TypedKey(b) {
-				c.screen.Send(PlaySound{Name: sound.Key})
+			if key := TypedKey(b); key != "" {
+				c.screen.Send(PlaySound{Name: key})
 			}
 		},
 		func() { c.screen.Send(captureLeave{c}) },
@@ -166,20 +166,35 @@ func (c *Capture) rawMouse(m RawMouse) {
 	}
 }
 
-// TypedKey says bytes sent to a pane are a key a person typed into text: a
-// character, Enter or Backspace, plain or as a kitty CSI u report; not an
-// arrow, a mouse report or a paste.
-func TypedKey(b []byte) bool {
+// TypedKey is the key sound for bytes sent to a pane when they are a key a
+// person typed into text — a character, the space bar, Enter, Backspace,
+// plain or as a kitty CSI u report; "" for an arrow, a mouse report or a
+// paste.
+func TypedKey(b []byte) sound.Name {
+	code := -1
 	switch {
 	case len(b) == 0:
-		return false
 	case b[0] != 0x1b:
-		return utf8.RuneCount(b) == 1 && (b[0] >= 0x20 || b[0] == '\r' || b[0] == 0x7f || b[0] == '\t')
+		if utf8.RuneCount(b) == 1 {
+			r, _ := utf8.DecodeRune(b)
+			code = int(r)
+		}
 	case len(b) > 3 && b[1] == '[' && b[len(b)-1] == 'u':
-		code, _, _ := strings.Cut(string(b[2:len(b)-1]), ";")
-		code, _, _ = strings.Cut(code, ":")
-		n, err := strconv.Atoi(code)
-		return err == nil && (n >= 0x20 && n != 0x7f && n < 57344 || n == 13 || n == 127 || n == 9)
+		c, _, _ := strings.Cut(string(b[2:len(b)-1]), ";")
+		c, _, _ = strings.Cut(c, ":")
+		if n, err := strconv.Atoi(c); err == nil {
+			code = n
+		}
 	}
-	return false
+	switch {
+	case code == ' ':
+		return sound.KeySpace
+	case code == '\r' || code == '\n':
+		return sound.KeyEnter
+	case code == 0x7f || code == 8:
+		return sound.KeyBackspace
+	case code == '\t' || code > ' ' && code < 57344:
+		return sound.Key
+	}
+	return ""
 }

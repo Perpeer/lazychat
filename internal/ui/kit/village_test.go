@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"lazychat/internal/core/sound"
 )
 
 func villageText(v Village, frame int) string {
@@ -62,16 +64,17 @@ func TestVillageWorkers(t *testing.T) {
 	}
 }
 
-// A typed key is a character, Enter or Backspace, plain or as a kitty
-// report; an arrow, a mouse report or a paste is not.
+// A typed key is a character, the space bar, Enter or Backspace, plain or
+// as a kitty report, each with its own sound; an arrow, a mouse report or a
+// paste is none.
 func TestTypedKey(t *testing.T) {
-	for b, want := range map[string]bool{
-		"a": true, "ş": true, "\r": true, "\x7f": true, " ": true,
-		"\x1b[97u": true, "\x1b[13u": true, "\x1b[127;1u": true,
-		"\x1b[A": false, "\x1b[<0;3;4M": false, "paste": false, "": false, "\x03": false,
+	for b, want := range map[string]sound.Name{
+		"a": sound.Key, "ş": sound.Key, "\t": sound.Key, " ": sound.KeySpace, "\r": sound.KeyEnter, "\x7f": sound.KeyBackspace,
+		"\x1b[97u": sound.Key, "\x1b[32u": sound.KeySpace, "\x1b[13u": sound.KeyEnter, "\x1b[127;1u": sound.KeyBackspace,
+		"\x1b[A": "", "\x1b[<0;3;4M": "", "paste": "", "": "", "\x03": "",
 	} {
 		if got := TypedKey([]byte(b)); got != want {
-			t.Errorf("%q: %v, want %v", b, got, want)
+			t.Errorf("%q: %q, want %q", b, got, want)
 		}
 	}
 }

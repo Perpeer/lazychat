@@ -4,55 +4,48 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
-	"math/rand/v2"
 )
-
-// The keyboard sounds are made here rather than recorded: an old
-// buckling-spring key is two knocks — the spring snapping, bright and
-// short, then the keycap bottoming out, lower and duller — with the
-// spring's faint ring over them.
 
 const rate = 44_100
 
-// knock is one transient at the start of buf: noise and a tone at freq,
-// both dying away over decay seconds, gain loud.
-func knock(buf []float64, at int, freq, decay, gain float64, rng *rand.Rand) {
-	for i := at; i < len(buf); i++ {
-		t := float64(i-at) / rate
-		env := math.Exp(-t / decay)
-		if env < 1e-4 {
-			break
+// The start burst is made from the recorded keys, typed at a person's
+// rhythm, so it sounds like the keyboard the clicks come from.
+
+// samples are a shipped 16-bit mono WAV's samples, -1..1; nil when it is
+// missing or not that format.
+func samples(name string) []float64 {
+	b, err := wavs.ReadFile("lazy-" + name + ".wav")
+	if err != nil || len(b) < 44 || string(b[:4]) != "RIFF" {
+		return nil
+	}
+	// Walk the chunks to "data": a recorder may write others before it.
+	for i := 12; i+8 <= len(b); {
+		id, size := string(b[i:i+4]), int(binary.LittleEndian.Uint32(b[i+4:i+8]))
+		if id == "data" {
+			end := min(len(b), i+8+size)
+			out := make([]float64, 0, (end-i-8)/2)
+			for j := i + 8; j+1 < end; j += 2 {
+				out = append(out, float64(int16(binary.LittleEndian.Uint16(b[j:])))/math.MaxInt16)
+			}
+			return out
 		}
-		noise := rng.Float64()*2 - 1
-		buf[i] += gain * env * (0.55*noise + 0.45*math.Sin(2*math.Pi*freq*t))
+		i += 8 + size + size%2
 	}
+	return nil
 }
 
-// keyClick is one key press; variant shifts its pitch and timing a little
-// so fast typing does not sound like one sample repeated.
-func keyClick(variant int) []float64 {
-	rng := rand.New(rand.NewPCG(uint64(variant)+1, 7))
-	shift := 1 + 0.06*float64(variant-1)
-	buf := make([]float64, rate*55/1000)
-	knock(buf, 0, 3800*shift, 0.0025, 0.9, rng)                    // the spring snaps
-	knock(buf, rate*(16+variant)/1000, 750*shift, 0.006, 0.7, rng) // the cap bottoms out
-	for i := range buf {                                           // the spring's ring
-		t := float64(i) / rate
-		buf[i] += 0.08 * math.Exp(-t/0.02) * math.Sin(2*math.Pi*2600*shift*t)
-	}
-	return buf
-}
-
-// typing is a short burst of keys, Lazy starting on a prompt.
+// typing is four recorded keys at a typing rhythm, the last the space bar.
 func typing() []float64 {
-	buf := make([]float64, rate*38/100)
-	for n, ms := range []int{0, 85, 160, 255} {
-		click := keyClick(n%3 + 1)
-		at := rate * ms / 1000
-		gain := []float64{0.8, 1, 0.75, 0.95}[n]
-		for i, v := range click {
+	buf := make([]float64, rate*45/100)
+	for _, k := range []struct {
+		name string
+		ms   int
+		gain float64
+	}{{"key-2", 0, 0.85}, {"key-4", 95, 1}, {"key-1", 175, 0.8}, {"key-space", 270, 0.9}} {
+		at := rate * k.ms / 1000
+		for i, v := range samples(k.name) {
 			if at+i < len(buf) {
-				buf[at+i] += gain * v
+				buf[at+i] += k.gain * v
 			}
 		}
 	}

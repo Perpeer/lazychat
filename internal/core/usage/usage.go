@@ -172,6 +172,10 @@ type Turn struct {
 	// started it again.
 	Idle   []Span
 	Tokens Tokens
+	// Own is the prompt's own tokens: what its first call put into the
+	// context anew, before any tool ran — the text with what Claude Code
+	// attaches to it (reminders, an @file). 0 when that call is missing.
+	Own    int64
 	Calls  int
 	Agents []*Agent // started in the turn
 	Uses   []*Use
@@ -238,6 +242,12 @@ func (s *Session) Turns() []Turn {
 			if c.Time.After(out[i].Last) {
 				out[i].Last = c.Time
 			}
+		}
+	}
+	first := make([]time.Time, len(out))
+	for _, c := range s.Calls {
+		if i := at(c.Time); i >= 0 && (first[i].IsZero() || c.Time.Before(first[i])) {
+			first[i], out[i].Own = c.Time, c.Tokens.In()
 		}
 	}
 	for _, a := range s.Agents {

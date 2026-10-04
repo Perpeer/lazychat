@@ -127,8 +127,15 @@ func (c *Chat) draftKey(msg tea.KeyMsg) tea.Cmd {
 		return c.sendDraft()
 	}
 	c.draftEditor(r).Key(msg)
-	if msg.Type == tea.KeyRunes || msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter || msg.Type == tea.KeyBackspace || msg.Type == tea.KeyTab {
+	switch msg.Type {
+	case tea.KeyRunes, tea.KeyTab:
 		return playSound(sound.Key)
+	case tea.KeySpace:
+		return playSound(sound.KeySpace)
+	case tea.KeyEnter:
+		return playSound(sound.KeyEnter)
+	case tea.KeyBackspace:
+		return playSound(sound.KeyBackspace)
 	}
 	return nil
 }

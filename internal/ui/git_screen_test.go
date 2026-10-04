@@ -434,7 +434,7 @@ func TestGitWorktrees(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main   repository ·", "  clean", "⑂ feature   worktree ·", "1 changed")
+	d.expect("● main   repository ·", "  clean", "/ feature", "1 changed")
 	d.key("j") // the worktree's row
 	d.expect("vs main", "wt.txt", "loose.txt")
 	d.key("3") // the lower box: what the branch changed
@@ -543,7 +543,7 @@ func TestGitCommits(t *testing.T) {
 	d.tab(2)
 	d.expect("● main", "┌ [4] commits", "main work", "first", "┌ [5] diff", "┌ [6] commit")
 	d.key("j") // the worktree, made from dev: compared with dev, not main
-	d.expect("⑂ feat   worktree ·", "from dev", "vs dev", "feature work")
+	d.expect("/ feat", "from dev", "vs dev", "feature work")
 	d.expectNot("vs main")
 	d.expectNot("main work")
 	d.key("4")
@@ -588,7 +588,7 @@ func TestGitHereInWorktree(t *testing.T) {
 	}
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("⑂ feature   worktree ·", "clean", "○ main   repository ·")
+	d.expect("/ feature", "clean", "○ main   repository ·")
 	if here, other := lineOf(d.screen(), "⑂ feature"), lineOf(d.screen(), "○ main"); here > other {
 		t.Errorf("the worktree it works in is not first:\n%s", d.screen())
 	}
@@ -990,7 +990,7 @@ func TestWorktreeModel(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main   repository ·", "⑂ door")
+	d.expect("● main   repository ·", "└─ ⑂ door")
 	d.expectNot("current")
 
 	d.key("b") // from the repository itself

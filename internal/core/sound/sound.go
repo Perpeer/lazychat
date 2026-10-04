@@ -24,19 +24,25 @@ const (
 	Error Name = "error"
 	Tick  Name = "tick"
 	Start Name = "start" // Lazy starting on a prompt: a short burst of keys
-	Key   Name = "key"   // one key typed
+	// The keys of a mechanical keyboard, recorded: a character's, and the
+	// space bar's, Enter's and Backspace's own.
+	Key          Name = "key"
+	KeySpace     Name = "key-space"
+	KeyEnter     Name = "key-enter"
+	KeyBackspace Name = "key-backspace"
 )
 
-// keyVariants are how many slightly different key clicks there are.
-const keyVariants = 3
+// keyVariants are how many recordings of a character key there are, played
+// by turns so fast typing does not repeat one sound.
+const keyVariants = 5
 
-// made are the sounds made in code (synth.go), played while no recording
-// of the same name (lazy-start.wav, lazy-key-1.wav…) is shipped.
+// IsKey says n is a key's sound, which clicks fast and on its own gap.
+func IsKey(n Name) bool { return n == Key || n == KeySpace || n == KeyEnter || n == KeyBackspace }
+
+// made are the sounds made in code (synth.go) where no recording of the
+// same name is shipped.
 var made = map[string]func() []byte{
-	"start": func() []byte { return wav(typing(), 0.55) },
-	"key-1": func() []byte { return wav(keyClick(1), 0.45) },
-	"key-2": func() []byte { return wav(keyClick(2), 0.45) },
-	"key-3": func() []byte { return wav(keyClick(3), 0.45) },
+	"start": func() []byte { return wav(typing(), 0.9) },
 }
 
 //go:embed lazy-*.wav
@@ -78,20 +84,22 @@ func (p *Player) Play(n Name) {
 	}
 	p.mu.Lock()
 	now := time.Now()
-	wait, file := gap, string(n)
-	if n == Key {
-		wait = keyGap
-		p.keys++
-		file = fmt.Sprintf("key-%d", p.keys%keyVariants+1)
+	wait, file, slot := gap, string(n), n
+	if IsKey(n) {
+		wait, slot = keyGap, Key
 	}
-	if now.Sub(p.last[n]) < wait {
+	if now.Sub(p.last[slot]) < wait {
 		p.mu.Unlock()
 		return
+	}
+	if n == Key {
+		p.keys++
+		file = fmt.Sprintf("key-%d", p.keys%keyVariants+1)
 	}
 	if p.last == nil {
 		p.last = map[Name]time.Time{}
 	}
-	p.last[n] = now
+	p.last[slot] = now
 	p.mu.Unlock()
 	path, err := p.file(file)
 	if err == nil {

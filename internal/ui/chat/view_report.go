@@ -133,6 +133,19 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	return top, table
 }
 
+// ownTokens is a prompt's own tokens as the page writes them; "—" when its
+// first call is not in the transcript.
+func ownTokens(t usage.Turn) string {
+	if t.Own == 0 {
+		return "—"
+	}
+	return num(t.Own)
+}
+
+// flat is a prompt as one line: its line breaks and runs of spaces one
+// space each, so a prompt written over several lines shows whole.
+func flat(s string) string { return strings.Join(strings.Fields(s), " ") }
+
 // openWait says a question of the turn waits for the user's answer now.
 func openWait(t usage.Turn) bool {
 	for _, wt := range t.Waits {
@@ -144,15 +157,15 @@ func openWait(t usage.Turn) bool {
 }
 
 // promptTable is promptRows prompts around the picked one, newest first,
-// two rows each, as a table: its number, when, how long, its tokens and
-// cost, and its text over two rows. Each column is as wide as its longest
+// three rows each, as a table: its number, when, how long, its tokens —
+// its own, in, used — its cost, and its text over three rows. Each column is as wide as its longest
 // value; the text takes the rest.
 func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now time.Time, costs []string, w int) []string {
 	last := len(turns) - 1
 	top := min(last, max(picked+promptRows/2, promptRows-1))
 	type entry struct {
 		i        int
-		one, two []string
+		cells    [3][]string
 		fullText string
 	}
 	var rows []entry
@@ -163,16 +176,19 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 		if i == picked {
 			mark = "▶ "
 		}
-		rows = append(rows, entry{i: i, fullText: tn.Text,
-			one: []string{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), "in " + num(tn.Tokens.In()), costs[i]},
-			two: []string{"", "→ " + end, "", "used " + num(tn.Tokens.Used()), ""}})
+		rows = append(rows, entry{i: i, fullText: flat(tn.Text), cells: [3][]string{
+			{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), "prompt " + ownTokens(tn), costs[i]},
+			{"", "→ " + end, "", "in " + num(tn.Tokens.In()), ""},
+			{"", "", "", "used " + num(tn.Tokens.Used()), ""}}})
 	}
 	head := []string{"#", "started", "active", "tokens", "API $"}
 	cols := make([]int, len(head))
 	for k, h := range head {
 		cols[k] = len([]rune(h))
 		for _, r := range rows {
-			cols[k] = max(cols[k], len([]rune(r.one[k])), len([]rune(r.two[k])))
+			for _, cs := range r.cells {
+				cols[k] = max(cols[k], len([]rune(cs[k])))
+			}
 		}
 		cols[k] += 2
 	}
@@ -204,15 +220,19 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 	out := []string{line("┌", "┬", "┐"), row(append(head, "prompt"), false), line("├", "┼", "┤")}
 	for _, r := range rows {
 		words := text.Wrap(r.fullText, textW, "")
-		first, second := "", ""
-		if len(words) > 0 {
-			first = words[0]
+		var lines [3]string
+		for k := range lines {
+			if k < len(words) {
+				lines[k] = words[k]
+			}
 		}
-		if len(words) > 1 {
-			second = text.Fit(strings.Join(words[1:], " "), textW)
+		if len(words) > 3 {
+			lines[2] = text.Fit(strings.Join(words[2:], " "), textW)
 		}
 		lit := r.i == picked
-		out = append(out, row(append(r.one, first), lit), row(append(r.two, second), lit))
+		for k, cs := range r.cells {
+			out = append(out, row(append(cs, lines[k]), lit))
+		}
 	}
 	return append(out, line("└", "┴", "┘"))
 }
@@ -273,8 +293,9 @@ func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, co
 		note += fmt.Sprintf(" · %s waiting for your answer, left out", text.Span(waited))
 	}
 	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), note),
-		" " + kit.StyleAccent.Render("❯ "+text.Fit(t.Text, max(10, w-4))),
-		" " + kit.StyleBold.Render("in "+num(t.Tokens.In())) + kit.StyleDim.Render(" new to the context · ") +
+		" " + kit.StyleAccent.Render("❯ "+text.Fit(flat(t.Text), max(10, w-4))),
+		" " + kit.StyleBold.Render("prompt "+ownTokens(t)) + kit.StyleDim.Render(" its own text and what came with it · ") +
+			kit.StyleBold.Render("in "+num(t.Tokens.In())) + kit.StyleDim.Render(" new to the context · ") +
 			kit.StyleBold.Render("used "+num(t.Tokens.Used())) + kit.StyleDim.Render(" with "+num(t.Tokens.Output)+" written · ") + costNote(cost),
 		kit.StyleDim.Render(fmt.Sprintf(" %s re-read from the cache over %d calls, at a tenth of the input price", num(t.Tokens.CacheRead), t.Calls)),
 		" " + kinds(t.Tokens) + kit.StyleDim.Render("   "+strings.Join(tokenLabels, " · ")),

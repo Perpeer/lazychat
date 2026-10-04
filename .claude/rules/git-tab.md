@@ -32,11 +32,13 @@ paths:
   own folder is for pulling and merging. One vocabulary on the rows and
   in the branch list, never "current" (it meant two things) nor "main
   folder" (the user could not tell what it meant): every checkout row is
-  branch first, then `repository` or `worktree` and its folder (view.go
-  where: from the repository, after EvalSymlinks — /tmp is /private/tmp),
-  `● this folder` in the list for the row's own branch. The branch keeps
-  its room; role and folder move to the counts row when it leaves less
-  than 12 columns. Headings keep `⎇ <branch>` and add `⑂ <worktree>` in
+  the repository's own row is branch, then `repository · <folder>/`; a
+  worktree's is folder first (view.go where: from the repository, after
+  EvalSymlinks — /tmp is /private/tmp; left out when named after the
+  branch, which would say it twice), then branch; "from <branch>" sits
+  beside the changes, cut from its start (FitLeft) so its end shows — the
+  user's layout. `● this folder` in the list for the row's own branch.
+  Headings keep `⎇ <branch>` and add `⑂ <worktree>` in
   the worktree colour (`kit.HeadLabel`, `git.Head.Worktree`).
 - Going to a worktree is moving the cursor to its row, never a checkout:
   b's Enter on a branch out in another folder selects that row; on a

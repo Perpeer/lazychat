@@ -335,7 +335,9 @@ Under it, the picked prompt's report:
   (`AskUserQuestion`) waited for your answer, which is left out of the
   active time. A permission prompt's wait is not in the transcript and
   stays in;
-- its tokens: `in`, what it put into the context anew (its own text,
+- its tokens: `prompt`, its own — what its first call put into the
+  context before any tool ran, the text with what Claude Code attaches
+  (reminders, an @file); `in`, what it put into the context anew (its own text,
   files read, tool results: input and cache writes), and `used`, that and
   what the model wrote. What every call read back from the cache is shown
   apart: each call re-reads the whole context, so a one-line prompt late in
@@ -359,8 +361,9 @@ At the box's bottom, held there while the rest scrolls above it, the
 prompts as a table: ten around the picked one, newest first, two rows each
 — its number (`▶` the picked one), when it started and `→` when it ended
 (where Claude Code wrote the turn's end, or `working`), its active time,
-its `in` and `used` tokens (above), its API price, and its text over two
-rows. Each
+its tokens — `prompt` (its own), `in` and `used` (above) — its API price,
+and its text over three rows, written over several lines or not: line
+breaks show as spaces. Each
 column is as wide as its longest value. `↑↓` picks one; the newest is
 followed.
 
@@ -368,10 +371,12 @@ followed.
  ┌───────┬─────────────┬─────────┬──────────┬────────┬──────────────────┐
  │ #     │ started     │ active  │ tokens   │ API $  │ prompt           │
  ├───────┼─────────────┼─────────┼──────────┼────────┼──────────────────┤
- │ ▶ 245 │ 10-04 14:02 │ 2m10s   │ in 12k   │ 0.42   │ paint the garden │
- │       │ → working   │         │ used 13k │        │ shed blue        │
- │   244 │ 10-04 13:40 │ 20m 50s │ in 410k  │ 11.80  │ /tidy-up the     │
- │       │ → 14:01:02  │         │ used 1M  │        │ garage           │
+ │ ▶ 245 │ 10-04 14:02 │ 2m10s   │ prompt 2k│ 0.42   │ paint the garden │
+ │       │ → working   │         │ in 12k   │        │ shed blue, then  │
+ │       │             │         │ used 13k │        │ the door         │
+ │   244 │ 10-04 13:40 │ 20m 50s │ prompt 9k│ 11.80  │ /tidy-up the     │
+ │       │ → 14:01:02  │         │ in 410k  │        │ garage           │
+ │       │             │         │ used 1M  │        │                  │
  └───────┴─────────────┴─────────┴──────────┴────────┴──────────────────┘
 ```
 
@@ -415,22 +420,22 @@ a diff with the commit box under it.
 │ ~/code/lazychat
 │   ├─ ● main      repository · lazychat/
 │   │    ↑1 · clean
-│   └─ ⑂ feature   worktree · ../wt-feature/
+│   └─ ⑂ ../wt-feature/ feature
 │        1 changed · from main
 ```
 
 Under each project hangs the checkout it works in — its folder, where
 Chat's sessions and Terminal's shells start — and under that the
-repository's other checkouts (`git worktree list`). Every checkout row
-reads the same way: its branch first (what), then `repository` when it is
-the repository's own folder or `worktree` when it was added to it, and its
-folder (where) — the repository's by name, a worktree's from the
-repository (`../wt-feature/`, `.worktrees/fence/`), one far away from
-home. When a long branch leaves no room, the role and folder open the row
-under it. The project's checkout is marked `●` in the accent (`⑂` and the
-branch in the worktree colour when it is itself a worktree), the others
-`⑂`, or `○` for the repository's own. Under each, `↑` `↓` ahead and
-behind its upstream, how many files changed, `locked` or `gone` where git
+repository's other checkouts (`git worktree list`). The repository's own
+checkout reads its branch, then `repository` and its folder by name. A
+worktree reads its folder first — from the repository (`../wt-feature/`,
+`.worktrees/fence/`), one far away from home, none when the folder is
+named after the branch — then its branch. When a long branch leaves no
+room, the repository's label opens the row under it. The project's
+checkout is marked `●` in the accent (`⑂` and the branch in the worktree
+colour when it is itself a worktree), the others `⑂`, or `○` for the
+repository's own. Under each, `↑` `↓` ahead and behind its upstream, how
+many files changed, `locked` or `gone` where git
 says so, and `from dev` when git noted the branch it was made from — `git worktree add -b feat
 ../feat dev` writes "Created from dev" first in the branch's reflog; a
 branch made from `HEAD`, from a commit, or whose note expired (90 days by
@@ -546,8 +551,8 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | Appearance | mascot | shown | Lazy, the face at the rail's top |
 | Appearance | version | shown | the corner's `v1.0(N)` |
 | Appearance | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
-| Sound | sounds | on | on macOS, Lazy's sounds: a short burst of keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
-| Sound | key clicks | off | each key typed into a session or the draft box clicks like an old buckling-spring keyboard (a character, Enter, Backspace; not arrows); a recorded key when lazychat ships one, else one made in code; at most one click per 30 ms; quiet with sounds off |
+| Sound | sounds | on | on macOS, Lazy's sounds: a short burst of the recorded keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
+| Sound | key clicks | off | each key typed into a session or the draft box clicks like an old buckling-spring keyboard (a character, Enter, Backspace; not arrows); a mechanical keyboard's recorded keys — five for characters, by turns, and the space bar's, Enter's and Backspace's own; at most one click per 30 ms; quiet with sounds off |
 | Integrations | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
 | Integrations | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 

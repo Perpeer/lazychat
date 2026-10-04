@@ -482,3 +482,20 @@ func TestTokensInUsed(t *testing.T) {
 		t.Fatalf("in %d used %d re-read %d", sum.In(), sum.Used(), sum.CacheRead)
 	}
 }
+
+// A prompt's own tokens are what its first call of the session put in
+// anew; a subagent's calls and later ones are not.
+func TestOwnTokens(t *testing.T) {
+	at := time.Date(2026, 3, 2, 10, 0, 0, 0, time.UTC)
+	s := &Session{
+		Prompts: []Prompt{{Time: at, Text: "paint the shed"}, {Time: at.Add(time.Hour), Text: "and the door"}},
+		Calls: []Call{
+			{ID: "a", Time: at.Add(time.Second), Tokens: Tokens{Input: 4, CacheWrite: 26, CacheRead: 90_000}},
+			{ID: "b", Time: at.Add(2 * time.Second), Tokens: Tokens{CacheWrite: 5_000, CacheRead: 90_030}},
+		},
+	}
+	turns := s.Turns()
+	if turns[0].Own != 30 || turns[1].Own != 0 {
+		t.Fatalf("own %d, %d", turns[0].Own, turns[1].Own)
+	}
+}

@@ -77,11 +77,11 @@ it from there.
   Backspace, plain or a kitty CSI u report) and the draft box's keys.
   afplay starts a process per click, so the player drops any key click
   within 30 ms of the last rather than queue them.
-- start and key: a recording shipped as lazy-start.wav / lazy-key-1..3.wav
-  wins (Player.file reads the embedded files first); until then they are
-  made in code (sound/synth.go). The user found the made click sounded
-  like a terminal beep — its tones (pure sines) — and chose to bring a
-  mechanical keyboard's recording.
+- Keys are the user's mechanical keyboard recordings: lazy-key-1..5 for
+  characters by turns, lazy-key-space/-enter/-backspace for those keys
+  (kit.TypedKey names the sound from the bytes); all keys share one 30 ms
+  gap. start is four of them mixed at a typing rhythm (sound/synth.go). The
+  made clicks before them sounded like a terminal beep — pure sines.
 - A tab asks for a sound with kit.PlaySound; App plays it unless
   settings.NoSounds. Tests leave App.play nil: no test makes a sound.
 

@@ -43,6 +43,9 @@ paths:
 - The fast beat (animBeat) reaches the active tab as kit.Beat only while
   it is a kit.Animator saying so: Chat says so while a worker is at work
   or Lazy moves, so an idle page costs no redraws.
+- A prompt's own tokens (Turn.Own) are its first main call's In: the
+  transcript counts no message alone. Prompt text is flattened (line
+  breaks and runs of spaces to one space): a newline cut it off.
 - A prompt's tokens are `in` (input + cache write) and `used` (in +
   output); cache reads are shown apart. The user saw a one-line prompt read
   as 1.6M: Tokens.Sum() counts every call's re-read of the whole context.

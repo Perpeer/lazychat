@@ -3,6 +3,7 @@ package sound
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,4 +62,40 @@ func TestMadeSounds(t *testing.T) {
 	if len(played) != 3 || played[0] == played[1] || played[2] != "lazy-start.wav" {
 		t.Fatalf("played %v", played)
 	}
+}
+
+// Every key plays its recording: characters by turns over five, the space
+// bar, Enter and Backspace their own; all keys share one gap, so a burst of
+// typing never queues; the start is made from the recorded keys.
+func TestRecordedKeys(t *testing.T) {
+	for _, name := range []string{"key-1", "key-2", "key-3", "key-4", "key-5", "key-space", "key-enter", "key-backspace"} {
+		if s := samples(name); len(s) < rate/50 {
+			t.Errorf("%s: %d samples", name, len(s))
+		}
+	}
+	var played []string
+	p := &Player{dir: filepath.Join(t.TempDir(), "sounds"), run: func(path string) error {
+		played = append(played, filepath.Base(path))
+		return nil
+	}}
+	for _, n := range []Name{Key, KeySpace, KeyEnter, KeyBackspace, Key, Key} {
+		p.Play(n)
+		p.Play(Key) // within the gap: dropped
+		time.Sleep(keyGap + 5*time.Millisecond)
+	}
+	want := []string{"lazy-key-2.wav", "lazy-key-space.wav", "lazy-key-enter.wav", "lazy-key-backspace.wav", "lazy-key-3.wav", "lazy-key-4.wav"}
+	if strings.Join(played, " ") != strings.Join(want, " ") {
+		t.Fatalf("played %v\nwant   %v", played, want)
+	}
+	if loud := typing(); len(loud) == 0 || peak(loud) < 0.05 {
+		t.Errorf("the start burst is silent: peak %.3f", peak(loud))
+	}
+}
+
+func peak(s []float64) float64 {
+	m := 0.0
+	for _, v := range s {
+		m = max(m, v, -v)
+	}
+	return m
 }

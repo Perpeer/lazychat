@@ -100,7 +100,7 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect("Lazy", "⌂ Explore", "find the brushes", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API price $", "API $", "│ in ", "│ used ", "new to the context", "re-read from the cache", "workers", "Explore · find the brushes")
+	d.expect("Lazy", "⌂ Explore", "find the brushes", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API price $", "API $", "│ prompt ", "│ in ", "│ used ", "its own text", "new to the context", "re-read from the cache", "workers", "Explore · find the brushes")
 	d.expect("(↑↓) pick prompt · (esc) back")
 	rows := strings.Split(d.screen(), "\n")
 	bottom := lineOf(d.screen(), "┴")
