@@ -20,6 +20,7 @@
 </p>
 
 <p align="center">
+  <a href="https://perpeer.github.io/lazychat/">Website</a> ·
   <a href="#install">Install</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#features">Features</a> ·
@@ -78,10 +79,10 @@ each prompt cost in tokens, which agents, skills and MCP calls it used.
 ```
 ┌ [1] projects ──────────┐┌ [2] session │ [3] details ───────────┐
 │ garden-shed            ││ ❯ paint the shed blue                │
-│ ⎇ main                 ││                                      │
+│ main                   ││                                      │
 │   │                    ││ ● Starting with the north wall.      │
-│   ├─ ◐ ivy             ││   Reading paint.go…                  │
-│   │    claude · ◷ 42s  ││                                      │
+│   ├─ ● ivy             ││   Reading paint.go…                  │
+│   │    claude · 42s    ││                                      │
 │   │                    ││ > ▌                                  │
 │   └─ ○ oak             ││                                      │
 │        codex · 3m 18s  ││                                      │
@@ -98,10 +99,10 @@ commit message written from what you staged.
 ```
 ┌ [1] projects ──┐┌ [2] Unstaged · 1 ────┐┌ [5] diff ──────────────────┐
 │ garden-shed    ││ M paint.go           ││ @@ -3,2 +3,2 @@            │
-│ ⎇ main ↑1      │└──────────────────────┘│ - color := "red"           │
+│ main ↑1        │└──────────────────────┘│ - color := "red"           │
 │                │┌ [3] Staged · 1 ──────┐│ + color := "blue"          │
 │ blue-door      ││ + door.go            ││                            │
-│ ⑂ worktree     │└──────────────────────┘└────────────────────────────┘
+│ worktree       │└──────────────────────┘└────────────────────────────┘
 │                │┌ [4] commits ─────────┐┌ [6] commit ────────────────┐
 │                ││ ↑ a1b2c3d first coat ││ Paint the door blue        │
 │                ││   9f8e7d6 sand it    ││────────────────────────────│
@@ -119,9 +120,9 @@ do.
 ```
 ┌ [1] projects ──────┐┌ [2] sh 1 ──────────────────────────────┐
 │ garden-shed        ││ $ go test ./...                        │
-│ ⎇ main             ││ ok   shed/paint   0.4s                 │
+│ main               ││ ok   shed/paint   0.4s                 │
 │   │                ││ $ ▌                                    │
-│  ├─ ◐ sh 1         ││                                        │
+│  ├─ ● sh 1         ││                                        │
 │  │                 ││                                        │
 │  └─ ○ server       ││                                        │
 └────────────────────┘└────────────────────────────────────────┘

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lazychat — one terminal for all your AI coding agents</title>
+<meta name="description" content="Run Claude Code and Codex sessions side by side, see at a glance which one needs you, and keep Git and a shell for every project one key away.">
+<meta property="og:title" content="lazychat">
+<meta property="og:description" content="One terminal for all your AI coding agents.">
+<meta property="og:image" content="https://perpeer.github.io/lazychat/assets/icon-1024.png">
+<link rel="icon" href="assets/icon-1024.png">
+<style>
+/* The app's default theme: the amber accent (256-colour 178), the running
+   green and a dim grey, on a terminal's dark; lighter for light mode. */
+:root {
+  --bg: #0d1117; --panel: #161b22; --line: #30363d; --fg: #e6edf3;
+  --dim: #8b949e; --accent: #d7af00; --busy: #3fb950; --love: #ea4aaa;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg: #fbfaf6; --panel: #ffffff; --line: #d0d7de; --fg: #1f2328;
+    --dim: #57606a; --accent: #9a7b00; --busy: #1a7f37; --love: #bf3989; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; overflow-x: hidden; background: var(--bg); color: var(--fg); font: 17px/1.6 var(--sans); }
+a { color: var(--accent); }
+main { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+section { padding: 56px 0 8px; }
+h1, h2, h3 { font-family: var(--mono); font-weight: 600; line-height: 1.25; }
+h2 { font-size: 26px; margin: 0 0 18px; }
+h2::before { content: "┌ "; color: var(--dim); }
+h3 { font-size: 18px; margin: 0 0 6px; color: var(--accent); }
+p { margin: 0 0 14px; }
+.dim { color: var(--dim); }
+kbd { font: 14px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; background: var(--panel); }
+code { font-family: var(--mono); font-size: 0.9em; }
+
+.hero { text-align: center; padding-top: 64px; }
+.hero img.logo { width: 96px; height: 96px; }
+.hero h1 { font-size: 52px; margin: 12px 0 6px; letter-spacing: -1px; }
+.hero h1 span { color: var(--accent); }
+.hero .pitch { font-size: 21px; max-width: 640px; margin: 0 auto 26px; }
+.buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 22px 0 6px; }
+.btn { display: inline-block; font: 600 16px var(--mono); padding: 10px 18px; border-radius: 8px; text-decoration: none; border: 1px solid var(--line); color: var(--fg); background: var(--panel); }
+.btn.accent { background: var(--accent); color: #111; border-color: var(--accent); }
+.btn.love { color: var(--love); border-color: var(--love); }
+
+.install { display: flex; align-items: flex-start; gap: 10px; max-width: 640px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; text-align: left; }
+.install pre { margin: 0; flex: 1; min-width: 0; overflow-x: auto; font: 15px/1.6 var(--mono); }
+.install pre .p { color: var(--busy); user-select: none; }
+.install button { font: 14px var(--mono); background: none; color: var(--dim); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.install button:hover { color: var(--accent); border-color: var(--accent); }
+
+.frame { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); margin-top: 34px; }
+.frame .bar { font: 13px var(--mono); color: var(--dim); padding: 6px 12px; border-bottom: 1px solid var(--line); }
+.frame .bar b { color: var(--accent); font-weight: 600; }
+.frame img { display: block; width: 100%; height: auto; }
+
+.tabs { display: grid; gap: 28px; }
+.tab { display: grid; gap: 12px; }
+.tab > *, .tabs > * { min-width: 0; }
+.tab.side { grid-template-columns: 1.4fr 1fr; align-items: center; }
+.sketch { margin: 0; font: 14px/1.2 var(--mono); width: fit-content; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; color: var(--fg); }
+.sketch .a { color: var(--accent); }
+@media (max-width: 760px) { .tab.side { grid-template-columns: 1fr; } .hero h1 { font-size: 40px; } .sketch { font-size: 11px; } }
+
+ol.start { padding-left: 22px; }
+ol.start li { margin-bottom: 8px; }
+
+.sponsor { text-align: center; }
+.sponsor img.lazy { width: 220px; height: auto; }
+.tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 26px 0; }
+.tier { border: 1px solid var(--line); border-radius: 10px; padding: 16px 10px; background: var(--panel); }
+.tier .e { font-size: 30px; }
+.tier .amt { font: 600 22px var(--mono); color: var(--accent); }
+@media (max-width: 760px) { .tiers { grid-template-columns: repeat(2, 1fr); } }
+.sponsor iframe { border: 0; border-radius: 6px; vertical-align: middle; }
+
+footer { border-top: 1px solid var(--line); margin-top: 64px; padding: 32px 20px 48px; text-align: center; color: var(--dim); font-size: 15px; }
+footer img.people { max-width: 100%; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+
+<header class="hero">
+  <img class="logo" src="assets/icon-1024.png" alt="Lazy, the lazychat mascot">
+  <h1>lazy<span>chat</span></h1>
+  <p class="pitch">One terminal for all your AI coding agents. Run Claude Code and Codex side by side, see at a glance which one needs you, and keep Git and a shell for every project one key away.</p>
+  <div class="install">
+    <pre id="cmd"><span class="p">$ </span>git clone https://github.com/perpeer/lazychat
+<span class="p">$ </span>cd lazychat
+<span class="p">$ </span>./install.sh</pre>
+    <button type="button" id="copy">copy</button>
+  </div>
+  <p class="dim" style="margin-top:10px">macOS · Claude Code or Codex · Homebrew coming soon</p>
+  <div class="buttons">
+    <a class="btn accent" href="https://github.com/perpeer/lazychat">★ Star on GitHub</a>
+    <a class="btn love" href="#sponsor">♥ Sponsor Lazy</a>
+  </div>
+  <div class="frame">
+    <div class="bar"><b>lazychat</b> · a project, an agent, Git and a shell, with Lazy watching</div>
+    <img src="assets/demo.gif" alt="lazychat: add a project, start an AI agent, use Git and a shell, and Lazy, the mascot, watching the sessions" loading="lazy">
+  </div>
+</header>
+
+<section id="features">
+  <h2>Every tab, one key away</h2>
+  <div class="tabs">
+    <div class="tab">
+      <div><h3>Chat: your agents, side by side</h3>
+        <p>Every session sits under its project, its terminal next to it. You see which one works, which one waits for you and how long the last prompt took. Press <kbd>3</kbd> for what each prompt spent: tokens, agents, skills and MCP calls.</p></div>
+      <pre class="sketch">┌ [1] projects ──────────┐┌ [2] session │ [3] details ───────────┐
+│ garden-shed            ││ ❯ paint the shed blue                │
+│ main                   ││                                      │
+│   │                    ││ ● Starting with the north wall.      │
+│   ├─ ● ivy             ││   Reading paint.go…                  │
+│   │    claude · 42s    ││                                      │
+│   │                    ││ &gt; ▌                                  │
+│   └─ ○ oak             ││                                      │
+│        codex · 3m 18s  ││                                      │
+└────────────────────────┘└──────────────────────────────────────┘
+session: (enter) continue · (n) new · (r) resume · (w) draft · (?) help</pre>
+    </div>
+    <div class="tab">
+      <div><h3>Git: stage, diff and commit</h3>
+        <p>Changes as a folder tree, a diff you can walk line by line, your last commits and the repository's worktrees. <code>Suggest</code> has the agent write the commit message from what you staged.</p></div>
+      <pre class="sketch">┌ [1] projects ──┐┌ [2] Unstaged · 1 ────┐┌ [5] diff ──────────────────┐
+│ garden-shed    ││ M paint.go           ││ @@ -3,2 +3,2 @@            │
+│ main ↑1        │└──────────────────────┘│ - color := &quot;red&quot;           │
+│                │┌ [3] Staged · 1 ──────┐│ + color := &quot;blue&quot;          │
+│ blue-door      ││ + door.go            ││                            │
+│ worktree       │└──────────────────────┘└────────────────────────────┘
+│                │┌ [4] commits ─────────┐┌ [6] commit ────────────────┐
+│                ││ ↑ a1b2c3d first coat ││ Paint the door blue        │
+│                ││   9f8e7d6 sand it    ││────────────────────────────│
+│                ││                      ││      [ Suggest ] [ Commit ]│
+│                ││                      ││                            │
+└────────────────┘└──────────────────────┘└────────────────────────────┘
+branch: (c) commit · (p) pull · (shift+p) push · (b) branches · (w) worktrees</pre>
+    </div>
+    <div class="tab">
+      <div><h3>Terminal: a shell in every project</h3>
+        <p>Plain shells in your projects' folders, for the things the agents don't do.</p></div>
+      <pre class="sketch">┌ [1] projects ──────┐┌ [2] sh 1 ──────────────────────────────┐
+│ garden-shed        ││ $ go test ./...                        │
+│ main               ││ ok   shed/paint   0.4s                 │
+│   │                ││ $ ▌                                    │
+│  ├─ ● sh 1         ││                                        │
+│  │                 ││                                        │
+│  └─ ○ server       ││                                        │
+└────────────────────┘└────────────────────────────────────────┘
+terminal: (enter) continue · (n) new · (e) rename · (v) copy · (d) close</pre>
+    </div>
+    <div class="tab side">
+      <div><h3>Lazy, the mascot</h3>
+        <p>Lazy sits on the side rail and watches every session. It types while an agent works, holds up a <code>?</code> when one asks you something and celebrates when one is done. Click it to jump to the session that needs you; it lives in the menu bar too, and you get a notification when your terminal is in the background.</p></div>
+      <div style="text-align:center"><img src="assets/lazy.svg" width="220" alt="Lazy resting, typing, asking you and celebrating"></div>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <h2>Quick start</h2>
+  <ol class="start">
+    <li>Run <code>lazychat</code> and name a workspace, the set of projects you work on.</li>
+    <li>Press <kbd>o</kbd> and pick a project folder.</li>
+    <li>Press <kbd>n</kbd> to start Claude Code or Codex in it, <kbd>Enter</kbd> to type to it, and <kbd>ctrl+q</kbd> to come back.</li>
+    <li><kbd>Tab</kbd> moves between the tabs, and <kbd>?</kbd> lists every key where you are.</li>
+  </ol>
+  <p class="dim">Every key and screen is in the <a href="https://github.com/perpeer/lazychat/blob/main/docs/REFERENCE.md">reference</a>.</p>
+</section>
+
+<section id="sponsor" class="sponsor">
+  <h2>Sponsor Lazy</h2>
+  <img class="lazy" src="assets/lazy.svg" alt="Lazy, the mascot">
+  <p>Lazy watches your agents all day and has never asked for anything.<br>lazychat is free and stays free; if it saves you time, keep Lazy going.</p>
+  <div class="tiers">
+    <div class="tier"><div class="e">☕</div><div class="amt">$3</div><div class="dim">a coffee</div></div>
+    <div class="tier"><div class="e">🍩</div><div class="amt">$10</div><div class="dim">a snack</div></div>
+    <div class="tier"><div class="e">🛋️</div><div class="amt">$50</div><div class="dim">a comfy cushion</div></div>
+    <div class="tier"><div class="e">🚀</div><div class="amt">$100+</div><div class="dim">super sponsor</div></div>
+  </div>
+  <p>
+    <iframe src="https://github.com/sponsors/Perpeer/button" title="Sponsor Perpeer" height="32" width="114"></iframe>
+    <span class="dim">or</span> <a href="https://github.com/sponsors/Perpeer">github.com/sponsors/Perpeer</a>
+  </p>
+</section>
+
+</main>
+
+<footer>
+  <p>Inspired by <a href="https://github.com/jesseduffield/lazygit">lazygit</a> and <a href="https://github.com/jesseduffield/lazydocker">lazydocker</a> by Jesse Duffield.</p>
+  <a href="https://github.com/Perpeer/lazychat/graphs/contributors"><img class="people" src="https://contrib.rocks/image?repo=Perpeer/lazychat" alt="lazychat's contributors"></a>
+  <p><a href="https://github.com/perpeer/lazychat">GitHub</a> · <a href="https://github.com/perpeer/lazychat/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/perpeer/lazychat/issues">Issues</a> · AGPL-3.0</p>
+</footer>
+
+<script>
+// The copy button puts the install line on the clipboard, without the prompt.
+document.getElementById("copy").addEventListener("click", function () {
+  var line = document.getElementById("cmd").textContent.replace(/^\$ /gm, "");
+  navigator.clipboard.writeText(line).then(function () {
+    var b = document.getElementById("copy");
+    b.textContent = "copied";
+    setTimeout(function () { b.textContent = "copy"; }, 1500);
+  });
+});
+</script>
+</body>
+</html>
