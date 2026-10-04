@@ -559,3 +559,39 @@ func TestFlowSteps(t *testing.T) {
 		t.Errorf("grep %+v", gr)
 	}
 }
+
+// A prompt pasted with an image is written as blocks, text and image: it
+// is a prompt like any other, and what follows is its; a prompt that is an
+// image alone is one too. Tool results and the note of an interrupted
+// answer, also blocks, are none.
+func TestPromptWithImage(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s-8.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "paint the shed"}})
+	w.reply("c1", 100, 0, 10, use("b1", "Bash", map[string]any{"command": "ls"}))
+	w.results(nil, res("b1", 30))
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": []any{
+		map[string]any{"type": "text", "text": "the door is the wrong blue\n[Image #1]"},
+		map[string]any{"type": "image", "source": map[string]any{"type": "base64", "data": "iVBO"}},
+	}}})
+	w.reply("c2", 100, 100, 10)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": []any{
+		map[string]any{"type": "text", "text": "[Request interrupted by user]"},
+	}}})
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": []any{
+		map[string]any{"type": "image", "source": map[string]any{"type": "base64", "data": "iVBO"}},
+	}}})
+	w.reply("c3", 100, 200, 10)
+	w.flush()
+	s, _ := Open(path).Update()
+	turns := s.Clone().Turns()
+	if got, _ := prompt("<pasted_content id=\"a1\">\nthe gate creaks\n</pasted_content id=\"a1\">\n\nmend it"); got.Text != "the gate creaks" {
+		t.Errorf("pasted: %q", got.Text)
+	}
+	if len(turns) != 3 || turns[1].Text != "the door is the wrong blue" || turns[2].Text != "(an image)" {
+		t.Fatalf("turns %+v", turns)
+	}
+	if turns[0].Calls != 1 || turns[1].Calls != 1 || turns[2].Calls != 1 {
+		t.Errorf("calls %d %d %d", turns[0].Calls, turns[1].Calls, turns[2].Calls)
+	}
+}

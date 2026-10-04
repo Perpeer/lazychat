@@ -92,11 +92,8 @@ const promptRows = 10
 func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	now := time.Now()
 	working := c.working(s, now)
-	state := kit.StyleDim.Render("idle")
-	if working {
-		state = kit.StyleBusy.Render(kit.Spinner[(c.Tick/2)%len(kit.Spinner)] + " working")
-	}
-	top = []string{" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state}
+	// No title row: the tree names the session, the flow's end says whether
+	// it runs. The page opens on a blank row, then the flow.
 	if s.Bad > 0 {
 		top = append(top, kit.StyleDim.Render(fmt.Sprintf(" %d line(s) were not JSON and are left out", s.Bad)))
 	}
@@ -143,27 +140,33 @@ func head(s string, n int) string {
 	return s
 }
 
-// sideBySide is the narrowest box whose halves hold the flow and the
-// context's grid with its legend.
-const sideBySide = 100
+// The context takes 30 % of the box and the flow the rest (the user's
+// split), the context never under contextMinW — its grid and legend's
+// width — and the two side by side only when the flow keeps flowMinW.
+const (
+	contextShare = 30
+	contextMinW  = 52
+	flowMinW     = 48
+)
 
 // flowAndContext are the page's first two parts: the picked prompt's flow
-// on the left half and the session's context on the right, top-aligned;
-// one under the other in a box too narrow for two halves.
+// on the left and the session's context on the right, top-aligned; one
+// under the other in a box too narrow for both.
 func flowAndContext(nodes []kit.FlowNode, beat int, pg page, fed map[string]int64, w int) []string {
-	if w < sideBySide {
+	ctxW := max(w*contextShare/100, contextMinW)
+	flowW := w - ctxW
+	if flowW < flowMinW {
 		out := []string{"", section("flow", "what the picked prompt did, step by step")}
 		for _, row := range kit.DrawFlow(nodes, beat, w-1) {
 			out = append(out, " "+row)
 		}
 		return append(out, contextPart(pg, fed, w)...)
 	}
-	half := w / 2
 	left := []string{"", section("flow", "what the picked prompt did, step by step")}
-	for _, row := range kit.DrawFlow(nodes, beat, half-2) {
+	for _, row := range kit.DrawFlow(nodes, beat, flowW-2) {
 		left = append(left, " "+row)
 	}
-	right := contextPart(pg, fed, w-half)
+	right := contextPart(pg, fed, ctxW)
 	out := make([]string, max(len(left), len(right)))
 	for i := range out {
 		l, r := "", ""
@@ -173,7 +176,7 @@ func flowAndContext(nodes []kit.FlowNode, beat int, pg page, fed map[string]int6
 		if i < len(right) {
 			r = right[i]
 		}
-		out[i] = text.Pad(text.Fit(l, half), half) + text.Fit(r, w-half)
+		out[i] = text.Pad(text.Fit(l, flowW), flowW) + text.Fit(r, ctxW)
 	}
 	return out
 }
@@ -270,7 +273,7 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 	return append(out, line("└", "┴", "┘"))
 }
 
-// turnState is a prompt's state as the table names it: working while it
+// turnState is a prompt's state as the table names it: running while it
 // is the newest and the session works, asking while one of its questions
 // waits for the user then, done once Claude Code said it ended, stopped
 // for an answer cut short.
@@ -282,18 +285,18 @@ func turnState(t usage.Turn, newest, working bool) string {
 				return "asking"
 			}
 		}
-		return "working"
+		return "running"
 	case t.Ended():
 		return "done"
 	}
 	return "stopped"
 }
 
-// stateStyle colours a state: the running colour for working and asking,
+// stateStyle colours a state: the running colour for running and asking,
 // dim for stopped, plain for done.
 func stateStyle(state string) lipgloss.Style {
 	switch state {
-	case "working", "asking":
+	case "running", "asking":
 		return kit.StyleBusy
 	case "stopped":
 		return kit.StyleDim
@@ -330,7 +333,7 @@ func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 	case t.Ended():
 		return t.End.Local().Format("15:04:05"), false
 	case newest && working:
-		return "working", true
+		return "running", true
 	case !t.Last.IsZero():
 		return t.Last.Local().Format("15:04:05"), false
 	}

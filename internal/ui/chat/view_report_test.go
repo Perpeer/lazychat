@@ -92,13 +92,13 @@ func TestTimelineRow(t *testing.T) {
 	}
 }
 
-// A prompt's state: working while it is the newest and the session works,
+// A prompt's state: running while it is the newest and the session works,
 // asking while a question of it is open then, done once ended, stopped
 // for an answer cut short; an older prompt picked lights no table row.
 func TestTurnState(t *testing.T) {
 	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
 	open := usage.Turn{Prompt: usage.Prompt{Time: at}}
-	if got := turnState(open, true, true); got != "working" {
+	if got := turnState(open, true, true); got != "running" {
 		t.Errorf("newest at work: %q", got)
 	}
 	asking := usage.Turn{Prompt: usage.Prompt{Time: at}, Waits: []usage.Span{{From: at.Add(time.Second)}}}
@@ -121,5 +121,31 @@ func TestTurnState(t *testing.T) {
 	plain := ansi.Strip(strings.Join(c.promptTable(turns, 0, false, at, costs, 120), "\n"))
 	if strings.Contains(plain, "▶") || !strings.Contains(plain, "  12 ") || strings.Contains(plain, "│   1 ") {
 		t.Errorf("the newest ten, none lit for an older pick:\n%s", plain)
+	}
+}
+
+// The flow takes 70 % of a wide page and the context 30 %, the context
+// never narrower than its grid and legend; a box too narrow for both
+// stacks them.
+func TestFlowAndContextSplit(t *testing.T) {
+	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	nodes := flowOf(usage.Turn{Prompt: usage.Prompt{Time: at, Text: "paint the shed"}, End: at.Add(time.Minute)}, at.Add(time.Hour), false, "", "")
+	pg := page{ctx: usage.ContextUse{Model: "model-x", Used: 100, Window: 1000, Base: 100}}
+	col := func(rows []string) int {
+		for _, r := range rows {
+			if i := strings.Index(ansi.Strip(r), "context  "); i >= 0 {
+				return len([]rune(ansi.Strip(r)[:i]))
+			}
+		}
+		return -1
+	}
+	if c := col(flowAndContext(nodes, 0, pg, nil, 200)); c != 140+1 { // the heading's margin
+		t.Errorf("wide: the context starts at %d, want 140 (70 %%)", c)
+	}
+	if c := col(flowAndContext(nodes, 0, pg, nil, 120)); c != 120-contextMinW+1 {
+		t.Errorf("medium: the context starts at %d, want %d (its least width)", c, 120-contextMinW)
+	}
+	if c := col(flowAndContext(nodes, 0, pg, nil, 90)); c != 1 { // the section heading's margin
+		t.Errorf("narrow: the context starts at %d, want stacked", c)
 	}
 }

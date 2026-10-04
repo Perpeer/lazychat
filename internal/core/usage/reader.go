@@ -347,9 +347,15 @@ func (r *Reader) mainLine(line []byte) {
 			r.s.Fed = nil
 		}
 		// A compaction's summary goes on with the prompt before: no prompt.
-		if !isList && len(rec.Message.Content) > 0 && !rec.IsMeta && !rec.Compacted {
+		if len(rec.Message.Content) > 0 && !rec.IsMeta && !rec.Compacted {
 			var text string
-			if json.Unmarshal(rec.Message.Content, &text) == nil {
+			ok := false
+			if isList {
+				text, ok = listPrompt(bs)
+			} else {
+				ok = json.Unmarshal(rec.Message.Content, &text) == nil
+			}
+			if ok {
 				if p, ok := prompt(text); ok {
 					r.s.UserMessages++
 					p.Time = rec.Timestamp
@@ -378,7 +384,7 @@ func (r *Reader) mainLine(line []byte) {
 // prompt is a user's text as the report lists it: a slash command as it
 // was typed, a command's own output not at all.
 func prompt(text string) (Prompt, bool) {
-	text = strings.TrimSpace(text)
+	text = strings.TrimSpace(unwrapPasted(text))
 	switch {
 	case strings.HasPrefix(text, "<local-command-"):
 		return Prompt{}, false
@@ -393,6 +399,53 @@ func prompt(text string) (Prompt, bool) {
 	}
 	line, _, _ := strings.Cut(text, "\n")
 	return Prompt{Text: line}, true
+}
+
+// unwrapPasted drops the tags some clients wrap pasted text in
+// (<pasted_content id="…"> … </pasted_content …>), so the prompt reads as
+// what was pasted.
+func unwrapPasted(text string) string {
+	for _, tag := range []string{"<pasted_content", "</pasted_content"} {
+		for {
+			i := strings.Index(text, tag)
+			if i < 0 {
+				break
+			}
+			j := strings.Index(text[i:], ">")
+			if j < 0 {
+				break
+			}
+			text = text[:i] + text[i+j+1:]
+		}
+	}
+	return text
+}
+
+// listPrompt is the text of a prompt written as blocks — what Claude Code
+// writes when an image is pasted with it — and whether the line is one: a
+// line of tool results is none, nor the note of an interrupted answer.
+// A prompt that is images alone reads "(an image)".
+func listPrompt(bs []block) (string, bool) {
+	var texts []string
+	images := 0
+	for _, b := range bs {
+		switch b.Type {
+		case "tool_result":
+			return "", false
+		case "text":
+			texts = append(texts, b.Text)
+		case "image":
+			images++
+		}
+	}
+	text := strings.TrimSpace(strings.Join(texts, "\n"))
+	switch {
+	case strings.HasPrefix(text, "[Request interrupted"):
+		return "", false
+	case text == "" && images > 0:
+		return "(an image)", true
+	}
+	return text, text != ""
 }
 
 func between(s, from, to string) string {

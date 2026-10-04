@@ -105,7 +105,7 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "state", "│ working ", "duration", "API cost", "│ prompt ", "│ in ", "│ used ")
+	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "running · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "prompts", "│ ▶ 2 ", "now the fence", "→ running", "state", "│ running ", "duration", "API cost", "│ prompt ", "│ in ", "│ used ")
 	d.expectNot(" now  ")
 	d.expectNot("worked alone")
 	for _, gone := range []string{"what it ran", "workers", "commands  ", "files  "} {
@@ -130,7 +130,7 @@ func TestReport(t *testing.T) {
 	d.key("down")
 	d.expect("│ ▶ 1 ", "│ done ", "paint the garden shed", "≡ brush-care", "▭ paint-shop", "list_colours", "├   Read", "paint/door.go", "? asked you", "├─┬ ⌂ Explore", "count the boards", "├─┘ back", "●   done · ")
 	d.expectNot("find the brushes")
-	d.expectNot("working · ")
+	d.expectNot("running · ")
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {
 		d.expectNot(gone)
 	}

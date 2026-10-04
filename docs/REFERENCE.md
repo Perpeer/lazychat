@@ -361,15 +361,16 @@ and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
 second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet.
 
-The page has three parts. The first two stand side by side, half the box
-each — the prompt's flow on the left, the context on the right — in a box
-at least 100 columns wide, and one under the other in a narrower one; the
-prompts' table is under them.
+The page has three parts. The first two stand side by side — the
+prompt's flow on the left taking 70 % of the box, the context on the
+right taking 30 % (never less than its grid and legend need) — and one
+under the other in a box too narrow for both; the prompts' table is under
+them. The page opens on the flow: the tree already names the session.
 
 **The flow.** The picked prompt, step by step, drawn as `git log --graph`
 draws branches: the prompt on top with when it started (`❯`), then one
 row per tool call in time order, and the end (`●`) with how long it was
-active and its tokens — `in`, `used`, the API price — or `working` with
+active and its tokens — `in`, `used`, the API price — or `running` with
 a spinner while it runs. Calls of one tool in a row fold into one (`Read
 ×3`), the files they read or edited beside it, relative to the session's
 folder, or a shell call's commands by their first words; the right column
@@ -434,9 +435,9 @@ how many more prompts fit before the window fills.
 
 At the box's bottom, held there while the rest scrolls above it, the
 newest ten prompts as a table, three rows each — its number (`▶` the
-picked one), its state (`working` and `asking` in the running colour,
+picked one), its state (`running` and `asking` in the running colour,
 `done`, `stopped` for an answer cut short), when it started and `→` when
-it ended (where Claude Code wrote the turn's end, or `working`), its
+it ended (where Claude Code wrote the turn's end, or `running`), its
 duration without the questions' waits, its tokens — `prompt` (its own),
 `in` and `used` (above) — its API cost, and its text over three rows,
 written over several lines or not: line breaks show as spaces. Each
@@ -448,8 +449,8 @@ lights none.
  ┌───────┬─────────┬─────────────┬──────────┬──────────┬──────────┬──────────────────┐
  │ #     │ state   │ started     │ duration │ tokens   │ API cost │ prompt           │
  ├───────┼─────────┼─────────────┼──────────┼──────────┼──────────┼──────────────────┤
- │ ▶ 245 │ working │ 10-04 14:02 │ 2m10s    │ prompt 2k│ 0.42     │ paint the garden │
- │       │         │ → working   │          │ in 12k   │          │ shed blue, then  │
+ │ ▶ 245 │ running │ 10-04 14:02 │ 2m10s    │ prompt 2k│ 0.42     │ paint the garden │
+ │       │         │ → running   │          │ in 12k   │          │ shed blue, then  │
  │       │         │             │          │ used 13k │          │ the door         │
  │   244 │ done    │ 10-04 13:40 │ 20m 50s  │ prompt 9k│ 11.80    │ /tidy-up the     │
  │       │         │ → 14:01:02  │          │ in 410k  │          │ garage           │

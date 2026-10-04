@@ -14,7 +14,7 @@ import (
 // fold to ×N with their files or tools joined and their growth summed, a
 // subagent forks a lane that its own calls sit in and a join closes when it
 // comes back, a question shows its wait, a call still out turns the
-// spinner, and the end says working while the prompt runs.
+// spinner, and the end says running while the prompt runs.
 func TestFlowNodes(t *testing.T) {
 	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
 	s := func(d int) time.Time { return at.Add(time.Duration(d) * time.Second) }
@@ -50,7 +50,7 @@ func TestFlowNodes(t *testing.T) {
 		{kit.FlowStep, 0, "▭ paint-shop ×2", "list_colours · mix"},
 		{kit.FlowJoin, 0, "back", ""},
 		{kit.FlowStep, 0, "Bash", "go test"},
-		{kit.FlowEnd, 0, "working · 20s · in 12k · used 13k · $0.42", ""},
+		{kit.FlowEnd, 0, "running · 20s · in 12k · used 13k · $0.42", ""},
 	}
 	if len(nodes) != len(want) {
 		t.Fatalf("%d nodes: %+v", len(nodes), nodes)

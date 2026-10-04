@@ -26,8 +26,11 @@ paths:
   a background agent first writes `async_launched` with no totals, and
   its result's totalTokens is the last call's context, not a sum.
 - The page is three parts (the user's): the picked prompt's flow and the
-  context side by side, half each, from 100 inner columns
-  (chat.sideBySide; one under the other below it, the user's choice);
+  context side by side — the context 30 %, the flow the rest (the user's
+  split; half each before), the context never under its grid and legend
+  (contextMinW 52), side by side only while the flow keeps 48 columns, one
+  under the other below that. No title row over them: the page opens on a
+  blank row, then the flow (the user took out "name · working");
   the session's context, /context-like, measured only (usage.Context: the
   newest main call; base = the first call since the start or the last
   compaction; skills/MCP added; Fed by tool for "went to"; growth per
@@ -62,7 +65,7 @@ paths:
   user's "en altta 10 tane sabit", then "son on taneyi"); a box too short
   for both scrolls the whole page. Table columns are as wide as their
   longest value: fixed widths cut "245" and "20m 50s". Columns: #, state
-  (turnState: working / asking in StyleBusy, done, stopped dim; a lit row
+  (turnState: running / asking in StyleBusy, done, stopped dim; a lit row
   keeps the selection's colours), started, duration (the active time, the
   user's word for it), tokens, API cost. ↑↓ pick; the newest is followed;
   an older prompt than the ten shows above, the table lighting none. On a
@@ -104,6 +107,15 @@ paths:
 - The fast beat (animBeat) reaches the active tab as kit.Beat only while
   it is a kit.Animator saying so: Chat says so while the picked prompt
   runs (its spinners turn), so an idle page costs no redraws.
+- The details page says "running" for a prompt under way — the header,
+  the flow's end row, the table's state and its "→ running": the user's
+  word. The board's state is still `working` (its wire format).
+- A prompt is a user line that is no meta, no compaction summary and no
+  command output: a string, or blocks (listPrompt) — Claude Code writes a
+  prompt pasted with an image as a text block and an image block, and the
+  user saw such prompts missing, their work under the prompt before. A
+  line of tool_result blocks is none, nor "[Request interrupted …]"; an
+  image alone reads "(an image)". `<pasted_content …>` tags are dropped.
 - A prompt's own tokens (Turn.Own) are its first main call's In: the
   transcript counts no message alone. Prompt text is flattened (line
   breaks and runs of spaces to one space): a newline cut it off.

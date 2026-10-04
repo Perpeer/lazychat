@@ -282,7 +282,7 @@ func agentState(a *usage.Agent, running bool) kit.FlowState {
 }
 
 // endNode is the flow's last row: done with the prompt's time and tokens,
-// working while it runs, stopped for an answer that was cut short.
+// running while it runs, stopped for an answer that was cut short.
 func endNode(t usage.Turn, now time.Time, running bool, cost string) kit.FlowNode {
 	tokens := "in " + num(t.Tokens.In()) + " · used " + num(t.Tokens.Used())
 	if cost != "" && cost != "—" {
@@ -293,7 +293,7 @@ func endNode(t usage.Turn, now time.Time, running bool, cost string) kit.FlowNod
 	case t.Ended():
 		return kit.FlowNode{Kind: kit.FlowEnd, Name: "done · " + took + " · " + tokens}
 	case running:
-		return kit.FlowNode{Kind: kit.FlowEnd, Name: "working · " + took + " · " + tokens, State: kit.FlowBusy}
+		return kit.FlowNode{Kind: kit.FlowEnd, Name: "running · " + took + " · " + tokens, State: kit.FlowBusy}
 	}
 	return kit.FlowNode{Kind: kit.FlowEnd, Name: "stopped · " + took + " · " + tokens, Dim: true}
 }
