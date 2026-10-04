@@ -25,7 +25,9 @@ paths:
   skipped, bad lines counted. Subagent tokens are only in their own files;
   a background agent first writes `async_launched` with no totals, and
   its result's totalTokens is the last call's context, not a sum.
-- The page is three parts (the user's): Lazy, unnamed, with what runs now;
+- The page is three parts (the user's): Lazy, unnamed, with what runs now,
+  and the context side by side, half each, from 100 inner columns
+  (chat.sideBySide; one under the other below it, the user's choice);
   the session's context, /context-like, measured only (usage.Context: the
   newest main call; base = the first call since the start or the last
   compaction; skills/MCP added; Fed by tool for "went to"; growth per

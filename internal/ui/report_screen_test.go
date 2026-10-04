@@ -12,6 +12,8 @@ import (
 
 	"lazychat/internal/core/history"
 	"lazychat/internal/core/state"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // writeTranscript lays an invented Claude transcript in the stand-in home:
@@ -107,9 +109,11 @@ func TestReport(t *testing.T) {
 	if strings.Contains(sc, " Lazy ") {
 		t.Errorf("Lazy is named on the page:\n%s", sc)
 	}
+	// Wide: what runs now on the left half, the context on the right, on
+	// the same rows; the reports under both.
 	village, ctx, report, table := lineOf(sc, "⌂ Explore"), lineOf(sc, " context  "), lineOf(sc, "prompt 2  what it ran"), lineOf(sc, "│ ▶ 2 ")
-	if !(village < ctx && ctx < report && report < table) {
-		t.Errorf("parts out of order: village %d, context %d, report %d, table %d\n%s", village, ctx, report, table, sc)
+	if row := strings.Split(sc, "\n")[village]; ctx != lineOf(sc, " now  ") || !strings.ContainsAny(row[strings.Index(row, "⌂ Explore"):], "⛁⛶") || !(village < report && report < table) {
+		t.Errorf("not side by side: now %d, context %d, village %d, report %d, table %d\n%s", lineOf(sc, " now  "), ctx, village, report, table, sc)
 	}
 	rows := strings.Split(d.screen(), "\n")
 	bottom := lineOf(d.screen(), "┴")
@@ -122,6 +126,14 @@ func TestReport(t *testing.T) {
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {
 		d.expectNot(gone)
 	}
+	// Narrow: the two parts one under the other.
+	d.deliver(tea.WindowSizeMsg{Width: 110, Height: 90})
+	d.expect("⌂ Explore", " context  ")
+	sc = d.screen()
+	if lineOf(sc, "⌂ Explore") > lineOf(sc, " context  ") || strings.Contains(sc, " now  ") {
+		t.Errorf("a narrow box is not stacked:\n%s", sc)
+	}
+	d.deliver(tea.WindowSizeMsg{Width: 180, Height: 90})
 	// A click on the session in the tree is going to its chat.
 	// The tree's row, not the report's header: the one in the left column.
 	y, x := -1, 0

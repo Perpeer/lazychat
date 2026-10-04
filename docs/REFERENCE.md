@@ -341,7 +341,10 @@ and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
 second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet.
 
-The page has three parts, top to bottom.
+The page has three parts. The first two stand side by side, half the box
+each — what runs now on the left, the context on the right — in a box at
+least 100 columns wide, and one under the other in a narrower one; the
+prompt reports are under them.
 
 **What runs now.** Lazy at the top left, and one line beside it per worker
 the picked prompt had — its subagents by type (`⌂`), its skills (`≡`), its

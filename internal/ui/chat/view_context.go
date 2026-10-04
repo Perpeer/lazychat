@@ -15,7 +15,7 @@ import (
 // Every figure is measured from the transcript.
 func contextPart(s *usage.Session, w int) []string {
 	c := s.Context()
-	out := []string{"", section("context", "the session's, as its newest call sent it; measured, updated as it works")}
+	out := []string{"", section("context", "the session's now, measured")}
 	if c.Window == 0 {
 		return append(out, kit.StyleDim.Render(" no call yet"))
 	}
@@ -26,12 +26,21 @@ func contextPart(s *usage.Session, w int) []string {
 		{Name: "skills, MCP", Tokens: c.Added, Color: th.Series[2]},
 	}}
 	out = append(out, kit.DrawContext(view, w, num)...)
-	out = append(out, kit.StyleDim.Render(text.Fit(" base: what the session began with — system prompt, tools, MCP, memory, skills listed and its first prompt — or a compaction's summary", w)))
+	out = append(out, wrapDim("base: what the session began with — system prompt, tools, MCP, memory, skills listed, its first prompt — or a compaction's summary", w)...)
 	if rows := fedRows(s.Fed, c.Used, w); len(rows) > 0 {
 		out = append(append(out, ""), rows...)
 	}
 	if line := growthLine(c); line != "" {
 		out = append(out, line)
+	}
+	return out
+}
+
+// wrapDim is a note wrapped to w, dim.
+func wrapDim(note string, w int) []string {
+	var out []string
+	for _, l := range text.Wrap(note, max(10, w-2), "") {
+		out = append(out, kit.StyleDim.Render(" "+l))
 	}
 	return out
 }
@@ -66,7 +75,14 @@ func fedRows(fed map[string]int64, used int64, w int) []string {
 	for _, n := range names[:min(5, len(names))] {
 		parts = append(parts, fmt.Sprintf("%s %s", shortTool(n), num(fed[n])))
 	}
-	rows := []string{text.Fit(" "+kit.StyleBold.Render("went to")+"  "+strings.Join(parts, kit.StyleDim.Render(" · ")), w)}
+	var rows []string
+	for i, l := range text.Wrap(strings.Join(parts, " · "), max(10, w-11), "") {
+		label := "         "
+		if i == 0 {
+			label = kit.StyleBold.Render("went to") + "  "
+		}
+		rows = append(rows, " "+label+l)
+	}
 	top := names[0]
 	if share := fed[top] * 100 / used; share >= 10 {
 		hint := hints[top]
@@ -74,7 +90,13 @@ func fedRows(fed map[string]int64, used int64, w int) []string {
 			hint = "that server's results are large"
 		}
 		if hint != "" {
-			rows = append(rows, text.Fit(" "+kit.StyleAccent.Render("⚠ ")+kit.StyleDim.Render(fmt.Sprintf("%s results are %d%% of the context: %s", shortTool(top), share, hint)), w))
+			for i, l := range text.Wrap(fmt.Sprintf("%s results are %d%% of the context: %s", shortTool(top), share, hint), max(10, w-4), "  ") {
+				mark := "  "
+				if i == 0 {
+					mark = kit.StyleAccent.Render("⚠ ")
+				}
+				rows = append(rows, " "+mark+kit.StyleDim.Render(strings.TrimPrefix(l, "  ")))
+			}
 		}
 	}
 	return rows
@@ -96,7 +118,7 @@ func growthLine(c usage.ContextUse) string {
 	}
 	line := " " + kit.StyleBold.Render("grows") + "    " + fmt.Sprintf("+%s with the last prompt", num(c.Growth[len(c.Growth)-1]))
 	if left := c.PromptsLeft(); left >= 0 {
-		line += kit.StyleDim.Render(fmt.Sprintf(" · about %d more prompts at this pace before the window fills", left))
+		line += kit.StyleDim.Render(fmt.Sprintf(" · ~%d more prompts fit at this pace", left))
 	}
 	return line
 }

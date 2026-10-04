@@ -112,11 +112,7 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	costs := c.costs(s, turns)
 	// Three parts: Lazy with what runs now, the session's context, then the
 	// prompt reports — the picked one's, over the table held at the bottom.
-	top = append(top, "")
-	for _, row := range kit.DrawVillage(v, c.beat, w-1) {
-		top = append(top, " "+row)
-	}
-	top = append(top, contextPart(s, w)...)
+	top = append(top, nowAndContext(v, c.beat, s, w)...)
 	top = append(top, c.report(turns, picked, working, now, w)...)
 	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
 		c.promptTable(turns, picked, working, now, costs, w)...)
@@ -135,6 +131,41 @@ func ownTokens(t usage.Turn) string {
 // flat is a prompt as one line: its line breaks and runs of spaces one
 // space each, so a prompt written over several lines shows whole.
 func flat(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// sideBySide is the narrowest box whose halves hold the village and the
+// context's grid with its legend.
+const sideBySide = 100
+
+// nowAndContext are the page's first two parts: Lazy with what runs now on
+// the left half and the session's context on the right, top-aligned; one
+// under the other in a box too narrow for two halves.
+func nowAndContext(v kit.Village, beat int, s *usage.Session, w int) []string {
+	if w < sideBySide {
+		out := []string{""}
+		for _, row := range kit.DrawVillage(v, beat, w-1) {
+			out = append(out, " "+row)
+		}
+		return append(out, contextPart(s, w)...)
+	}
+	half := w / 2
+	left := []string{"", section("now", "what the picked prompt runs")}
+	for _, row := range kit.DrawVillage(v, beat, half-2) {
+		left = append(left, " "+row)
+	}
+	right := contextPart(s, w-half)
+	out := make([]string, max(len(left), len(right)))
+	for i := range out {
+		l, r := "", ""
+		if i < len(left) {
+			l = left[i]
+		}
+		if i < len(right) {
+			r = right[i]
+		}
+		out[i] = text.Pad(text.Fit(l, half), half) + text.Fit(r, w-half)
+	}
+	return out
+}
 
 // openWait says a question of the turn waits for the user's answer now.
 func openWait(t usage.Turn) bool {
