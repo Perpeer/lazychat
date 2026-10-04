@@ -1,5 +1,6 @@
-# Releases every push to main that changes what users run: ./check.sh on a
-# Mac first, then the next version (packaging/next-version.sh: the next
+# Releases every push to main that changes what users run (tests alone do
+# not), as one release of its newest commit: ./check.sh on a Mac first, then
+# the next version (packaging/next-version.sh: the next
 # patch, or [minor] / [major] in a commit message) tagged on the pushed
 # commit, a GitHub release whose notes are the commits since the last one,
 # and the tap's formula (Perpeer/homebrew-tap) moved to it, so
@@ -19,6 +20,8 @@ on:
       - "go.mod"
       - "go.sum"
       - "packaging/homebrew/lazychat.rb"
+      # Tests change nothing users run.
+      - "!**/*_test.go"
 
 permissions:
   contents: write
@@ -41,6 +44,14 @@ jobs:
       - name: Version
         id: version
         run: |
+          # Only main's newest commit is released: a push that came after
+          # this one has its own run, whose release takes these commits too.
+          git fetch -q origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "::notice::a newer commit is on main: its run releases this one too"
+            echo "v=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           v="$(packaging/next-version.sh)"
           if [ -z "$v" ]; then
             echo "::notice::this commit is released already"

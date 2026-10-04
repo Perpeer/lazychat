@@ -46,7 +46,10 @@ paths:
   GitHub. The source keeps v1.0.0's values: a release commits nothing to
   main, or it would start another release.
 - release.yml releases each push to main that changes cmd, internal,
-  macos, go.mod/sum or the formula: check.sh on macos-latest, the next
+  macos, go.mod/sum or the formula, tests (*_test.go) left out — a commit
+  adding release_test.go once released 1.0.1. Only main's newest commit is
+  released: a run whose commit is no longer origin/main's tip stops, the
+  newer run's release covering it. check.sh on macos-latest, the next
   version (next-version.sh: newest vX.Y.Z's next patch, [minor]/[major] in
   a message of the push), tag, gh release with the commits as notes, the
   tap with HOMEBREW_TAP_TOKEN. A tag pushed with GITHUB_TOKEN starts no

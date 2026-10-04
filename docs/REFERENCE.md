@@ -30,12 +30,14 @@ checkout: a local tap (`lazychat/dev`) whose formula is
 `1.0.N-dev`, installed from source, then `brew test` and `brew audit`.
 `./install.sh --brew --remove` takes it and the tap away. Releases
 make themselves: a push to main that changes what users run (`cmd/`,
-`internal/`, `macos/`, `go.mod`, `go.sum`, the formula) runs
+`internal/`, `macos/`, `go.mod`, `go.sum`, the formula; not tests alone) runs
 `.github/workflows/release.yml` — `./check.sh` on a Mac, then the next
 version (the next patch, 1.0.1, 1.0.2…; `[minor]` or `[major]` in a commit
 message of the push makes it 1.1.0 or 2.0.0), its tag on the pushed
 commit, a GitHub release listing the commits since the last one, and the
-tap's formula moved to it. One push is one release. The tap needs the
+tap's formula moved to it. One push is one release, of its newest commit;
+when pushes come close together, only the newest one is released, its
+notes listing the others' commits. The tap needs the
 `HOMEBREW_TAP_TOKEN` secret, a fine-grained token with Contents: Read and
 write on Perpeer/homebrew-tap only. By hand, `./release.sh 1.0.0` tags a
 clean, checked main here and `./release.sh --formula 1.0.0` moves the tap
