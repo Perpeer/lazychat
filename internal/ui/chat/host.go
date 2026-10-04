@@ -3,6 +3,8 @@ package chat
 import (
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"lazychat/internal/term"
 	"lazychat/internal/ui/chat/actions"
 	"lazychat/internal/ui/kit"
@@ -59,6 +61,17 @@ func (c *Chat) Hide(key string) {
 }
 
 func (c *Chat) SelectProject(name string) { c.tree.SelectProject(name) }
+
+// CurrentProject and ShowProject carry the cursor's project across tabs.
+func (c *Chat) CurrentProject() (string, bool) {
+	p, ok := c.tree.Project()
+	return p.Name, ok
+}
+
+func (c *Chat) ShowProject(name string) tea.Cmd {
+	c.tree.SelectProject(name)
+	return nil
+}
 
 func (c *Chat) Later(f func()) { c.PaneTab.Later(f, termMsg{}) }
 

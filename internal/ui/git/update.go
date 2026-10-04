@@ -24,11 +24,12 @@ type (
 		commits []git.LogEntry
 	}
 	diffMsg struct {
-		seq   int
-		key   string
-		files []git.File
-		roles [][][]syntax.Span // the files' code colours; nil when off
-		err   error
+		seq    int
+		key    string
+		files  []git.File
+		roles  [][][]syntax.Span // the files' code colours; nil when off
+		staged bool
+		err    error
 	}
 	stagedMsg struct {
 		name string
@@ -146,11 +147,19 @@ func (g *Git) Update(msg tea.Msg) tea.Cmd {
 			g.screen.Note("%v", msg.err)
 		}
 		return g.load(msg.name)
+	case stagedLinesMsg:
+		g.diff.marked = false
+		if msg.err != nil {
+			g.screen.Note("%v", msg.err)
+			return nil
+		}
+		g.screen.Note("%s %d line(s)", msg.did, msg.n)
+		return tea.Batch(g.loadCursor(), g.loadDiff())
 	case diffMsg:
 		if msg.seq != g.seq {
 			return nil
 		}
-		next := diff{key: msg.key, title: g.diff.title, lines: flatten(msg.files, msg.roles...), err: msg.err}
+		next := diff{key: msg.key, title: g.diff.title, lines: flatten(msg.files, msg.roles...), files: msg.files, staged: msg.staged, err: msg.err}
 		if msg.key == g.diff.key {
 			// A refresh of the same change keeps its place and selection.
 			next.top, next.cur, next.anchor, next.marked = g.diff.top, g.diff.cur, g.diff.anchor, g.diff.marked
@@ -321,14 +330,14 @@ func (g *Git) loadDiff() tea.Cmd {
 		} else {
 			patch, err = git.DiffAll(root, entries, staged)
 		}
-		return g.diffRead(seq, key, patch, err, colour)
+		return g.diffRead(seq, key, patch, err, colour, staged)
 	})
 }
 
 // diffRead is a read patch as the diff message, its code coloured when
 // colour says so; it runs in the read's goroutine.
-func (g *Git) diffRead(seq int, key, patch string, err error, colour bool) tea.Msg {
-	msg := diffMsg{seq: seq, key: key, files: git.Parse(patch), err: err}
+func (g *Git) diffRead(seq int, key, patch string, err error, colour, staged bool) tea.Msg {
+	msg := diffMsg{seq: seq, key: key, files: git.Parse(patch), staged: staged, err: err}
 	if colour {
 		msg.roles = syntaxOf(msg.files)
 	}
@@ -371,7 +380,7 @@ func (g *Git) loadCommit() tea.Cmd {
 	g.diff.title = c.Hash + " " + c.Subject
 	return g.own(func() tea.Msg {
 		patch, err := git.Show(root, c.Hash)
-		return g.diffRead(seq, key, patch, err, colour)
+		return g.diffRead(seq, key, patch, err, colour, false)
 	})
 }
 

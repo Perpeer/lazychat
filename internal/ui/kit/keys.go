@@ -29,6 +29,7 @@ var ListKeys = struct {
 	EditProject   Key
 	MoveProject   Key
 	RemoveProject Key
+	Search        Key
 	Carry         Key
 	PutDown       Key
 	Back          Key
@@ -49,6 +50,7 @@ var ListKeys = struct {
 	Carry:         Key{Keys: []string{"up", "k"}, Hint: Hint{Key: "↑↓ j k", Does: "move"}, Help: "carry the picked row up or down; the order is saved at every step"},
 	PutDown:       Key{Keys: []string{"enter", "m", "M", "ctrl+q"}, Hint: Hint{Key: "enter", Does: "done"}, Help: "put the row down where it is; m, M and ctrl+q too"},
 	Back:          Key{Keys: []string{"ctrl+q"}, Quiet: true, Name: "ctrl+q", Help: "back to [1], the list on the left, from any panel"},
+	Search:        Key{Keys: []string{"/"}, Hint: Hint{Key: "/", Does: "search"}, Help: "find a session by its name, its project or its tool, in every project: a finder; typing narrows it, Enter puts the cursor on the one chosen, Esc leaves it where it is"},
 }
 
 // ChatKeys are Chat's: the tree, the session pane, the draft and the details page.
@@ -159,6 +161,7 @@ var GitKeys = struct {
 	Fetch          Key
 	BranchUp       Key
 	UpdateFromMain Key
+	OpenWorktree   Key
 	StageUnstage   Key
 	ChangesBack    Key
 	ChangeUp       Key
@@ -188,6 +191,7 @@ var GitKeys = struct {
 	Fetch:          Key{Keys: []string{"f"}, Hint: Hint{Key: "f", Does: "fetch"}, Help: "fetch the remotes, so ↑ ↓ say how far the branch is from its upstream"},
 	BranchUp:       Key{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from branch to branch, one per project; the middle shows the changes of the one under the cursor"},
 	UpdateFromMain: Key{Keys: []string{"u"}, Hint: Hint{Key: "u", Does: "update from main"}, Help: "on a worktree's row: fetch, then replay its branch's commits on the remote's main (git rebase), local changes put aside and back, asked first; a conflict stops it, named on the footer, for you to resolve and git rebase --continue"},
+	OpenWorktree:   Key{Keys: []string{"o"}, Hint: Hint{Key: "o", Does: "open as project"}, Help: "on a worktree's row that is no project yet: add its folder to the projects, named after the project and the folder, so sessions and shells can run in it"},
 	StageUnstage:   Key{Keys: []string{" "}, Hint: Hint{Key: "space", Does: "stage / unstage"}, Help: "stage the file or folder under the cursor when it is in unstaged, unstage it when it is in staged; a conflict is left for you to resolve"},
 	ChangesBack:    Key{Keys: []string{"esc"}, Hint: Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as ctrl+q"},
 	ChangeUp:       Key{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move over the changes; the right side shows the diff of the one under the cursor"},
@@ -266,12 +270,13 @@ var PanelNames = struct {
 // Bubble Tea as keys: the input router reads them from the bytes
 // (input.go), so they are named here only.
 var GlobalKeys = struct {
-	Quit, NextTab, PrevTab, Workspace, TabByNumber, CmdEnter Key
+	Quit, NextTab, PrevTab, Workspace, TabByNumber, CmdEnter, Inbox Key
 }{
 	Quit:        Key{Keys: []string{"ctrl+c"}, Name: "Ctrl+C", Help: "quit, asked, as q does; in a text field it copies"},
 	NextTab:     Key{Keys: []string{"tab"}, Name: "Tab", Help: "the next tab"},
 	PrevTab:     Key{Keys: []string{"shift+tab"}, Name: "Shift+Tab", Help: "the tab before"},
 	Workspace:   Key{Keys: []string{"ctrl+w"}, Name: "Ctrl+W", Help: "the workspace box at the top"},
+	Inbox:       Key{Keys: []string{"i"}, Name: "i", Help: "the inbox: every session waiting on you — asking first, then finished and not looked at — Enter opens one; a click on Lazy opens it too while two or more wait"},
 	TabByNumber: Key{Name: "⌘1–⌘9", Help: "the tab with that number, where the terminal passes ⌘ on"},
 	CmdEnter:    Key{Name: "Cmd+Enter", Help: "a paste in the session's prompt from the draft, where the terminal passes it on"},
 }
@@ -298,5 +303,6 @@ const SponsorURL = "https://github.com/sponsors/Perpeer"
 // HelpFoot ends every tab's help: the workspace box's keys, and where to
 // sponsor Lazy — said there, never pushed on screen.
 var HelpFoot = append(append([]string(nil), WorkspaceHelp...),
+	"i          "+GlobalKeys.Inbox.Help,
 	"",
 	"Sponsor Lazy ♥ "+SponsorURL+" — lazychat is free; a coffee keeps Lazy awake")

@@ -70,7 +70,7 @@ func TestWorkspaceBox(t *testing.T) {
 	d.expectNot("workspace · test")
 	d.expect("▸ test")
 	d.key("down")
-	d.expect("(enter/n) new · (r) resume · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(enter/n) new · (r) resume · (/) search · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.expectNot("▸ test")
 	d.key("ctrl+w")
 	d.expect("▸ test")

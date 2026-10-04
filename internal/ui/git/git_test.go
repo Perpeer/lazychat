@@ -22,11 +22,11 @@ func TestKeymap(t *testing.T) {
 		want string
 	}{
 		"branch":   {branchKeys, "c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
-		"worktree": {worktreeRowKeys, "c commit · p pull · shift+p push · f fetch · u update from main · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
+		"worktree": {worktreeRowKeys, "c commit · p pull · shift+p push · f fetch · u update from main · o open as project · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
 		"project":  {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		"changes":  {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
 		"commits":  {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
-		"diff":     {diffKeys, "esc projects · v select · y copy · drag select · copy · c commit · wheel scroll · r refresh · ? help"},
+		"diff":     {diffKeys, "esc projects · v select · y copy · space stage / unstage · drag select · copy · c commit · wheel scroll · r refresh · ? help"},
 		"commit":   {commitKeys, "ctrl+s commit · ctrl+n suggest · Tab next · esc projects"},
 	} {
 		var parts []string
@@ -202,7 +202,7 @@ func TestWorktreeRow(t *testing.T) {
 	r := row{path: wt.Path, wt: &wt}
 	p := &project{from: "garden-shed-paints/feature/blue-door"}
 	p.st.Branch = "worktree-task2"
-	rows := worktreeEntry(r, p, "/garden/shed", 40, true)
+	rows := worktreeEntry(r, p, "/garden/shed", 40, true, true)
 	if rows[0].Plain != "⑂ worktree-task2" {
 		t.Errorf("a folder the branch names: %q", rows[0].Plain)
 	}
@@ -211,11 +211,11 @@ func TestWorktreeRow(t *testing.T) {
 	}
 	other := coregit.Worktree{Path: "/garden/paint", Branch: "blue-door"}
 	p.st.Branch, p.from = "blue-door", ""
-	if rows := worktreeEntry(row{path: other.Path, wt: &other}, p, "/garden/shed", 40, true); rows[0].Plain != "⑂ blue-door · paint/" {
+	if rows := worktreeEntry(row{path: other.Path, wt: &other}, p, "/garden/shed", 40, true, true); rows[0].Plain != "⑂ blue-door · paint/" {
 		t.Errorf("a folder of its own name: %q", rows[0].Plain)
 	}
 	p.st.Branch = "garden-shed-paints/feature/a-very-long-blue-door"
-	if rows := worktreeEntry(row{path: other.Path, wt: &other}, p, "/garden/shed", 40, true); strings.Contains(rows[0].Plain, "paint/") || text.Width(rows[0].Prefix+rows[0].Plain) > 40 {
+	if rows := worktreeEntry(row{path: other.Path, wt: &other}, p, "/garden/shed", 40, true, true); strings.Contains(rows[0].Plain, "paint/") || text.Width(rows[0].Prefix+rows[0].Plain) > 40 {
 		t.Errorf("a long branch keeps the row: %q", rows[0].Plain)
 	}
 }

@@ -156,3 +156,58 @@ func (g *Git) dragDiff(msg tea.MouseMsg) tea.Cmd {
 	}
 	return nil
 }
+
+// stagedLinesMsg is the answer of staging lines: what was done to how many.
+type stagedLinesMsg struct {
+	did string
+	n   int
+	err error
+}
+
+// stageLines is space in the diff: the selected rows, or the cursor's,
+// into the index — out of it in the staged diff — as exactly those lines
+// (core/git.ApplyLines). A selection over two files, a commit's diff and
+// a heading row are refused; the diff reloads after, its selection
+// dropped, so stale rows are never applied twice.
+func (g *Git) stageLines() tea.Cmd {
+	lo, hi := g.diffSpan()
+	n := len(g.diff.lines)
+	if n == 0 || lo < 0 || hi >= n || strings.HasPrefix(g.diff.key, "commit ") {
+		return nil
+	}
+	first := g.diff.lines[lo]
+	for i := lo; i <= hi; i++ {
+		if l := g.diff.lines[i]; l.file != "" || l.fi != first.fi {
+			g.screen.Note("select lines of one file to stage them")
+			return nil
+		}
+	}
+	if first.fi >= len(g.diff.files) {
+		return nil
+	}
+	p := g.cursorStatus()
+	if p == nil {
+		return nil
+	}
+	file := g.diff.files[first.fi]
+	untracked := false
+	for _, e := range p.st.Entries {
+		if e.Path == file.Path {
+			untracked = e.Untracked
+		}
+	}
+	lines := coregit.Lines{File: file, Lo: first.ri, Hi: g.diff.lines[hi].ri, Reverse: g.diff.staged}
+	root, did := p.st.Root, "staged"
+	if lines.Reverse {
+		did = "unstaged"
+	}
+	count := 0
+	for i := lo; i <= hi; i++ {
+		if k := g.diff.lines[i].row.Kind; k == coregit.Added || k == coregit.Removed {
+			count++
+		}
+	}
+	return g.own(func() tea.Msg {
+		return stagedLinesMsg{did: did, n: count, err: coregit.ApplyLines(root, lines, untracked)}
+	})
+}

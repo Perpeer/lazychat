@@ -294,6 +294,8 @@ Questions — add a project, create a session, close, quit — are popups:
 | `Enter` | into the program in the pane — a session, a shell — which then has every key |
 | `ctrl+q` | out of the pane: the one key lazychat keeps, and the only one that leaves, in every terminal and keyboard layout; also back to `[1]` from any panel. A left click beside the pane leaves too, as a click on the row it landed on |
 | `Ctrl+W` | the workspace box |
+| `i`, or a click on Lazy while two or more sessions wait | the inbox: the sessions waiting on you, asking first, then finished and not looked at; `Enter` opens the one chosen in Chat, `Esc` leaves |
+| a tab switch | keeps the project: the project under the cursor in Chat, Git or Terminal is the one the next tab opens on; what is under it — a session, a change, a shell — stays each tab's own |
 | `shift+o` (`o` with no project yet) | open a project: a name (empty = the folder's) and a folder — the git top level is registered — walked in columns as Finder's column view walks them: `↑↓` highlight a folder, `→` steps in, `./` is the folder itself, a typed path lays the columns out, the line under them says `the project's directory: …`. Nothing starts in it |
 | `shift+e` / `shift+d` | edit the cursor's project, name and folder prefilled / remove it from the list, asked: its sessions and shells close with it, the folder stays and Claude Code keeps the transcripts |
 | `m` / `shift+m` | move mode: `m` picks up the row under the cursor, `shift+m` its project (marked `↕`); `↑↓` `j k` carry it and `Enter`, `ctrl+q`, `m` or `M` put it down. Every step is saved; a click or another tab puts it down too. New sessions and shells go first under their project, new projects last |
@@ -313,7 +315,10 @@ selection replaces it; `Tab` types two spaces.
 ## Chat
 
 The left side is one tree of the projects, each with every session
-lazychat started or resumed in it, remembered across runs: a glyph
+lazychat started or resumed in it, remembered across runs. Under a
+project's name and branch, when its sessions have called a model today,
+one dim line says what they used (`today 1.2M used · $4.10`), summed from
+their transcripts every 30 seconds. Each session is a glyph
 (spinner running, `○` saved), the name wrapped to three
 rows, and under it its tool, in its colour, and its last prompt's time in
 two units, the same the details page shows: `◷ 42s` counting while it works,
@@ -377,7 +382,9 @@ and its parts. Every figure is measured from the transcript:
 - `skills, MCP`, what skills' texts and MCP results put in;
 - `free`, what the window still holds.
 
-Under it, `went to` names what grew the context since the last compaction,
+Under it, `timeline` is the session's life in one row — `▮` a prompt, `↻`
+a resume after a long quiet, `│` a compaction — the newest kept when the
+row is short, with the counts. `went to` names what grew the context since the last compaction,
 by the tool whose results brought it in, the largest first — each call's
 growth shared among the results before it by their size — and warns when
 one tool's results pass a tenth of it, with what to do (`Bash results are
@@ -455,6 +462,7 @@ the tree too.
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
+| `/` | find a session: a finder over every session of every project by name, its project and tool beside it; `Enter` puts the cursor on it, `Esc` leaves it where it was |
 | `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
 | `d` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |
@@ -491,7 +499,7 @@ checkout is marked `●` in the accent (`⑂` and the branch in the worktree
 colour when it is itself a worktree), the others `⑂`, or `○` for the
 repository's own. Under each, `↑` `↓` ahead and behind its upstream, how
 many files changed, `locked` or `gone` where git
-says so, and `from dev` when git noted the branch it was made from — `git worktree add -b feat
+says so, `o opens as project` on a worktree that is no project yet (`o` adds its folder to the projects, named after the project and the folder), and `from dev` when git noted the branch it was made from — `git worktree add -b feat
 ../feat dev` writes "Created from dev" first in the branch's reflog; a
 branch made from `HEAD`, from a commit, or whose note expired (90 days by
 default) says nothing. The cursor stands on these rows, not on headings.
@@ -544,6 +552,7 @@ The panels, numbered as their titles show them:
 | --- | --- |
 | `1`–`6` | the panel; `6` only chooses the commit box, `Enter` writes in it; `esc` and `ctrl+q` go back to `[1]` from any, the commit box too |
 | `↑↓` `j k` `g` `G` | over the rows, the changes or the commits, the diff following; in the diff, a row cursor |
+| `space` (in the diff) | stage the selected lines (`v`), or the cursor's row: exactly those lines go into the index, the rest of the file's change stays in the work tree; in the staged diff the same lines come back out. Lines of one file at a time; a binary file, a rename and a last line without its newline are staged whole with `space` in the list |
 | `v` `y`, a drag (in the diff) | `v` marks the cursor's row as one end of a selection, `y` copies the selected rows (or the cursor's) for a prompt — each file's part headed `path:28-35`, every line marked `+` added, `-` removed or a space; a drag over the diff selects and its release copies the same way; `Esc` drops the selection |
 | `Space` | stage the file or folder under the cursor (`git add -A`), or in Staged unstage it (`git restore --staged`, `git rm --cached` before the first commit); a conflict is left for you to resolve |
 | `c` | into the commit box, as `6` and `Enter`; a commit on `main` (or `master`) in the repository itself is asked first — its folder is kept for pulling and merging, work goes in a worktree |

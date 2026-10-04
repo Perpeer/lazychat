@@ -64,10 +64,10 @@ func init() {
 			}
 		})},
 		{Key: kit.ChatKeys.Wheel},
-		keyHelp, keyQuit,
+		searchKey, keyHelp, keyQuit,
 	}, moves...)
 	// On the empty row Enter makes the first session, as n does.
-	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyResume, keyHelp, keyQuit}, moves...)
+	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyResume, searchKey, keyHelp, keyQuit}, moves...)
 	// The project's row, under the session's or the empty row's, the same
 	// in every tab; what it asks for comes back here as a ProjectAction.
 	projectKeys = kit.ProjectRow((*Chat).cursorProject, func(c *Chat) { c.tree.Moving, c.tree.Whole = true, true })
@@ -102,6 +102,9 @@ func init() {
 
 // tables are the footer's two rows for where the keys are now: the row's
 // own and, under a session or a project's empty row, the project's.
+// searchKey is / on the tree: a finder over every session.
+var searchKey = binding{Key: kit.ListKeys.Search, Run: func(c *Chat) tea.Cmd { c.searchSessions(); return nil }}
+
 func (c *Chat) tables() (top, below []binding) {
 	_, onSession := c.tree.Session()
 	switch {

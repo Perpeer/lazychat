@@ -434,9 +434,16 @@ func TestGitWorktrees(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main   repository ·", "  clean", "⑂ feature · wt-feature/", "1 changed")
+	d.expect("● main   repository ·", "  clean", "⑂ feature · wt-feature/", "1 changed", "o opens as project")
 	d.key("j") // the worktree's row
 	d.expect("vs main", "wt.txt", "loose.txt")
+	// o opens the worktree as a project; the note goes.
+	d.key("o")
+	d.expect("opened wt-feature as the project demo2 · wt-feature")
+	d.expectNot("o opens as project")
+	if _, err := os.Stat(wt); err != nil {
+		t.Fatal(err)
+	}
 	d.key("3") // the lower box: what the branch changed
 	d.expect("[5] wt.txt", "+ from the worktree")
 	d.key(" ")
@@ -553,7 +560,7 @@ func TestGitCommits(t *testing.T) {
 	d.key("5") // the diff keeps the commit's patch while it has the keys
 	d.expect("      1 + one", "(esc) projects")
 	d.key("esc") // the projects: the changes' diff comes back
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (u) update from main · (b) branches · (w) worktrees")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (u) update from main · (o) open as project · (b) branches · (w) worktrees")
 	d.expectNot("      1 + one")
 	// A click on a commit gives the box the keys and shows that commit.
 	sc := d.screen()
@@ -1068,5 +1075,43 @@ func TestDiffSyntax(t *testing.T) {
 	if coloured.MatchString(d.app.View()) {
 		t.Error("func still coloured with syntax colours off")
 	}
+	d.quitApp()
+}
+
+// Space in the diff stages the selected lines alone: the index takes them,
+// the rest of the file's change stays unstaged; in the staged diff the same
+// lines come back out. A selection over a heading is refused.
+func TestStageLines(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	e, dir := seeded(t)
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, filepath.Join(dir, "a.txt"), "one\ntwo\nthree\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-qm", "first")
+	write(t, filepath.Join(dir, "a.txt"), "one\nTWO\nthree\nfour\n")
+
+	d := start(t, e, 150, 36)
+	d.tab(2)
+	d.expect("[2] Unstaged · 1", "+ four")
+	d.key("5")
+	d.expect("(space) stage / unstage")
+	d.key("g", "j", "j", "v", "j", " ") // past the hunk's row and "one": two → TWO, not four
+	d.expect("staged 2 line(s)", "[3] Staged · 1")
+	d.until("the index did not take the picked lines alone", func() bool {
+		cached := gitOut(t, dir, "diff", "--cached", "--", "a.txt")
+		return strings.Contains(cached, "+TWO") && !strings.Contains(cached, "four")
+	})
+	d.expect("+ four") // still unstaged
+	d.expectNot("+ TWO")
+	// From the staged diff, the same lines back out.
+	d.key("esc", "3")
+	d.expect("- two", "+ TWO") // the staged diff, not the unstaged one with the same title
+	d.key("5", "g", "j", "j", "v", "j", " ")
+	d.expect("unstaged 2 line(s)")
+	d.until("the lines did not leave the index", func() bool {
+		return strings.TrimSpace(gitOut(t, dir, "diff", "--cached", "--", "a.txt")) == ""
+	})
 	d.quitApp()
 }

@@ -50,3 +50,41 @@ func TestPromptTableFits(t *testing.T) {
 		}
 	}
 }
+
+// The timeline row is one glyph per event in time order, the newest kept
+// when the row is short, and the counts; a session with no event has none.
+func TestTimelineRow(t *testing.T) {
+	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	events := []usage.Event{{Kind: usage.PromptEvent, Time: at}, {Kind: usage.PromptEvent, Time: at.Add(time.Minute)}, {Kind: usage.CompactEvent, Time: at.Add(2 * time.Minute)}, {Kind: usage.ResumeEvent, Time: at.Add(time.Hour)}, {Kind: usage.PromptEvent, Time: at.Add(2 * time.Hour)}}
+	row := ansi.Strip(timelineRow(events, 80))
+	if !strings.Contains(row, "▮▮│↻▮") || !strings.Contains(row, "3 prompts · 1 resume · 1 compaction") {
+		t.Errorf("timeline %q", row)
+	}
+	if short := ansi.Strip(timelineRow(events, 50)); !strings.HasSuffix(strings.TrimSpace(strings.Split(short, "  ")[0]), "│↻▮") {
+		t.Errorf("a short row keeps the newest: %q", short)
+	}
+	if timelineRow(nil, 80) != "" {
+		t.Error("no events, yet a row")
+	}
+}
+
+// A project's line sums today's calls of its sessions, used tokens and the
+// API price where every model has one; yesterday's calls and a session with
+// no call today give no line.
+func TestTodayLine(t *testing.T) {
+	now := time.Date(2026, 3, 2, 15, 0, 0, 0, time.Local)
+	today := func(h int, used int64) usage.Call {
+		return usage.Call{Model: "claude-opus-5-5", Time: now.Add(time.Duration(h) * time.Hour), Tokens: usage.Tokens{Output: used}}
+	}
+	a := &usage.Session{Calls: []usage.Call{today(-2, 100_000), today(-1, 50_000), {Model: "claude-opus-5-5", Time: now.Add(-30 * time.Hour), Tokens: usage.Tokens{Output: 9_000_000}}}}
+	b := &usage.Session{Calls: []usage.Call{today(-3, 50_000)}}
+	if got := todayLine([]*usage.Session{a, b}, usage.Prices{}, now); got != "today 200k used · $4.00" {
+		t.Errorf("line %q", got)
+	}
+	if got := todayLine([]*usage.Session{{Calls: []usage.Call{{Model: "model-x", Time: now, Tokens: usage.Tokens{Output: 5}}}}}, usage.Prices{}, now); got != "today 5 used" {
+		t.Errorf("no price: %q", got)
+	}
+	if got := todayLine(nil, usage.Prices{}, now); got != "" {
+		t.Errorf("no session: %q", got)
+	}
+}

@@ -13,6 +13,8 @@ import (
 	"lazychat/internal/core/git"
 	"lazychat/internal/ui/git/model"
 	"lazychat/internal/ui/kit"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // refreshTicks is how often the cursor's project is read again while the
@@ -104,6 +106,23 @@ func (g *Git) cursorRow() (row, bool) {
 	return rs[g.projects.Sel], true
 }
 
+// CurrentProject and ShowProject carry the cursor's project across tabs:
+// here the project's own row, whose key is its name.
+func (g *Git) CurrentProject() (string, bool) {
+	r, ok := g.cursorRow()
+	return r.name, ok
+}
+
+func (g *Git) ShowProject(name string) tea.Cmd {
+	before := g.projects.Sel
+	g.selectRow(name)
+	if g.projects.Sel == before {
+		return nil
+	}
+	g.changes.Sel, g.commits.Sel = 0, 0
+	return tea.Batch(g.loadCursor(), g.loadDiff())
+}
+
 // selectRow puts the left cursor on the row with key, where it is.
 func (g *Git) selectRow(key string) {
 	for i, r := range g.rows() {
@@ -119,8 +138,12 @@ type diff struct {
 	key   string
 	title string
 	lines []line
-	err   error
-	top   int
+	// files are the patch's files, for staging by line; staged says the
+	// patch is the index's, so picked lines leave it.
+	files  []git.File
+	staged bool
+	err    error
+	top    int
 	// cur is the diff's row cursor and anchor, when marked, the other end
 	// of a selection; dragging is a mouse selection under way.
 	cur, anchor      int

@@ -67,6 +67,18 @@ paths:
   row's status, which lags a switch. Commits not merged there are asked
   again (`ErrUnmerged`, then `-D`); a tracked branch offers its remote one,
   whose delete (`push <remote> --delete`) is always asked a second time.
+- Staging by line (`space` in the diff, diffsel.go stageLines →
+  core/git.ApplyLines): the patch is cut to the picked rows and applied
+  with `git apply --cached --recount` (`--reverse` from the staged diff),
+  the index being the side it must match — staging keeps unpicked removed
+  lines as context and drops unpicked added ones, unstaging the other way
+  round. An untracked file gets `add -N` first. One file at a time; binary,
+  a rename and `\ No newline` are refused with a word. The diff reloads and
+  the selection drops after, so a stale row index never applies twice.
+  Lines carry fi/ri (file, row) for it; the diff keeps its files and
+  whether it is the staged one.
+- `o` on a worktree row that is no project adds it (Store.AddProject,
+  named `<project> · <folder>`), as making one does; the row offers it.
 - A diff's code colours (internal/core/syntax, chroma) are read in the
   diff's own goroutine with the patch (diffMsg.roles): a 5,000-row diff
   takes 100–300 ms, more than a frame. Each hunk's old side (context +

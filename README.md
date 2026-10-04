@@ -92,7 +92,10 @@ never touched.
 Every session sits under its project with its terminal next to it. You can
 see which one works, which one waits for you and how long the last prompt
 took. `n` starts one, `r` resumes an old one, and `w` lets you draft the
-next prompt while the agent is still busy. Press `3` for the details. At
+next prompt while the agent is still busy. `/` finds a session by name
+across every project; `i`, or a click on Lazy while several wait, opens
+the inbox: the sessions asking you something or finished, Enter opens
+one. Under each project the tree says what its sessions used today. Press `3` for the details. At
 the top is Lazy with a line for each subagent, skill and MCP server the
 prompt used: how many ran, the job each was given, and whether it is
 still working. Below that is the session's context, drawn like Claude
@@ -120,8 +123,8 @@ session: (enter) continue · (n) new · (r) resume · (w) draft · (?) help
 ### Git: stage, diff and commit without leaving
 
 Changes as a folder tree, a diff you can walk line by line with the code
-in its language's colours, your last commits and the repository's
-worktrees. `Suggest` asks the agent for a
+in its language's colours — `v` selects lines, `space` stages just
+those — your last commits and the repository's worktrees. `Suggest` asks the agent for a
 commit message written from what you staged.
 
 ```

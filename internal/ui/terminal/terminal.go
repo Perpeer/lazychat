@@ -13,6 +13,8 @@ import (
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/terminal/actions"
 	"lazychat/internal/ui/terminal/model"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // termMsg says a shell's screen changed or a shell ended.
@@ -61,8 +63,19 @@ func (t *Terminal) Resize(r kit.Rect) {
 
 func (t *Terminal) Status() string { return fmt.Sprintf("%d shell(s)", len(t.act.Live.Alive())) }
 func (t *Terminal) Blur()          { t.Capture.Drop() }
-func (t *Terminal) Typing() bool   { return false }
-func (t *Terminal) Running() int   { return len(t.act.Live.Alive()) }
+
+// CurrentProject and ShowProject carry the cursor's project across tabs.
+func (t *Terminal) CurrentProject() (string, bool) {
+	p, ok := t.tree.Project()
+	return p.Name, ok
+}
+
+func (t *Terminal) ShowProject(name string) tea.Cmd {
+	t.tree.SelectProject(name)
+	return nil
+}
+func (t *Terminal) Typing() bool { return false }
+func (t *Terminal) Running() int { return len(t.act.Live.Alive()) }
 func (t *Terminal) Stop(timeout time.Duration) {
 	term.StopAll(t.act.Live.Alive(), timeout)
 }

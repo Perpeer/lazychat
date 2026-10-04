@@ -34,6 +34,14 @@ paths:
   prompt); the prompt reports. Nothing of a prompt sits above the context
   — its time and tokens are the table's. /context's categories are not in
   the transcript: no estimate stands in for them.
+- The context part's `timeline` row is usage.Session.Timeline(): prompts,
+  Resumes (a quiet longer than ResumeGap) and Compacts in time order; it
+  is a row, not a fourth part.
+- Chat's project headings carry "today … used · $…" (chat/usage.go): the
+  project's listed sessions' transcripts, one reader each kept across
+  reads, summed every 30 s off the loop; only calls of today, local time;
+  no line without a call. One dim row, not a chart — the user dropped the
+  session-wide charts.
 - The report is the tree cursor's session prompt by prompt: the picked
   prompt's village, the context and its report on top, which scroll, and the prompts as a
   two-row table of ten held at the box's bottom (the user's "en altta 10

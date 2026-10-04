@@ -103,7 +103,7 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect("⌂ Explore", "find the brushes", "context", "⛁", "⛶", "base", "messages", "free", "went to", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API $", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes")
+	d.expect("⌂ Explore", "find the brushes", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "today ", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API $", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes")
 	d.expect("(↑↓) pick prompt · (esc) back")
 	sc := d.screen()
 	if strings.Contains(sc, " Lazy ") {

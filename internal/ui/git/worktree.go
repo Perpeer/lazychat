@@ -2,6 +2,7 @@ package git
 
 import (
 	"errors"
+	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -90,4 +91,24 @@ func (g *Git) onMainInMainFolder() bool {
 		return false
 	}
 	return p.st.Branch == "main" || p.st.Branch == "master"
+}
+
+// openWorktree adds the cursor's worktree folder as a project, named after
+// its project and its folder as a made worktree is; one that is a project
+// already says so.
+func (g *Git) openWorktree() {
+	at, ok := g.cursorRow()
+	if !ok || at.wt == nil {
+		return
+	}
+	if p, is := g.projectAt(at.path); is {
+		g.screen.Note("%s is the project %s", filepath.Base(at.path), p.Name)
+		return
+	}
+	p, err := g.core.Store.AddProject(at.path, at.name+" · "+filepath.Base(at.path))
+	if err != nil {
+		g.screen.Note("%v", err)
+		return
+	}
+	g.screen.Note("opened %s as the project %s", filepath.Base(at.path), p.Name)
 }

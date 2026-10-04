@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"lazychat/internal/core/state"
+	"lazychat/internal/ui/kit"
 )
 
 // The cursor goes from child to child over the headings, in every tab; a
@@ -34,7 +35,7 @@ func TestChildCursor(t *testing.T) {
 	d.key("j")
 	on("beta")
 	d.key("j") // over second's heading, onto its empty row
-	d.expect("└─ no sessions yet", "Nothing runs in second", "(enter/n) new · (r) resume · (?) help", "project: (shift+o) open")
+	d.expect("└─ no sessions yet", "Nothing runs in second", "(enter/n) new · (r) resume · (/) search · (?) help", "project: (shift+o) open")
 	d.key("j") // the last row: it stays
 	d.expect("project: (shift+o) open")
 	d.key("k") // back over the heading
@@ -102,5 +103,57 @@ func TestProjectAdded(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(e.dir, "demo")); err == nil {
 		t.Error("the add wrote files for the project")
 	}
+	d.quitApp()
+}
+
+// The project under the cursor follows a tab switch: on Chat's second
+// project, Git and Terminal open on that project's row, and back to Chat it
+// is still that project; what is under the project stays each tab's own.
+func TestProjectFollowsTabs(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	st, err := state.Load(e.state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.AddProject(t.TempDir(), "second"); err != nil {
+		t.Fatal(err)
+	}
+	d := start(t, e, 120, 32)
+	d.key("G") // the last row: second's empty row
+	d.expect("Nothing runs in second")
+	d.tab(2)
+	d.expect("[1] projects")
+	if p, ok := d.app.tabs[1].(kit.ProjectTab); !ok {
+		t.Fatal("Git lists no projects")
+	} else if name, _ := p.CurrentProject(); name != "second" {
+		t.Fatalf("Git opened on %q, not second", name)
+	}
+	d.tab(3)
+	if name, _ := d.app.tabs[2].(kit.ProjectTab).CurrentProject(); name != "second" {
+		t.Fatalf("Terminal opened on %q, not second", name)
+	}
+	d.tab(1)
+	d.expect("Nothing runs in second")
+	d.quitApp()
+}
+
+// / finds a session by name across every project; Enter puts the cursor
+// on it, Esc leaves the cursor where it was.
+func TestSessionSearch(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"}, state.Session{Tool: "claude", Name: "beta"})
+	d := start(t, e, 120, 32)
+	d.key("g", "/")
+	d.expect("sessions", "alpha", "beta", "demo2 · claude")
+	d.typ("bet")
+	d.key("enter") // the one match, though alpha comes first in the tree
+	d.key("d")
+	d.expect("close beta (demo2)?")
+	d.key("n")
+	d.key("/")
+	d.typ("alp")
+	d.key("esc")
+	d.key("d")
+	d.expect("close beta (demo2)?") // the cursor stayed
+	d.key("n")
 	d.quitApp()
 }

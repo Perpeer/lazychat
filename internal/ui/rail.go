@@ -144,10 +144,59 @@ func (a *App) openMascot() {
 	if !ok {
 		return
 	}
+	// Two or more sessions waiting: the inbox chooses; one: straight to it.
+	if len(waiting(m.MascotState())) >= 2 {
+		a.openInbox()
+		return
+	}
 	a.switchTo(i)
 	if st := m.MascotState(); len(st.Questions) == 0 {
 		m.OpenMascot()
 	}
+}
+
+// waiting are the sessions waiting on the user: asking first, then
+// finished and not looked at, each group in the tree's order.
+func waiting(st kit.MascotState) []kit.SessionNews {
+	var out []kit.SessionNews
+	for _, want := range []status.State{status.Asks, status.Done} {
+		for _, s := range st.Sessions {
+			if s.State == want {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
+}
+
+// openInbox lists the sessions waiting on the user in a finder; Enter
+// opens the one chosen in Chat.
+func (a *App) openInbox() {
+	m, i, ok := a.mascotTab()
+	if !ok {
+		return
+	}
+	list := waiting(m.MascotState())
+	if len(list) == 0 {
+		a.Note("nothing waits on you")
+		return
+	}
+	names := make([]string, len(list))
+	for j, s := range list {
+		names[j] = s.Name
+	}
+	f := kit.NewFinder("waiting on you", names, func(j int) {
+		a.switchTo(i)
+		m.OpenSession(list[j].Key)
+	})
+	f.Note = func(j int) string {
+		word := "finished"
+		if list[j].State == status.Asks {
+			word = "asks"
+		}
+		return word + " · " + list[j].Project
+	}
+	a.Push(f)
 }
 
 // joinRail puts the rail to the left of the tab's rows.
@@ -205,7 +254,18 @@ func (a *App) switchTo(i int) {
 		return
 	}
 	a.tab().Blur()
+	// The project under the cursor follows to the next tab, when both list
+	// projects; what is under the project — a session, a shell — stays
+	// each tab's own.
+	var project string
+	from, hasFrom := a.tab().(kit.ProjectTab)
+	if hasFrom {
+		project, hasFrom = from.CurrentProject()
+	}
 	a.active = i
+	if to, ok := a.tab().(kit.ProjectTab); ok && hasFrom {
+		a.pending = tea.Batch(a.pending, to.ShowProject(project))
+	}
 }
 
 // animating says the mascot moves on its own beat: it types, celebrates a

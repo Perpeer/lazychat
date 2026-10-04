@@ -128,3 +128,34 @@ func ModelName(model string) string {
 	}
 	return name + " " + strings.Join(version, ".")
 }
+
+// EventKind is what a timeline event is.
+type EventKind int
+
+const (
+	PromptEvent EventKind = iota
+	ResumeEvent
+	CompactEvent
+)
+
+// Event is one moment of a session's life.
+type Event struct {
+	Kind EventKind
+	Time time.Time
+}
+
+// Timeline is the session's prompts, resumes and compactions in time order.
+func (s *Session) Timeline() []Event {
+	var out []Event
+	for _, p := range s.Prompts {
+		out = append(out, Event{PromptEvent, p.Time})
+	}
+	for _, t := range s.Resumes {
+		out = append(out, Event{ResumeEvent, t})
+	}
+	for _, t := range s.Compacts {
+		out = append(out, Event{CompactEvent, t})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Time.Before(out[j].Time) })
+	return out
+}

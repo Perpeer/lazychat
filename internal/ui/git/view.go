@@ -101,7 +101,8 @@ func (g *Git) projectsBox(w, h int) string {
 		repo := g.repoOf(r.index)
 		entry := branchEntry(st, r.path, repo, w-2, last)
 		if r.wt != nil {
-			entry = worktreeEntry(r, st, repo, w-2, last)
+			_, isProject := g.projectAt(r.path)
+			entry = worktreeEntry(r, st, repo, w-2, last, isProject)
 		}
 		blocks[r.index] = append(blocks[r.index], kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), kit.DrawEntry(entry, w-2, i == g.projects.Sel, focused), w-2)...)
 	}
@@ -159,13 +160,18 @@ func branchEntry(p *project, path, repo string, w int, last bool) []kit.TreeLine
 // worktreeEntry is one of the repository's other checkouts under the
 // project's branch: its branch after ⑂ (○ for the repository itself), its
 // role and folder, the same counts, and the branch it was made from.
-func worktreeEntry(r row, p *project, repo string, w int, last bool) []kit.TreeLine {
+func worktreeEntry(r row, p *project, repo string, w int, last, isProject bool) []kit.TreeLine {
 	c := checkout{folder: where(r.path, repo)}
 	switch {
 	case r.wt.Prunable:
 		c.note = "gone"
 	case r.wt.Locked:
 		c.note = "locked"
+	}
+	// A worktree that is no project runs nothing: the key that opens one is
+	// offered after the facts, when the row has room for it.
+	if !isProject && !r.wt.Main {
+		c.offer = "o opens as project"
 	}
 	if p != nil {
 		c.from = p.from
@@ -182,6 +188,7 @@ func worktreeEntry(r row, p *project, repo string, w int, last bool) []kit.TreeL
 // locked) and the branch a worktree was made from.
 type checkout struct {
 	folder, label, note, from string
+	offer                     string // a key the row offers, shown when it fits
 }
 
 // repoRole names the repository's own checkout, beside its branch here and
@@ -274,6 +281,9 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipglo
 	if c.from != "" {
 		left := w - text.Width(rest) - text.Width(foot) - len(" · from ")
 		foot += " · from " + text.FitLeft(c.from, max(6, left))
+	}
+	if c.offer != "" && w-text.Width(rest)-text.Width(foot)-3 >= text.Width(c.offer) {
+		foot += " · " + c.offer
 	}
 	out := []kit.TreeLine{{Prefix: first, Styled: mark.Render(glyph) + " " + name.Render(branch) + tail, Plain: glyph + " " + branch + plainTail}}
 	return append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})

@@ -303,7 +303,7 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if i, ok := a.railAt(msg.X-1, msg.Y-1); ok {
 				a.switchTo(i)
 			}
-			return a, nil
+			return a, a.takePending()
 		}
 		return a, a.withPending(a.tab().Update(msg))
 	case tea.MouseMsg:
@@ -332,7 +332,7 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case ok:
 				a.switchTo(i)
 			}
-			return a, nil
+			return a, a.takePending()
 		}
 		return a, a.withPending(a.tab().Mouse(msg))
 	case tea.KeyMsg:
@@ -427,7 +427,7 @@ func (a *App) route(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			d = -1
 		}
 		a.switchTo(a.nextWorkTab(d))
-		return a, nil
+		return a, a.takePending()
 	}
 	if a.wsSel {
 		return a, a.withPending(kit.Dispatch(workspaceKeys(), msg.String(), a))
@@ -435,6 +435,10 @@ func (a *App) route(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if kit.GlobalKeys.Workspace.Has(msg.String()) && !a.tab().Typing() {
 		a.selectWorkspace()
 		return a, nil
+	}
+	if kit.GlobalKeys.Inbox.Has(msg.String()) && !a.tab().Typing() {
+		a.openInbox()
+		return a, a.takePending()
 	}
 	return a, a.withPending(a.tab().Key(msg))
 }

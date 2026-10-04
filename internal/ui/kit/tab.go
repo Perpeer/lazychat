@@ -6,6 +6,17 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// ProjectTab is a tab whose list has the projects: on a switch the shell
+// carries the cursor's project from the tab left to the one shown, so the
+// project a person works in stays under the cursor across tabs.
+type ProjectTab interface {
+	// CurrentProject is the project the cursor is on or under; false with none.
+	CurrentProject() (string, bool)
+	// ShowProject puts the cursor on that project's first row when it is
+	// listed, and returns what loading the row needs.
+	ShowProject(name string) tea.Cmd
+}
+
 // Tab is one app of lazychat. The shell gives the selected tab the screen
 // beside the rail, its keys and the mouse, and draws the footer from its
 // hints; every tab gets the tick and the messages the shell does not know,

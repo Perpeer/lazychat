@@ -22,6 +22,8 @@ type line struct {
 	row  git.Row
 	w    int           // the width of the numbers in this line's file
 	syn  []syntax.Span // its code's colours; nil plain
+	fi   int           // which file, and which of its rows, for staging by line
+	ri   int
 }
 
 // flatten lays a patch's files out as screen rows; a single file needs no
@@ -42,7 +44,7 @@ func flatten(files []git.File, roles ...[][]syntax.Span) []line {
 			out = append(out, line{file: name, path: f.Path})
 		}
 		for ri, r := range f.Rows {
-			l := line{path: f.Path, row: r, w: w}
+			l := line{path: f.Path, row: r, w: w, fi: fi, ri: ri}
 			if fi < len(roles) && ri < len(roles[fi]) {
 				l.syn = roles[fi][ri]
 			}

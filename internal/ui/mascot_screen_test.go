@@ -12,6 +12,7 @@ import (
 
 	"lazychat/internal/core/sound"
 	"lazychat/internal/core/state"
+	"lazychat/internal/core/status"
 	"slices"
 )
 
@@ -437,5 +438,41 @@ func TestMascotSounds(t *testing.T) {
 	if errors != 1 {
 		t.Fatalf("the failure played %d times: %v", errors, played)
 	}
+	d.quitApp()
+}
+
+// i opens the inbox: the sessions waiting on you, asking first, finished
+// after; Enter opens the one chosen. With two or more waiting a click on
+// Lazy opens the inbox too; with nothing waiting i only says so.
+func TestInbox(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	d := start(t, e, 120, 32)
+	d.key("i")
+	d.expect("nothing waits on you")
+	d.session("pine", "answer")
+	d.session("oak", "ask")
+	d.until("oak does not ask yet", func() bool { return strings.Contains(d.screen(), "oak asks") })
+	d.until("pine has not finished yet", func() bool {
+		st, _ := d.app.mascotState()
+		for _, s := range st.Sessions {
+			if s.Name == "pine" && s.State == status.Done {
+				return true
+			}
+		}
+		return false
+	})
+	d.key("i")
+	d.expect("waiting on you", "oak", "asks · demo2", "pine", "finished · demo2")
+	sc := d.screen()
+	if lineOf(sc, "asks · demo2") > lineOf(sc, "finished · demo2") {
+		t.Errorf("asking is not first:\n%s", sc)
+	}
+	d.key("enter")
+	d.expect("-n oak", "(ctrl+q) back to lazychat")
+	d.leave()
+	d.app.openMascot()
+	d.pump(0)
+	d.expect("waiting on you")
+	d.key("esc")
 	d.quitApp()
 }

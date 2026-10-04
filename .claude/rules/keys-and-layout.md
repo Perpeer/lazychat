@@ -31,7 +31,15 @@ paths:
   (`kit.Drag`, ui/kit/dragsel.go), copied on release; the alternate screen
   keeps the mouse for its program. Mouse tracking stays on for the wheel
   and clicks, so the terminal's own selection is not offered instead.
-- Rail order Chat, Git, Note, Settings (⌘1–4); tabs can be hidden in
+- `i` is the shell's inbox (GlobalKeys.Inbox, App.openInbox): a finder over
+  the sessions the board says wait — asks first, then done — from any list;
+  a click on Lazy opens it while two or more wait, else the one as before.
+  `/` on Chat's tree is a finder over sessions by name (ListKeys.Search).
+- A tab switch carries the project (kit.ProjectTab: CurrentProject /
+  ShowProject, App.switchTo): the leaving tab's project is shown in the
+  next; only the project, never the row under it. Git's ShowProject loads
+  the row as a move does; the command is queued in App.pending.
+- Rail order Chat, Git, Terminal, Settings (⌘1–4); tabs can be hidden in
   Settings.
 - The projects column is `kit.ListWidth`: 28 %, 32–40 columns, in every
   tab; the user found wider too wide. Screen tests take x from it.

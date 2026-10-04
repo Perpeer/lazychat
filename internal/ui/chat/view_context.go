@@ -27,6 +27,9 @@ func contextPart(s *usage.Session, w int) []string {
 	}}
 	out = append(out, kit.DrawContext(view, w, num)...)
 	out = append(out, wrapDim("base: what the session began with — system prompt, tools, MCP, memory, skills listed, its first prompt — or a compaction's summary", w)...)
+	if row := timelineRow(s.Timeline(), w); row != "" {
+		out = append(out, "", row)
+	}
 	if rows := fedRows(s.Fed, c.Used, w); len(rows) > 0 {
 		out = append(append(out, ""), rows...)
 	}
@@ -43,6 +46,47 @@ func wrapDim(note string, w int) []string {
 		out = append(out, kit.StyleDim.Render(" "+l))
 	}
 	return out
+}
+
+// timelineRow is the session's life in one row: a strip of its events in
+// time order — ▮ a prompt, ↻ a resume, │ a compaction — cut from its start
+// so the newest show, and their counts.
+func timelineRow(events []usage.Event, w int) string {
+	if len(events) == 0 {
+		return ""
+	}
+	var strip strings.Builder
+	prompts, resumes, compacts := 0, 0, 0
+	for _, e := range events {
+		switch e.Kind {
+		case usage.PromptEvent:
+			strip.WriteString(kit.StyleAccent.Render("▮"))
+			prompts++
+		case usage.ResumeEvent:
+			strip.WriteString(kit.StyleBusy.Render("↻"))
+			resumes++
+		case usage.CompactEvent:
+			strip.WriteString(kit.StyleBold.Render("│"))
+			compacts++
+		}
+	}
+	counts := fmt.Sprintf("%d prompt%s", prompts, plural(prompts))
+	if resumes > 0 {
+		counts += fmt.Sprintf(" · %d resume%s", resumes, plural(resumes))
+	}
+	if compacts > 0 {
+		counts += fmt.Sprintf(" · %d compaction%s", compacts, plural(compacts))
+	}
+	label := " " + kit.StyleBold.Render("timeline") + " "
+	room := max(4, w-text.Width(label)-text.Width(counts)-2)
+	return label + text.FitLeft(strip.String(), room) + "  " + kit.StyleDim.Render(counts)
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
 
 // hints are what to do about a tool whose results fill the context.

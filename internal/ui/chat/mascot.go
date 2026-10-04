@@ -135,6 +135,14 @@ func (c *Chat) mascotSay(sum status.Summary) kit.MascotState {
 	return kit.MascotState{Say: waits}
 }
 
+// OpenSession shows a session, as the inbox's Enter: a click on its row.
+func (c *Chat) OpenSession(key string) {
+	c.mascot.valid = false
+	if rs := c.records([]string{key}); len(rs) == 1 {
+		c.act.Open(rs[0])
+	}
+}
+
 // OpenMascot is a click on the mascot: the board's target, shown with the
 // keys. A question goes on until it is answered; a finished session,
 // looked at, stops calling.

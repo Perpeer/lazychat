@@ -59,7 +59,9 @@ func init() {
 	branchKeys = append(branchKeys, panelKeys()...)
 	// An added worktree's row has one key more, after fetch: bring its
 	// branch up to date with main, as a worktree is kept current.
-	worktreeRowKeys = append(append(append([]binding{}, branchKeys[:4]...), binding{Key: kit.GitKeys.UpdateFromMain, Run: func(g *Git) tea.Cmd { return g.updateFromMain() }}), branchKeys[4:]...)
+	worktreeRowKeys = append(append(append([]binding{}, branchKeys[:4]...),
+		binding{Key: kit.GitKeys.UpdateFromMain, Run: func(g *Git) tea.Cmd { return g.updateFromMain() }},
+		binding{Key: kit.GitKeys.OpenWorktree, Run: func(g *Git) tea.Cmd { g.openWorktree(); return nil }}), branchKeys[4:]...)
 	emptyKeys = []binding{kit.ProjectOpen[*Git](), keyHelp, keyQuit}
 	projectKeys = kit.ProjectRow((*Git).cursorProject, func(g *Git) { g.moving = true })
 	changeKeys = []binding{
@@ -99,6 +101,7 @@ func init() {
 		})},
 		{Key: kit.GitKeys.DiffSelect, Run: act(func(g *Git) { g.markDiff() })},
 		{Key: kit.GitKeys.DiffCopy, Run: act(func(g *Git) { g.copyDiff() })},
+		{Key: kit.GitKeys.StageUnstage, Run: func(g *Git) tea.Cmd { return g.stageLines() }},
 		{Key: kit.GitKeys.DiffDrag},
 		keyCommit,
 	}
@@ -202,7 +205,7 @@ func helpText() string {
 		"",
 	}
 	lines = append(lines, kit.HelpSection("Branch", branchKeys)...)
-	lines = append(lines, kit.HelpSection("A worktree's row, besides", worktreeRowKeys[4:5])...)
+	lines = append(lines, kit.HelpSection("A worktree's row, besides", worktreeRowKeys[4:6])...)
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
 	lines = append(lines, kit.HelpSection("Commit box chosen", commitSelKeys[:2])...)

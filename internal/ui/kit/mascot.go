@@ -55,6 +55,8 @@ type Question struct{ Key, Name string }
 type Mascot interface {
 	MascotState() MascotState
 	OpenMascot()
+	// OpenSession shows the session with that key, as a click on its row.
+	OpenSession(key string)
 }
 
 // mascotEyes are the eyes per mood, one frame per tick: closed and
