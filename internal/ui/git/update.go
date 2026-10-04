@@ -2,7 +2,6 @@ package git
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"path/filepath"
 
 	"lazychat/internal/core/git"
 	"lazychat/internal/core/syntax"
@@ -497,34 +496,4 @@ func (g *Git) Mouse(msg tea.MouseMsg) tea.Cmd {
 		return g.clickPanel(panel(hit.N))
 	}
 	return nil
-}
-
-// search is s on the projects panel: a finder over every checkout — a
-// project's branch, its worktrees by folder — with the branch beside each;
-// the one chosen takes the cursor and is read as a move would read it.
-func (g *Git) search() {
-	rows := g.rows()
-	if len(rows) == 0 {
-		g.screen.Note("no project yet: shift+o opens one")
-		return
-	}
-	names := make([]string, len(rows))
-	for i, r := range rows {
-		names[i] = r.name
-		if r.wt != nil {
-			names[i] += " · " + filepath.Base(r.path) + "/"
-		}
-	}
-	f := kit.NewFinder("checkouts", names, func(i int) {
-		g.projects.Sel = i
-		g.changes.Sel, g.commits.Sel = 0, 0
-		g.screen.Queue(tea.Batch(g.loadCursor(), g.loadDiff()))
-	})
-	f.Note = func(i int) string {
-		if p := g.status[rows[i].key]; p != nil && p.st.Branch != "" {
-			return "⎇ " + p.st.Branch
-		}
-		return ""
-	}
-	g.screen.Push(f)
 }

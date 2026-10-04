@@ -92,8 +92,7 @@ never touched.
 Every session sits under its project with its terminal next to it. You can
 see which one works, which one waits for you and how long the last prompt
 took. `n` starts one, `r` resumes an old one, and `w` lets you draft the
-next prompt while the agent is still busy. `s` finds a session by name
-across every project (and in every tab, `s` searches its list); `i`, or
+next prompt while the agent is still busy. `i`, or
 a click on Lazy while several wait, opens the inbox: the sessions asking
 you something or finished, Enter opens one. Press `3` for the details. At
 the top is the prompt's flow, drawn like `git log --graph`: each tool it
@@ -102,10 +101,10 @@ subagent as a branch that forks off and joins back when it returns, a
 question to you, and what each step added to the context. Beside it is the session's context, drawn like Claude
 Code's `/context`: how full the window is, what fills it, which tool's
 results took the most, and how many more prompts fit at this pace. At the
-bottom are your prompt reports: what the picked prompt ran, and your last
-ten prompts as a table with their state, duration, tokens and API cost. Lazy also plays a sound when a session starts
-on a prompt, asks you something, finishes or fails; you can turn the
-sounds off in Settings.
+bottom are your last ten prompts as a table with their state, duration,
+tokens and API cost. Lazy says hello when lazychat opens, and plays a
+sound when a session starts on a prompt, asks you something, finishes or
+fails; you can turn the sounds off in Settings.
 
 ```
 ┌ [1] projects ──────────┐┌ [2] session │ [3] details ───────────┐

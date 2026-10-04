@@ -61,7 +61,8 @@ it from there.
 ## Sounds
 
 - Lazy's sounds (internal/core/sound, embedded WAVs played by afplay,
-  macOS only) only listen: ask and done are the board's own states
+  macOS only, the user's own recordings: lazy-hi, -start, -ask, -done,
+  plus the older -error and -tick) only listen: ask and done are the board's own states
   changing between ticks (App.hearNews, newsSounds), done also when a
   watched session goes working → idle; nothing else derives them. The
   first look is silent: what was so at start is no news.
@@ -72,10 +73,13 @@ it from there.
   the shown session (report.heardBack), so only while the details show.
 - start is a session going to working from idle, done or rest — a new
   prompt; from asks it is an answer and stays quiet.
-- start is four recordings of the user's mechanical keyboard
-  (lazy-start-1..4) mixed at a typing rhythm (sound/synth.go). Key clicks
-  on every typed key were tried and taken out at the user's word: no
-  sound per key, no setting for it.
+- start is the user's "running" recording (shipped as lazy-start.wav); a
+  burst mixed in code from keyboard recordings came before it and is gone.
+  Key clicks on every typed key were tried and taken out at the user's
+  word: no sound per key, no setting for it.
+- hi is played once a process, on the main screen's first tick
+  (App.greeted): after the splash and the start screen, never on a
+  workspace switch in place.
 - A tab asks for a sound with kit.PlaySound; App plays it unless
   settings.NoSounds. Tests leave App.play nil: no test makes a sound.
 

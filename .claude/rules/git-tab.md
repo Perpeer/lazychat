@@ -31,8 +31,10 @@ paths:
 - Worktrees as git means them: one folder per branch; the repository's
   own folder is for pulling and merging. One vocabulary on the rows and
   in the branch list, never "current" (it meant two things) nor "main
-  folder" (the user could not tell what it meant): every checkout row is
-  the repository's own row is branch, then `repository · <folder>/`; a
+  folder" (the user could not tell what it meant). The repository's own
+  row is its branch alone — `repository · <folder>/` beside it was taken
+  out at the user's word, the heading above names the project; the
+  branch list still says `○ repository · <folder>/` where a branch is out; a
   worktree's is branch, then ` · <folder>/` by the folder's own name only
   when the branch does not contain it (the user saw ".worktrees/task2/
   worktree-task2" cut and said twice); the branch keeps its room, the

@@ -48,9 +48,9 @@ func TestChatFlow(t *testing.T) {
 	d.expectCount(1, 1)
 	d.leave()
 
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (s) search · (m) move · (d) close · (wheel) scroll · (?) help",
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help",
 		"project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
-	d.key("p", "K", "J", "ctrl+k", "ctrl+j") // no menus, no second way to move: nothing happens
+	d.key("p", "s", "K", "J", "ctrl+k", "ctrl+j") // no menus, no second way to move: nothing happens
 	d.expectNot("project · demo")
 	d.expectNot("┌ session · ")
 	d.key("k", "g") // one session, the headings take no cursor: it stays
@@ -77,7 +77,7 @@ func TestChatFlow(t *testing.T) {
 	d.raw("hello\r")
 	d.expect("got: hello")
 	d.leave()
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (s) search · (m) move · (d) close · (wheel) scroll · (?) help", "ivy")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help", "ivy")
 	d.key("ctrl+c")
 	d.expect("stop 2 running session(s) and quit?")
 	d.key("n")
@@ -105,13 +105,13 @@ func TestChatFlow(t *testing.T) {
 	d.key("tab", "tab") // Chat → Git → Terminal
 	d.expect("demo2 · terminals (0)")
 	d.key("tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (s) search · (m) move · (d) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help")
 	d.key("shift+tab") // back around the rail: Chat → Terminal, then Terminal → Git
 	d.expect("demo2 · terminals (0)")
 	d.key("shift+tab")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees")
 	d.key("tab", "tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (s) search · (m) move · (d) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help")
 	d.click(79, 14)
 	d.expect("(ctrl+q) back to lazychat")
 	d.click(9, 4) // the project's heading, beside the pane: its first session

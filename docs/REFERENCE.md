@@ -189,7 +189,7 @@ goes back to the tab's list. Its keys:
 | Key | Does |
 | --- | --- |
 | `n` | a new workspace — a name; it opens in place |
-| `shift+s` | switch to another — the others, the one used before this first; with none it says `n` makes one |
+| `s` | switch to another — the others, the one used before this first; with none it says `n` makes one |
 | `e` | rename it; its folder takes the new name, sessions keep running |
 | `d` | delete it, asked: once what runs is stopped, its folder goes to the Trash and the start screen follows; the projects' folders stay |
 
@@ -364,7 +364,7 @@ It only reads. Codex keeps no such usage yet.
 The page has three parts. The first two stand side by side, half the box
 each — the prompt's flow on the left, the context on the right — in a box
 at least 100 columns wide, and one under the other in a narrower one; the
-prompt reports are under them.
+prompts' table is under them.
 
 **The flow.** The picked prompt, step by step, drawn as `git log --graph`
 draws branches: the prompt on top with when it started (`❯`), then one
@@ -432,23 +432,6 @@ how many more prompts fit before the window fills.
  ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛶   ⛶ free         207k  20.7%
 ```
 
-**The prompt reports.** The picked prompt's report — what it ran; its
-time and tokens are its row in the table under it:
-
-- workers: a table of its subagents, skills and MCP servers, each with
-  how long it took, its tokens and its calls. `★` marks a subagent defined
-  by the user (`~/.claude/agents`), the project (`.claude/agents`) or a
-  plugin, and the user's and the project's skills. A skill's or MCP
-  server's tokens are measured, since no line says what a result cost:
-  how much the next call's context grew, shared among the results in
-  between by size, plus the same tokens read again by every later call of
-  the prompt;
-- tools: every tool call of the prompt, by tool, the most used first;
-- commands: the shell commands it ran, by their first words (`go test`,
-  `git status`), with `cd` and `echo` left out;
-- files: the files it edited, by name (`×2` when more than once), and the
-  lines its subagents say they changed.
-
 At the box's bottom, held there while the rest scrolls above it, the
 newest ten prompts as a table, three rows each — its number (`▶` the
 picked one), its state (`working` and `asking` in the running colour,
@@ -495,7 +478,6 @@ the tree too.
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
-| `s` | find a session: a finder over every session of every project by name, its project and tool beside it; `Enter` puts the cursor on it, `Esc` leaves it where it was. Every tab's list has `s`: Git's checkouts (the branch beside each), Terminal's shells (the project beside each), Settings' settings (the section beside each); in the footer it stands before `move`, else before `wheel` |
 | `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
 | `d` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |
@@ -513,7 +495,7 @@ a diff with the commit box under it.
 ```
 │ lazychat
 │ ~/code/lazychat
-│   ├─ ● main      repository · lazychat/
+│   ├─ ● main
 │   │    ↑1 · clean
 │   └─ ⑂ feature · wt-feature/
 │        1 changed · from main
@@ -522,12 +504,11 @@ a diff with the commit box under it.
 Under each project hangs the checkout it works in — its folder, where
 Chat's sessions and Terminal's shells start — and under that the
 repository's other checkouts (`git worktree list`). The repository's own
-checkout reads its branch, then `repository` and its folder by name. A
+checkout reads its branch alone: the project's heading above names it. A
 worktree reads its branch, then its folder's own name (`· wt-feature/`)
 only when the branch does not already say it: `worktree-task2` in
 `.worktrees/task2` is the branch alone. The branch keeps its room; the
-folder takes what is left, or is left out. When a long branch leaves no
-room, the repository's label opens the row under it. The project's
+folder takes what is left, or is left out. The project's
 checkout is marked `●` in the accent (`⑂` and the branch in the worktree
 colour when it is itself a worktree), the others `⑂`, or `○` for the
 repository's own. Under each, `↑` `↓` ahead and behind its upstream, how
@@ -650,7 +631,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | Appearance | splash | shown | the two seconds before the start screen: Lazy waking up beside the wordmark; any key skips it |
 | Appearance | version | shown | the corner's `v1.0.3` |
 | Appearance | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
-| Sound | sounds | on | on macOS, Lazy's sounds: a short burst of the recorded keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
+| Sound | sounds | on | on macOS, Lazy's sounds: hello once as the main screen first shows, a session starting on a new prompt (not on an answer), asking something, finishing (looked at or not) or ending on an API error; in the details, a subagent of the newest prompt coming back |
 | Integrations | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
 | Integrations | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 

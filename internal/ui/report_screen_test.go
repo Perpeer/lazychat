@@ -105,19 +105,22 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "state", "│ working ", "duration", "API cost", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes", "files")
+	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "state", "│ working ", "duration", "API cost", "│ prompt ", "│ in ", "│ used ")
 	d.expectNot(" now  ")
 	d.expectNot("worked alone")
+	for _, gone := range []string{"what it ran", "workers", "commands  ", "files  "} {
+		d.expectNot(gone) // the per-prompt report under the flow was taken out
+	}
 	d.expect("(↑↓) pick prompt · (esc) back")
 	sc := d.screen()
 	if strings.Contains(sc, " Lazy ") {
 		t.Errorf("Lazy is named on the page:\n%s", sc)
 	}
 	// Wide: the flow on the left half, the context on the right, on the
-	// same rows; the reports under both.
-	flow, ctx, report, table := lineOf(sc, "⌂ Explore"), lineOf(sc, " context  "), lineOf(sc, "prompt 2  what it ran"), lineOf(sc, "│ ▶ 2 ")
-	if row := strings.Split(sc, "\n")[flow]; ctx != lineOf(sc, " flow  ") || !strings.ContainsAny(row[strings.Index(row, "⌂ Explore"):], "⛁⛶") || !(flow < report && report < table) {
-		t.Errorf("not side by side: flow %d, context %d, fork %d, report %d, table %d\n%s", lineOf(sc, " flow  "), ctx, flow, report, table, sc)
+	// same rows; the prompts' table under both.
+	flow, ctx, table := lineOf(sc, "⌂ Explore"), lineOf(sc, " context  "), lineOf(sc, "│ ▶ 2 ")
+	if row := strings.Split(sc, "\n")[flow]; ctx != lineOf(sc, " flow  ") || !strings.ContainsAny(row[strings.Index(row, "⌂ Explore"):], "⛁⛶") || !(flow < table) {
+		t.Errorf("not side by side: flow %d, context %d, fork %d, table %d\n%s", lineOf(sc, " flow  "), ctx, flow, table, sc)
 	}
 	rows := strings.Split(d.screen(), "\n")
 	bottom := lineOf(d.screen(), "┴")
@@ -125,7 +128,7 @@ func TestReport(t *testing.T) {
 		t.Fatalf("the prompts table is not at the box's bottom:\n%s", d.screen())
 	}
 	d.key("down")
-	d.expect("│ ▶ 1 ", "│ done ", "prompt 1", "paint the garden shed", "≡ brush-care", "▭ paint-shop", "list_colours", "├   Read", "paint/door.go", "? asked you", "├─┬ ⌂ Explore", "count the boards", "├─┘ back", "●   done · ", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
+	d.expect("│ ▶ 1 ", "│ done ", "paint the garden shed", "≡ brush-care", "▭ paint-shop", "list_colours", "├   Read", "paint/door.go", "? asked you", "├─┬ ⌂ Explore", "count the boards", "├─┘ back", "●   done · ")
 	d.expectNot("find the brushes")
 	d.expectNot("working · ")
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {

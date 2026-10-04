@@ -87,8 +87,8 @@ func section(title, note string) string {
 const promptRows = 10
 
 // pageView is the session prompt by prompt: on top the picked prompt's
-// flow and its report, which scroll; under them the prompts as a table,
-// held at the box's bottom.
+// flow and the session's context, which scroll; under them the prompts as
+// a table, held at the box's bottom.
 func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	now := time.Now()
 	working := c.working(s, now)
@@ -111,10 +111,9 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	running := picked == last && working
 	c.rep.moving = running
 	costs := c.rep.page.costs
-	// Three parts: the picked prompt's flow, the session's context, then the
-	// prompt reports — the picked one's, over the table held at the bottom.
+	// The picked prompt's flow beside the session's context, over the
+	// prompts' table held at the bottom.
 	top = append(top, flowAndContext(flowOf(t, now, running, costs[picked], s.Dir), c.beat, c.rep.page, s.Fed, w)...)
-	top = append(top, c.report(turns, picked, working, now, s.Dir, w)...)
 	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
 		c.promptTable(turns, picked, working, now, costs, w)...)
 	return top, table
@@ -336,162 +335,6 @@ func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 		return t.Last.Local().Format("15:04:05"), false
 	}
 	return "—", false
-}
-
-// report is what the picked prompt ran: its workers as a table, the tools
-// and shell commands and the files it changed.
-// What the transcript does not say is a dash.
-func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, dir string, w int) []string {
-	t := turns[i]
-	newest := i == len(turns)-1
-	// Its time, text and tokens are the table's row; this is what it ran.
-	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), "what it ran; its time and tokens are in the table below"),
-		section("workers", "who did the work: subagents, skills, MCP servers; ★ one of yours")}
-	out = append(out, workerRows(t, now, newest && working, w)...)
-	out = append(out, "", section("tools", "every call of the prompt, by tool"), " "+text.Fit(counted(t.Tools, "×"), max(10, w-2)))
-	out = append(out, "", section("commands", "the shell commands run, by their first words"), " "+text.Fit(counted(t.Commands, "×"), max(10, w-2)))
-	out = append(out, "", section("files", "the files it edited, and lines the subagents changed"), " "+text.Fit(filesLine(t, dir), max(10, w-2)))
-	return out
-}
-
-// workerRows are the turn's workers as a table: kind, name, how long, its
-// tokens, its calls.
-func workerRows(t usage.Turn, now time.Time, running bool, w int) []string {
-	type wr struct{ kind, name, took, tokens, calls string }
-	var rows []wr
-	for _, a := range t.Agents {
-		if a == nil {
-			continue
-		}
-		name := a.Type
-		if name == "" {
-			name = "agent"
-		}
-		if own(a.Origin) {
-			name = "★ " + name
-		}
-		if a.Description != "" {
-			name += " · " + a.Description
-		}
-		took := "—"
-		left := a.Left
-		if left.IsZero() {
-			left = a.First
-		}
-		switch {
-		case !a.Back.IsZero() && !left.IsZero():
-			took = text.Span(a.Back.Sub(left))
-		case a.Duration > 0:
-			took = text.Span(a.Duration)
-		case running && !left.IsZero():
-			took = text.Span(now.Sub(left)) + " …"
-		}
-		rows = append(rows, wr{"agent", name, took, num(a.Totals().Sum()), fmt.Sprint(len(a.Calls))})
-	}
-	type agg struct {
-		spent int64
-		n     int
-		own   bool
-	}
-	skills, servers := map[string]*agg{}, map[string]*agg{}
-	var skillOrder, serverOrder []string
-	for _, u := range t.Uses {
-		if u == nil {
-			continue
-		}
-		m, order, key := skills, &skillOrder, u.Name
-		if u.Kind == usage.MCP {
-			m, order, key = servers, &serverOrder, u.Origin
-		}
-		if m[key] == nil {
-			m[key] = &agg{own: u.Kind == usage.Skill && own(u.Origin)}
-			*order = append(*order, key)
-		}
-		m[key].spent += u.Spent()
-		m[key].n++
-	}
-	for _, k := range skillOrder {
-		name := k
-		if skills[k].own {
-			name = "★ " + name
-		}
-		rows = append(rows, wr{"skill", name, "—", num(skills[k].spent), fmt.Sprint(skills[k].n)})
-	}
-	for _, k := range serverOrder {
-		rows = append(rows, wr{"mcp", k, "—", num(servers[k].spent), fmt.Sprint(servers[k].n)})
-	}
-	if len(rows) == 0 {
-		return []string{kit.StyleDim.Render(" the session worked alone: no subagent, skill or MCP call")}
-	}
-	nameW := max(10, w-40)
-	out := []string{kit.StyleDim.Render(fmt.Sprintf("  %-6s %-*s %8s %8s %6s", "kind", nameW, "name", "time", "tokens", "calls"))}
-	for _, r := range rows {
-		out = append(out, fmt.Sprintf("  %-6s %-*s %8s %8s %6s", r.kind, nameW, text.Fit(r.name, nameW), r.took, r.tokens, r.calls))
-	}
-	return out
-}
-
-// counted is a count map as "name ×n · name ×n", the largest first; "—"
-// when empty.
-func counted(m map[string]int, mark string) string {
-	if len(m) == 0 {
-		return kit.StyleDim.Render("—")
-	}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool { return m[keys[i]] > m[keys[j]] || m[keys[i]] == m[keys[j]] && keys[i] < keys[j] })
-	parts := make([]string, len(keys))
-	for i, k := range keys {
-		parts[i] = k + " " + kit.StyleDim.Render(mark+fmt.Sprint(m[k]))
-	}
-	return strings.Join(parts, kit.StyleDim.Render(" · "))
-}
-
-// filesLine is the files the prompt edited, by name (×N when more than
-// once), and the lines its subagents say they changed.
-func filesLine(t usage.Turn, dir string) string {
-	edits := map[string]int{}
-	var order []string
-	for _, st := range t.Steps {
-		switch st.Name {
-		case "Edit", "MultiEdit", "Write", "NotebookEdit":
-		default:
-			continue
-		}
-		files := relFiles(st.Files, dir)
-		if len(files) == 0 {
-			files = []string{st.Name}
-		}
-		for _, f := range files {
-			if edits[f] == 0 {
-				order = append(order, f)
-			}
-			edits[f]++
-		}
-	}
-	var parts []string
-	for _, f := range order {
-		if edits[f] > 1 {
-			f += " " + kit.StyleDim.Render(fmt.Sprintf("×%d", edits[f]))
-		}
-		parts = append(parts, f)
-	}
-	added, removed := 0, 0
-	for _, a := range t.Agents {
-		if a != nil {
-			added += a.Stats.LinesAdded
-			removed += a.Stats.LinesRemoved
-		}
-	}
-	if added+removed > 0 {
-		parts = append(parts, fmt.Sprintf("subagents +%d −%d lines", added, removed))
-	}
-	if len(parts) == 0 {
-		return kit.StyleDim.Render("—")
-	}
-	return strings.Join(parts, kit.StyleDim.Render(" · "))
 }
 
 // own says an origin is the user's or a project's, not what comes with

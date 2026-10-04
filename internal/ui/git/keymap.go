@@ -38,7 +38,6 @@ func init() {
 	keyPush := binding{Key: kit.GitKeys.Push, Run: func(g *Git) tea.Cmd { return g.push() }}
 	keyPull := binding{Key: kit.GitKeys.Pull, Run: func(g *Git) tea.Cmd { return g.pull() }}
 	keyFetch := binding{Key: kit.GitKeys.Fetch, Run: func(g *Git) tea.Cmd { return g.fetch() }}
-	keySearch := binding{Key: kit.ListKeys.Search, Run: act(func(g *Git) { g.search() })}
 	branchKeys = []binding{
 		keyCommit,
 		keyPull,
@@ -50,9 +49,6 @@ func init() {
 		keyRefresh,
 		keyBack,
 	}
-	// Search sits before the wheel, as in every tab; the worktree row's
-	// keys are cut from this table at index 4, so nothing goes in before.
-	branchKeys = append(branchKeys, keySearch)
 	branchKeys = append(branchKeys, scroll...)
 	branchKeys = append(branchKeys, keyHelp, keyQuit,
 		binding{Key: kit.GitKeys.BranchUp, Run: func(g *Git) tea.Cmd { return g.moveProject(-1) }},

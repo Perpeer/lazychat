@@ -441,7 +441,7 @@ func TestSwitchInPlace(t *testing.T) {
 	if !strings.Contains(snap, `"workspace": "second"`) {
 		t.Fatalf("no menu bar snapshot for second in %s: %q", filepath.Join(home, "state"), snap)
 	}
-	p.send("\x17", "S")
+	p.send("\x17", "s")
 	p.expect("switch workspace", "first")
 	p.send("\r")
 	p.expect(" first   0 project(s)", "none yet")

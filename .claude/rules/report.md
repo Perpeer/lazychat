@@ -31,8 +31,10 @@ paths:
   the session's context, /context-like, measured only (usage.Context: the
   newest main call; base = the first call since the start or the last
   compaction; skills/MCP added; Fed by tool for "went to"; growth per
-  prompt); the prompt reports. Nothing of a prompt sits above the context
-  — its time and tokens are the table's. /context's categories are not in
+  prompt); the prompts' table. Nothing of a prompt sits above the context
+  — its time and tokens are the table's. The per-prompt report under
+  them (workers, tools, commands, files) was taken out at the user's
+  word: the flow says what a prompt did. /context's categories are not in
   the transcript: no estimate stands in for them.
 - The context part's `timeline` row is usage.Session.Timeline(): prompts,
   Resumes (a quiet longer than ResumeGap) and Compacts in time order; it
@@ -95,7 +97,10 @@ paths:
   git log graph can use it later (the user's wish): lane 0 the main line,
   a lane open from its fork (or first row, when the fork was cut above)
   to its join (or last row); ├─┬ opens, ├─┘ closes, ┼ crosses an open
-  lane, ─ a closed one. Rows are exactly w wide.
+  lane, ─ a closed one. Rows are exactly w wide. A node's text — the
+  prompt, a step's files or commands — wraps onto up to three rows under
+  it, the lanes carried down (│), the last row cut with …: the user saw
+  the prompt and the commands cut at one row.
 - The fast beat (animBeat) reaches the active tab as kit.Beat only while
   it is a kit.Animator saying so: Chat says so while the picked prompt
   runs (its spinners turn), so an idle page costs no redraws.

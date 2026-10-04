@@ -314,27 +314,3 @@ func (c *Chat) takeKeys() {
 		c.board.See(c.Pane.Key)
 	}
 }
-
-// searchSessions is s on the tree: a finder over every session of every
-// project, by name, with its project and tool beside it; the one chosen
-// takes the cursor, and the report follows when it shows.
-func (c *Chat) searchSessions() {
-	rows := c.tree.Sessions()
-	if len(rows) == 0 {
-		c.Screen.Note("no session yet: n starts one")
-		return
-	}
-	names := make([]string, len(rows))
-	for i, r := range rows {
-		names[i] = r.Session.Name
-	}
-	f := kit.NewFinder("sessions", names, func(i int) {
-		c.tree.SelectSession(rows[i].Session.Key)
-		c.list.scroll.Follow()
-		if cmd := c.reportFollow(); cmd != nil {
-			c.Screen.Queue(cmd)
-		}
-	})
-	f.Note = func(i int) string { return rows[i].Project.Name + " · " + rows[i].Session.Tool }
-	c.Screen.Push(f)
-}

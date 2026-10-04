@@ -4,7 +4,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lazychat/internal/ui/kit"
-	"lazychat/internal/ui/terminal/model"
 )
 
 // hits are the zones the view marks: shells as rows, projects as headings.
@@ -173,30 +172,4 @@ func (t *Terminal) pointAt(msg tea.MouseMsg) {
 	case kit.HitHeading:
 		t.selectProject(hit.N)
 	}
-}
-
-// search is s on the list: a finder over every shell of every project by
-// name, its project beside it; the one chosen takes the cursor and the
-// pane follows.
-func (t *Terminal) search() {
-	var rows []model.Row
-	for _, r := range t.tree.Rows() {
-		if r.Shell != nil {
-			rows = append(rows, r)
-		}
-	}
-	if len(rows) == 0 {
-		t.Screen.Note("no shell yet: n opens one")
-		return
-	}
-	names := make([]string, len(rows))
-	for i, r := range rows {
-		names[i] = r.Shell.Name
-	}
-	f := kit.NewFinder("shells", names, func(i int) {
-		t.tree.SelectKey(rows[i].Shell.Key)
-		t.follow()
-	})
-	f.Note = func(i int) string { return rows[i].Project.Name }
-	t.Screen.Push(f)
 }

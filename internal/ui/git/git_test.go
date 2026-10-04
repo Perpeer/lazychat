@@ -21,8 +21,8 @@ func TestKeymap(t *testing.T) {
 		keys []binding
 		want string
 	}{
-		"branch":   {branchKeys, "c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · s search · wheel scroll · ? help"},
-		"worktree": {worktreeRowKeys, "c commit · p pull · shift+p push · f fetch · u update from main · o open as project · b branches · w worktrees · d delete · r refresh · s search · wheel scroll · ? help"},
+		"branch":   {branchKeys, "c commit · p pull · shift+p push · f fetch · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
+		"worktree": {worktreeRowKeys, "c commit · p pull · shift+p push · f fetch · u update from main · o open as project · b branches · w worktrees · d delete · r refresh · wheel scroll · ? help"},
 		"project":  {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		"changes":  {changeKeys, "space stage / unstage · esc projects · c commit · wheel scroll · r refresh · ? help"},
 		"commits":  {commitsKeys, "esc projects · c commit · wheel scroll · r refresh · ? help"},
@@ -105,8 +105,7 @@ func TestFileHeadings(t *testing.T) {
 }
 
 // A branch too long for its row stays on one row, cut in its middle with
-// its last part kept; the branch comes first, so its role and folder move
-// to the counts row when the branch leaves them too little room.
+// its last part kept; nothing is written beside it.
 func TestBranchOneRow(t *testing.T) {
 	p := &project{}
 	p.st.Branch = "garden-shed-paints/feature/blue-door"
@@ -117,12 +116,14 @@ func TestBranchOneRow(t *testing.T) {
 	if rows[0].Plain != "● garden-shed-paints/fe…/blue-door" || text.Width(rows[0].Prefix+rows[0].Plain) > 40 {
 		t.Errorf("branch row %q", rows[0].Prefix+rows[0].Plain)
 	}
-	if !strings.Contains(rows[1].Plain, "repository · shed/ · clean") {
+	if strings.TrimSpace(rows[1].Plain) != "clean" {
 		t.Errorf("the counts row %q", rows[1].Plain)
 	}
+	// The repository's own row is its branch alone: the heading above
+	// names the project.
 	p.st.Branch = "main"
-	if rows := branchEntry(p, "/garden/shed", "/garden/shed", 40, true); rows[0].Plain != "● main   repository · shed/" {
-		t.Errorf("short branch row %q", rows[0].Plain)
+	if rows := branchEntry(p, "/garden/shed", "/garden/shed", 40, true); rows[0].Plain != "● main" || strings.Contains(rows[1].Plain, "repository") {
+		t.Errorf("short branch rows %q", rows[0].Plain+" / "+rows[1].Plain)
 	}
 }
 

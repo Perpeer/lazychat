@@ -222,6 +222,14 @@ func TestSettingsSounds(t *testing.T) {
 	d.app.play = func(n sound.Name) { played = append(played, n) }
 	d.post(kit.PlaySound{Name: sound.Tick})
 	d.until("a sound played", func() bool { return len(played) == 1 })
+	// Lazy says hello once, on the main screen's first tick, never again.
+	d.app.greeted = false
+	d.deliver(tickMsg(time.Now()))
+	d.deliver(tickMsg(time.Now()))
+	if len(played) != 2 || played[1] != sound.Hi {
+		t.Fatalf("hello: %v", played)
+	}
+	played = played[:1]
 	d.tab(4)
 	d.toSetting("sounds")
 	d.expect("sounds", "Lazy's sounds", "  on")

@@ -87,9 +87,11 @@ type App struct {
 	latest string
 	asked  time.Time
 	// play plays one of Lazy's sounds; nil in tests. heard is each
-	// session's state at the last tick, to hear only its changes.
+	// session's state at the last tick, to hear only its changes; greeted
+	// says Lazy said hello, once a process, as the main screen first showed.
 	play    func(sound.Name)
 	heard   map[string]status.State
+	greeted bool
 	leaving chan struct{} // closed once the workspace left has stopped; nil when none is
 
 	wsSel bool // the workspace box has the keys
@@ -254,6 +256,10 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, t.Update(kit.Tick{N: a.tick}))
 		}
 		a.tellMenuBar()
+		if !a.greeted {
+			a.greeted = true
+			a.sound(sound.Hi)
+		}
 		a.hearNews()
 		cmds = append(cmds, a.askLatest(time.Now()))
 		return a, tea.Batch(cmds...)

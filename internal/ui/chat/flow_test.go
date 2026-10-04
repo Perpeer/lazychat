@@ -104,9 +104,6 @@ func TestFlowNodes(t *testing.T) {
 	if empty := flowOf(usage.Turn{}, at, false, "", ""); len(empty) != 2 || !strings.HasPrefix(empty[1].Name, "stopped") {
 		t.Errorf("empty turn: %+v", empty)
 	}
-	if filesLine(usage.Turn{}, "") == "" {
-		t.Fatal("an empty files line must still say so")
-	}
 }
 
 // A subagent of the newest prompt back since the last read of the same

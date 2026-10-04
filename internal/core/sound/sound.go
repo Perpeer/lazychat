@@ -1,5 +1,6 @@
-// Package sound plays Lazy's sounds: a question, a finished answer, a
-// failed one, a worker back with its answer.
+// Package sound plays Lazy's sounds: hello as lazychat opens, a prompt
+// starting, a question, a finished answer, a failed one, a worker back
+// with its answer.
 package sound
 
 import (
@@ -18,18 +19,13 @@ import (
 type Name string
 
 const (
+	Hi    Name = "hi" // once, as the main screen first shows
 	Ask   Name = "ask"
 	Done  Name = "done"
 	Error Name = "error"
 	Tick  Name = "tick"
-	Start Name = "start" // Lazy starting on a prompt: a short burst of keys
+	Start Name = "start" // Lazy starting on a prompt
 )
-
-// made are the sounds made in code (synth.go) where no recording of the
-// same name is shipped.
-var made = map[string]func() []byte{
-	"start": func() []byte { return wav(typing(), 0.9) },
-}
 
 //go:embed lazy-*.wav
 var wavs embed.FS
@@ -82,14 +78,9 @@ func (p *Player) Play(n Name) {
 
 // file is the sound's copy, written when it is missing or not this build's.
 func (p *Player) file(name string) (string, error) {
-	// A recording shipped beside the others wins over a sound made in code.
 	b, err := wavs.ReadFile("lazy-" + name + ".wav")
 	if err != nil {
-		gen, ok := made[name]
-		if !ok {
-			return "", err
-		}
-		b = gen()
+		return "", err
 	}
 	path := filepath.Join(p.dir, "lazy-"+name+".wav")
 	if st, err := os.Stat(path); err == nil && st.Size() == int64(len(b)) {

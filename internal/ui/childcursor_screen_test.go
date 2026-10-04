@@ -35,7 +35,7 @@ func TestChildCursor(t *testing.T) {
 	d.key("j")
 	on("beta")
 	d.key("j") // over second's heading, onto its empty row
-	d.expect("└─ no sessions yet", "Nothing runs in second", "(enter/n) new · (r) resume · (s) search · (?) help", "project: (shift+o) open")
+	d.expect("└─ no sessions yet", "Nothing runs in second", "(enter/n) new · (r) resume · (?) help", "project: (shift+o) open")
 	d.key("j") // the last row: it stays
 	d.expect("project: (shift+o) open")
 	d.key("k") // back over the heading
@@ -66,7 +66,7 @@ func TestChildCursor(t *testing.T) {
 	d.expect("(enter) continue") // opening brought Chat forward
 
 	d.tab(3) // Terminal: no terminals anywhere, one empty row per project
-	d.expect("└─ no terminals yet", "(enter/n) new · (s) search · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("└─ no terminals yet", "(enter/n) new · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("G")
 	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 
@@ -134,26 +134,5 @@ func TestProjectFollowsTabs(t *testing.T) {
 	}
 	d.tab(1)
 	d.expect("Nothing runs in second")
-	d.quitApp()
-}
-
-// s finds a session by name across every project; Enter puts the cursor
-// on it, Esc leaves the cursor where it was.
-func TestSessionSearch(t *testing.T) {
-	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"}, state.Session{Tool: "claude", Name: "beta"})
-	d := start(t, e, 120, 32)
-	d.key("g", "s")
-	d.expect("sessions", "alpha", "beta", "demo2 · claude")
-	d.typ("bet")
-	d.key("enter") // the one match, though alpha comes first in the tree
-	d.key("d")
-	d.expect("close beta (demo2)?")
-	d.key("n")
-	d.key("s")
-	d.typ("alp")
-	d.key("esc")
-	d.key("d")
-	d.expect("close beta (demo2)?") // the cursor stayed
-	d.key("n")
 	d.quitApp()
 }

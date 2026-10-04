@@ -154,12 +154,12 @@ func branchEntry(p *project, path, repo string, w int, last bool) []kit.TreeLine
 	if p != nil && p.linked {
 		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, checkout{folder: where(path, repo), from: p.from})
 	}
-	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, checkout{label: repoRole + " · " + where(path, repo)})
+	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, checkout{})
 }
 
 // worktreeEntry is one of the repository's other checkouts under the
-// project's branch: its branch after ⑂ (○ for the repository itself), its
-// role and folder, the same counts, and the branch it was made from.
+// project's branch: its branch after ⑂ (○ for the repository itself), a
+// worktree's folder, the same counts, and the branch it was made from.
 func worktreeEntry(r row, p *project, repo string, w int, last, isProject bool) []kit.TreeLine {
 	c := checkout{folder: where(r.path, repo)}
 	switch {
@@ -178,17 +178,18 @@ func worktreeEntry(r row, p *project, repo string, w int, last, isProject bool) 
 	}
 	glyph := "⑂"
 	if r.wt.Main {
-		glyph, c.folder, c.label = "○", "", repoRole+" · "+where(r.path, repo)
+		glyph, c.folder = "○", ""
 	}
 	return checkoutEntry(p, w, last, glyph, kit.StyleDim, kit.StyleBold, c)
 }
 
 // checkout is what a checkout row says besides its branch: a worktree's
-// folder before the branch, the repository's label after it, a note (gone,
-// locked) and the branch a worktree was made from.
+// folder after the branch, a note (gone, locked) and the branch a worktree
+// was made from. The repository's own row says nothing more: the project's
+// heading above it names it.
 type checkout struct {
-	folder, label, note, from string
-	offer                     string // a key the row offers, shown when it fits
+	folder, note, from string
+	offer              string // a key the row offers, shown when it fits
 }
 
 // repoRole names the repository's own checkout, beside its branch here and
@@ -220,7 +221,7 @@ func where(path, repo string) string {
 
 // checkoutEntry is a checkout's two rows. A worktree's first row is its
 // branch, with its folder's name after it when the branch does not say it;
-// the repository's is its branch with its label beside it. The second row is ↑ ahead, ↓ behind, what changed, a note, and
+// the repository's is its branch alone. The second row is ↑ ahead, ↓ behind, what changed, a note, and
 // "from <branch>" for a worktree — that branch cut from its start to fit,
 // its end being what tells branches apart.
 func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, c checkout) []kit.TreeLine {
@@ -265,16 +266,6 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipglo
 		if left := room - text.Width(branch) - 3; left >= 6 {
 			plainTail = " · " + text.Fit(folder+"/", left)
 			tail = kit.StyleDim.Render(plainTail)
-		}
-	}
-	// The repository's label takes the rest of the row, or opens the row
-	// under it when the branch leaves too little.
-	if c.label != "" {
-		if left := room - text.Width(branch) - 3; left >= 12 {
-			plainTail = "   " + text.Fit(c.label, left)
-			tail = kit.StyleDim.Render(plainTail)
-		} else {
-			counts = append([]string{c.label}, counts...)
 		}
 	}
 	foot := "  " + strings.Join(counts, " · ")

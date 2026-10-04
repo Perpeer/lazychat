@@ -23,7 +23,7 @@ paths:
   shell, a Git row, the workspace box, the start screen — and `shift+d`
   for a project; the user asked for one key. Chat's draft is `w`
   ("write"). Keep one meaning per key: n new, e rename/edit, m move,
-  o open, d delete, s search, ? help, q quit.
+  o open, d delete, ? help, q quit.
 - Cmd+Enter reaches lazychat only as the kitty report CSI 13;9u, which the
   input router turns into `kit.CmdEnter` (Bubble Tea v1 has no Cmd);
   Terminal.app keeps the key, so every Cmd+Enter has Option+Enter beside it.
@@ -34,12 +34,11 @@ paths:
 - `i` is the shell's inbox (GlobalKeys.Inbox, App.openInbox): a finder over
   the sessions the board says wait — asks first, then done — from any list;
   a click on Lazy opens it while two or more wait, else the one as before.
-  `s` is search in every tab's list (ListKeys.Search): Chat's sessions,
-  Git's checkouts, Terminal's shells, Settings' settings, each a
-  kit.Finder with what it searches as its title; in a footer it stands
-  before `move`, else before `wheel` (the user's order). The user found
-  `/` a bad key. The workspace box's switch moved to `shift+s` for it,
-  so `s` keeps one meaning.
+  Search is `s` in Settings alone (ListKeys.Search, a kit.Finder over the
+  settings, the section beside each). A finder over sessions (`/`, then
+  `s` in every tab's list) was tried and taken out at the user's word:
+  projects and sessions are not searched. `s` is also the workspace box's
+  switch, as before: the two are never active at once.
 - A tab switch carries the project (kit.ProjectTab: CurrentProject /
   ShowProject, App.switchTo): the leaving tab's project is shown in the
   next; only the project, never the row under it. Git's ShowProject loads

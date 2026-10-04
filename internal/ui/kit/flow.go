@@ -53,8 +53,14 @@ type FlowNode struct {
 // the note keeps its room.
 const flowNameW = 20
 
-// DrawFlow draws nodes w columns wide, one row each, in their order; frame
-// turns the spinner of a busy node. A lane is open from the fork that
+// flowWrap is how many rows a node's text may take: a long prompt or a
+// step's files and commands wrap under it rather than being cut, the
+// last row ending in … past that.
+const flowWrap = 3
+
+// DrawFlow draws nodes w columns wide, in their order, one row each and up
+// to flowWrap when a node's text is longer than its room; frame turns the
+// spinner of a busy node. A lane is open from the fork that
 // starts it (or its first row, when the fork was left out above) to the
 // join that closes it (or its last row).
 func DrawFlow(nodes []FlowNode, frame, w int) []string {
@@ -92,27 +98,55 @@ func DrawFlow(nodes []FlowNode, frame, w int) []string {
 	open := func(k, i int) bool { return first[k] >= 0 && i > first[k] && i < last[k] }
 
 	laneW := lanes * 2
-	nameW, rightW := 0, 0
+	nameW := 0
 	for _, n := range nodes {
 		if n.Kind != FlowHead && n.Kind != FlowEnd && n.Kind != FlowMore {
 			nameW = max(nameW, text.Width(n.Name))
 		}
-		r := text.Width(n.Right)
-		if n.State == FlowBusy {
-			r += 2
-		}
-		rightW = max(rightW, r)
 	}
 	nameW = min(nameW, flowNameW)
-	out := make([]string, len(nodes))
+	var out []string
 	for i, n := range nodes {
-		out[i] = flowRow(n, i, lanes, open, frame, laneW, nameW, rightW, w)
+		out = append(out, flowRows(n, i, len(nodes), lanes, open, frame, laneW, nameW, w)...)
 	}
 	return out
 }
 
-// flowRow is one node's row: its lane glyphs, then its columns.
-func flowRow(n FlowNode, i, lanes int, open func(k, i int) bool, frame, laneW, nameW, rightW, w int) string {
+// wrapText is s in lines of at most room columns, flowWrap of them at
+// most, the last cut with … when more is left.
+func wrapText(s string, room int) []string {
+	if room <= 0 {
+		return []string{""}
+	}
+	lines := text.Wrap(s, room, "")
+	if len(lines) == 0 {
+		return []string{""}
+	}
+	if len(lines) > flowWrap {
+		lines = append(lines[:flowWrap-1], text.Fit(strings.Join(lines[flowWrap-1:], " "), room))
+	}
+	return lines
+}
+
+// carryLanes are the lane glyphs of a node's continuation rows: a line on
+// every lane that goes on past the node, the main lane until the end.
+func carryLanes(n FlowNode, i, count, lanes int, open func(k, i int) bool) string {
+	var b strings.Builder
+	for k := range lanes {
+		goesOn := k == 0 && i < count-1 && n.Kind != FlowEnd ||
+			k > 0 && (open(k, i) || n.Kind == FlowFork && k == n.To)
+		if goesOn {
+			b.WriteString("│ ")
+		} else {
+			b.WriteString("  ")
+		}
+	}
+	return b.String()
+}
+
+// flowRows are one node's rows: its lane glyphs, then its columns, its
+// text wrapping onto rows under it with the lanes carried down.
+func flowRows(n FlowNode, i, count, lanes int, open func(k, i int) bool, frame, laneW, nameW, w int) []string {
 	var lane strings.Builder
 	for k := range lanes {
 		glyph, link := " ", " "
@@ -175,7 +209,8 @@ func flowRow(n FlowNode, i, lanes int, open func(k, i int) bool, frame, laneW, n
 		}
 	}
 	rightCol := text.Width(right)
-	row := StyleDim.Render(lane.String())
+	carry := StyleDim.Render(carryLanes(n, i, count, lanes, open))
+	var rows []string
 	switch n.Kind {
 	case FlowHead, FlowEnd, FlowMore:
 		// One text across the columns: the prompt, the end, the count.
@@ -184,20 +219,33 @@ func flowRow(n FlowNode, i, lanes int, open func(k, i int) bool, frame, laneW, n
 			body += "  " + n.Note
 		}
 		room := max(0, w-laneW-rightCol-1)
-		row += ink(text.Pad(text.Fit(body, room), room))
+		for j, l := range wrapText(body, room) {
+			lead := carry
+			if j == 0 {
+				lead = StyleDim.Render(lane.String())
+			}
+			rows = append(rows, lead+ink(text.Pad(l, room)))
+		}
 	default:
 		room := max(0, w-laneW-nameW-1-rightCol-1)
-		row += ink(text.Pad(text.Fit(n.Name, nameW), nameW)) + " "
-		note := n.Note
-		if n.Dim {
-			note = StyleDim.Render(note)
+		for j, l := range wrapText(n.Note, room) {
+			if n.Dim {
+				l = StyleDim.Render(l)
+			}
+			if j == 0 {
+				rows = append(rows, StyleDim.Render(lane.String())+ink(text.Pad(text.Fit(n.Name, nameW), nameW))+" "+text.Pad(l, room))
+				continue
+			}
+			rows = append(rows, carry+strings.Repeat(" ", nameW+1)+text.Pad(l, room))
 		}
-		row += text.Pad(text.Fit(note, room), room)
 	}
 	if rightCol > 0 {
-		row += " " + right
+		rows[0] += " " + right
 	}
-	return text.Pad(text.Fit(row, w), w)
+	for j := range rows {
+		rows[j] = text.Pad(text.Fit(rows[j], w), w)
+	}
+	return rows
 }
 
 // between says k lies strictly between a and b, in either order.

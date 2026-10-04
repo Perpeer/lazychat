@@ -63,3 +63,51 @@ func TestDrawFlow(t *testing.T) {
 		t.Error("no nodes drew rows")
 	}
 }
+
+// A node's text longer than its room wraps onto rows under it — at most
+// flowWrap, the last cut with … — the lanes carried down beside it, the
+// right column on the first row only; every row is as wide as asked.
+func TestDrawFlowWraps(t *testing.T) {
+	nodes := []FlowNode{
+		{Kind: FlowHead, Name: "paint the garden shed blue and then the fence beside it and the gate", Right: "14:02:10"},
+		{Kind: FlowFork, To: 1, Name: "⌂ Explore", Note: "find the brushes"},
+		{Kind: FlowStep, Name: "Bash ×3", Note: "go test · go vet · git status · git log · head · grep · sed · wc · cat · ls · find · sort", Right: "+1.6k"},
+		{Kind: FlowStep, Lane: 1, Name: "Grep"},
+		{Kind: FlowJoin, From: 1, Name: "back"},
+		{Kind: FlowEnd, Name: "done · 2m10s"},
+	}
+	rows := DrawFlow(nodes, 0, 44)
+	plain := make([]string, len(rows))
+	for i, r := range rows {
+		plain[i] = ansi.Strip(r)
+		if w := ansi.StringWidth(plain[i]); w != 44 {
+			t.Errorf("row %d is %d wide: %q", i, w, plain[i])
+		}
+	}
+	all := strings.Join(plain, "\n")
+	if len(rows) <= len(nodes) || !strings.Contains(all, "gate") && !strings.Contains(all, "…") {
+		t.Fatalf("nothing wrapped:\n%s", all)
+	}
+	// The head's second row carries the main lane; the Bash step's rows
+	// carry the main lane and the open Explore lane.
+	if !strings.HasPrefix(plain[1], "│ ") || strings.Contains(plain[1], "14:02:10") {
+		t.Errorf("the head's next row:\n%s", all)
+	}
+	bash := -1
+	for i, p := range plain {
+		if strings.Contains(p, "Bash ×3") {
+			bash = i
+		}
+	}
+	if bash < 0 || !strings.HasPrefix(plain[bash+1], "│ │ ") || !strings.Contains(plain[bash], "+1.6k") || strings.Contains(plain[bash+1], "+1.6k") {
+		t.Errorf("the step's next row:\n%s", all)
+	}
+	for i, p := range plain {
+		if strings.Count(p, "\n") > 0 || i > 0 && strings.HasPrefix(p, "❯") {
+			t.Errorf("row %d: %q", i, p)
+		}
+	}
+	if n := strings.Count(all, "Bash ×3"); n != 1 {
+		t.Errorf("the name repeated %d times", n)
+	}
+}
