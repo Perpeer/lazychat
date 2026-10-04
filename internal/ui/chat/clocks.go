@@ -9,10 +9,10 @@ import (
 
 // clocks are the live sessions' last prompts, read from their tools' own
 // records off the loop, so a session's row times its prompt the way the
-// details page does. Readers are touched only by the read in flight.
+// details page does. paths and read are touched only by the read in flight.
 type clocks struct {
-	readers map[string]*usage.Reader // by session key
-	read    map[string]clockRead     // by session key, touched with readers
+	paths   map[string]string    // by session key: its transcript
+	read    map[string]clockRead // by session key
 	reading bool
 	last    map[string]*usage.Turn
 }
@@ -32,8 +32,8 @@ func (c *Chat) readClocks() tea.Cmd {
 	if k.reading {
 		return nil
 	}
-	if k.readers == nil {
-		k.readers, k.read = map[string]*usage.Reader{}, map[string]clockRead{}
+	if k.paths == nil {
+		k.paths, k.read = map[string]string{}, map[string]clockRead{}
 	}
 	type job struct{ key, id, dir string }
 	var jobs []job
@@ -53,11 +53,11 @@ func (c *Chat) readClocks() tea.Cmd {
 		return nil
 	}
 	k.reading = true
-	readers, read, core := k.readers, k.read, c.core
+	paths, read, store, core := k.paths, k.read, &c.files, c.core
 	return func() tea.Msg {
 		out := map[string]*usage.Turn{}
 		for _, j := range jobs {
-			rd, ok := readers[j.key]
+			path, ok := paths[j.key]
 			if !ok {
 				files, err := core.Transcripts([]string{j.dir}, false)
 				if err != nil {
@@ -65,27 +65,27 @@ func (c *Chat) readClocks() tea.Cmd {
 				}
 				for _, f := range files {
 					if f.ID == j.id {
-						rd = usage.Open(f.Path())
-						readers[j.key] = rd
+						path = f.Path()
+						paths[j.key] = path
 						break
 					}
 				}
-				if rd == nil {
+				if path == "" {
 					continue // its tool keeps no transcript, or none yet
 				}
 			}
-			s, _ := rd.Update()
+			s, at := store.update(path)
 			// A transcript that did not grow has the same last prompt.
-			if was, ok := read[j.key]; ok && was.at == rd.Read() {
+			if was, ok := read[j.key]; ok && was.at == at {
 				out[j.key] = was.turn
 				continue
 			}
 			var last *usage.Turn
-			if turns := s.Clone().Turns(); len(turns) > 0 {
+			if turns := s.Turns(); len(turns) > 0 {
 				last = &turns[len(turns)-1]
 				out[j.key] = last
 			}
-			read[j.key] = clockRead{at: rd.Read(), turn: last}
+			read[j.key] = clockRead{at: at, turn: last}
 		}
 		return clocksMsg{out}
 	}

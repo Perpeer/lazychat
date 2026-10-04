@@ -14,10 +14,9 @@ import (
 
 // usagePool sums what each project's sessions spent today, for the dim
 // line under the project's heading. It reads the sessions lazychat lists,
-// off the loop every usageEvery, keeping a reader per transcript so each
+// off the loop every usageEvery, through the shared transcripts so each
 // read takes only the new lines.
 type usagePool struct {
-	readers map[string]*usage.Reader
 	prices  *usage.PriceFile
 	reading bool
 	lines   map[string]string // by project name; "" or missing for none
@@ -34,14 +33,11 @@ func (c *Chat) usageTick(n int) tea.Cmd {
 	if n%usageEvery != 1 || c.use.reading {
 		return nil
 	}
-	if c.use.readers == nil {
-		c.use.readers = map[string]*usage.Reader{}
-	}
 	if c.use.prices == nil && c.core.Settings != nil && c.core.Settings.Home != "" {
 		c.use.prices = &usage.PriceFile{Path: filepath.Join(c.core.Settings.Home, "prices.json")}
 	}
 	c.use.reading = true
-	readers, prices, core := c.use.readers, c.use.prices, c.core
+	store, prices, core := &c.files, c.use.prices, c.core
 	projects := append([]state.Project(nil), core.Store.Projects...)
 	sessions := append([]state.Session(nil), core.Store.Sessions...)
 	return func() tea.Msg {
@@ -49,13 +45,13 @@ func (c *Chat) usageTick(n int) tea.Cmd {
 		if prices != nil {
 			pr, _ = prices.Load()
 		}
-		return usageMsg{lines: sumUsage(core, readers, pr, projects, sessions, time.Now())}
+		return usageMsg{lines: sumUsage(core, store, pr, projects, sessions, time.Now())}
 	}
 }
 
 // sumUsage is each project's line: its listed sessions' transcripts read,
 // today's calls summed. Runs off the loop.
-func sumUsage(core *api.Core, readers map[string]*usage.Reader, prices usage.Prices, projects []state.Project, sessions []state.Session, now time.Time) map[string]string {
+func sumUsage(core *api.Core, store *transcripts, prices usage.Prices, projects []state.Project, sessions []state.Session, now time.Time) map[string]string {
 	out := map[string]string{}
 	for _, p := range projects {
 		ids := map[string]bool{}
@@ -76,12 +72,7 @@ func sumUsage(core *api.Core, readers map[string]*usage.Reader, prices usage.Pri
 			if !ids[f.ID] {
 				continue
 			}
-			rd, ok := readers[f.Path()]
-			if !ok {
-				rd = usage.Open(f.Path())
-				readers[f.Path()] = rd
-			}
-			s, _ := rd.Update()
+			s, _ := store.update(f.Path())
 			all = append(all, s)
 		}
 		if line := todayLine(all, prices, now); line != "" {

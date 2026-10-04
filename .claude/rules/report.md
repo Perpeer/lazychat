@@ -117,10 +117,14 @@ paths:
   (under ~/.claude/plugins plugin, under ~/.claude user, else project; no
   folder built-in). An agent is ★ when `<type>.md` is in the project's or
   ~/.claude/agents, or its type is plugin:name.
-- The read runs off the loop, one at a time; readers live only in that
-  goroutine and the screen keeps Clones (Uses copied too). Every second
-  while the report shows, and at once when the cursor moves to another
-  session; an answer for a session no longer under the cursor is dropped.
+- The read runs off the loop, one at a time, and the screen keeps Clones
+  (Uses copied too). Every second while the report shows, and at once
+  when the cursor moves to another session; an answer for a session no
+  longer under the cursor is dropped. One Reader per transcript, shared
+  (chat/transcripts.go): the report, the clocks (a live session's last
+  prompt) and the per-project sums each read in a goroutine of their
+  own, so a reader is used under its lock and every caller takes a clone;
+  before, a transcript open in all three was parsed and held three times.
 - Tests use invented transcripts (the repository is public): made-up skills,
   servers and agents.
 - Token kinds keep a glyph beside their Okabe–Ito colour

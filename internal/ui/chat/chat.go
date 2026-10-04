@@ -43,6 +43,7 @@ type Chat struct {
 	clocks   clocks
 	beat     int // the shell's fast beat, turning the flow's spinners
 	use      usagePool
+	files    transcripts // the transcripts the report, the clocks and the sums read
 	repFocus bool
 }
 

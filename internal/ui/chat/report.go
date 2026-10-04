@@ -26,12 +26,11 @@ type target struct {
 	dir, id, name string
 }
 
-// report is the second tab's state; readers are touched only by the read
-// running off the loop, one at a time, and the screen keeps a clone.
+// report is the second tab's state; the transcript is read off the loop,
+// one read at a time, and the screen keeps a clone.
 type report struct {
 	shown     bool
-	readers   map[string]*usage.Reader
-	priceFile *usage.PriceFile // read in the same goroutine as readers
+	priceFile *usage.PriceFile // read in the read's goroutine
 	reading   bool
 	read      bool
 	shownFor  target // what the last read was for
@@ -115,14 +114,11 @@ func (c *Chat) readReport() tea.Cmd {
 	if t != r.shownFor {
 		r.read, r.s, r.scroll, r.back = false, nil, 0, 0
 	}
-	if r.readers == nil {
-		r.readers = map[string]*usage.Reader{}
-	}
 	if r.priceFile == nil && c.core.Settings != nil && c.core.Settings.Home != "" {
 		r.priceFile = &usage.PriceFile{Path: filepath.Join(c.core.Settings.Home, "prices.json")}
 	}
 	r.reading = true
-	readers, prices, core := r.readers, r.priceFile, c.core
+	store, prices, core := &c.files, r.priceFile, c.core
 	return func() tea.Msg {
 		msg := reportMsg{shownFor: t}
 		if prices != nil {
@@ -141,13 +137,8 @@ func (c *Chat) readReport() tea.Cmd {
 			if t.id != "" && f.ID != t.id {
 				continue
 			}
-			rd, ok := readers[f.Path()]
-			if !ok {
-				rd = usage.Open(f.Path())
-				readers[f.Path()] = rd
-			}
-			s, _ := rd.Update() // a file gone since the listing keeps what was read
-			msg.s, msg.path = s.Clone(), f.Path()
+			msg.s, _ = store.update(f.Path())
+			msg.path = f.Path()
 			msg.page = derive(msg.s, msg.prices)
 			break
 		}
