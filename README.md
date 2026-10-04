@@ -135,22 +135,6 @@ do.
 terminal: (enter) continue · (n) new · (e) rename · (v) copy · (d) close
 ```
 
-### Lazy, the mascot
-
-Lazy sits on the side rail and watches every session. It types while an
-agent works, holds up a `?` when one asks you something, and celebrates
-when one is done. Click it to jump to the session that needs you. When your
-terminal is in the background you get a desktop notification, and Lazy
-also lives in the menu bar. If it saves you time,
-[sponsor Lazy](#sponsor-lazy).
-
-```
-╭────╮  ╭────╮  ╭───?╮  ╭─✦──╮
-│ ^^ │  │ •◦ │  │ oO │  │✦^^✦│
-╰────╯  ╰┬┬──╯  ╰────╯  ╰────╯
- rest   [▫▪▫▫]   asks    done
-```
-
 Settings holds the theme, which tabs show and which agent writes your
 commit messages. Every key and screen is in the
 [reference](docs/REFERENCE.md).
