@@ -13,13 +13,15 @@ import (
 	"lazychat/internal/ui/text"
 )
 
-// chatTabs are the right side's two tabs, the chat's title first.
-func (c *Chat) chatTabs(chatTitle string) string {
+// chatTabs are the right side's two tabs, named for what they hold
+// whatever the session is called — the tree already names it — the
+// session's with its pane's state when there is one.
+func (c *Chat) chatTabs(state string) string {
 	active := 0
 	if c.rep.shown {
 		active = 1
 	}
-	return kit.TabTitle("ctab", []string{kit.PanelTitle(2, chatTitle), kit.PanelTitle(3, "report")}, active)
+	return kit.TabTitle("ctab", []string{kit.PanelTitle(2, strings.TrimSuffix("session · "+state, " · ")), kit.PanelTitle(3, "details")}, active)
 }
 
 // tokenLabels name the four kinds as the charts stack them, cheapest first.
@@ -51,13 +53,13 @@ func num(n int64) string {
 }
 
 // reportBox is the report on the right, w by h.
-func (c *Chat) reportBox(chatTitle string, w, h int) string {
+func (c *Chat) reportBox(w, h int) string {
 	inner, rows := w-2, h-2
 	r := &c.rep
 	var lines []string
 	switch {
 	case r.shownFor.id == "?":
-		lines = []string{"", kit.StyleDim.Render(" Claude Code has not said this session's id yet: its report shows once it has.")}
+		lines = []string{"", kit.StyleDim.Render(" Claude Code has not said this session's id yet: its details show once it has.")}
 	case !r.read:
 		lines = []string{"", kit.StyleDim.Render(" reading the session's transcript…")}
 	case r.s == nil:
@@ -69,7 +71,7 @@ func (c *Chat) reportBox(chatTitle string, w, h int) string {
 	default:
 		lines = c.pageView(r.s, inner)
 	}
-	return kit.Box(c.chatTabs(chatTitle), scrolled(lines, &r.scroll, rows), w, h, c.repFocus, false)
+	return kit.Box(c.chatTabs(""), scrolled(lines, &r.scroll, rows), w, h, c.repFocus, false)
 }
 
 // scrolled is lines from the scroll offset, the offset kept in range.
@@ -118,7 +120,7 @@ func (c *Chat) pageView(s *usage.Session, w int) []string {
 		if i == picked {
 			mark = "▶ "
 		}
-		row := fmt.Sprintf(" %s %-3d %-11s %-8s %7s %8s %7s  %s", mark, i+1, tn.Time.Local().Format("01-02 15:04"), end, text.Span(activeTime(tn, i == last, working, now)), num(tn.Tokens.Sum()), num(tn.Tokens.Output), tn.Text)
+		row := fmt.Sprintf(" %s %-3d %-11s %-8s %7s %8s %7s  %s", mark, i+1, tn.Time.Local().Format("01-02 15:04"), end, text.Span(tn.Took(now, i == last && working)), num(tn.Tokens.Sum()), num(tn.Tokens.Output), tn.Text)
 		row = text.Fit(row, w)
 		if i == picked {
 			row = kit.StyleAccent.Render(row)
@@ -147,17 +149,6 @@ func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 	return "–", false
 }
 
-// activeTime is a turn's time without its questions' waits.
-func activeTime(t usage.Turn, newest, working bool, now time.Time) time.Duration {
-	if !t.Ended() && !(newest && working) {
-		t.End = t.Last
-		if t.End.IsZero() {
-			t.End = t.Time
-		}
-	}
-	return t.Active(now)
-}
-
 // promptView is one prompt in full.
 func (c *Chat) promptView(s *usage.Session, turns []usage.Turn, i int, working bool, now time.Time, w int) []string {
 	t := turns[i]
@@ -171,7 +162,7 @@ func (c *Chat) promptView(s *usage.Session, turns []usage.Turn, i int, working b
 		}
 		waited += to.Sub(wt.From)
 	}
-	note := t.Time.Local().Format("15:04:05") + " → " + end + " · " + text.Span(activeTime(t, newest, working, now)) + " active"
+	note := t.Time.Local().Format("15:04:05") + " → " + end + " · " + text.Span(t.Took(now, newest && working)) + " active"
 	if waited > 0 {
 		note += fmt.Sprintf(" · %s waiting for your answer, left out (%d question(s))", text.Span(waited), len(t.Waits))
 	}

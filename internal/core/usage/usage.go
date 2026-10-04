@@ -179,6 +179,19 @@ func (t Turn) Active(now time.Time) time.Duration {
 	return max(0, d)
 }
 
+// Took is the turn's active time as the report and the session rows show
+// it: running, until now; else until its end, or for one whose end was
+// never written (an interrupted answer), its last call.
+func (t Turn) Took(now time.Time, running bool) time.Duration {
+	if !t.Ended() && !running {
+		t.End = t.Last
+		if t.End.IsZero() {
+			t.End = t.Time
+		}
+	}
+	return t.Active(now)
+}
+
 // Turns is the session's prompts with what each took, in order.
 func (s *Session) Turns() []Turn {
 	out := make([]Turn, len(s.Prompts))

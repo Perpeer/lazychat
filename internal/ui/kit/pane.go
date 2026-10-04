@@ -50,23 +50,35 @@ func (p *TermPane) Title() string {
 	if p.Session == nil {
 		return "session"
 	}
-	state := "running"
+	t := p.Session.Project + " · " + p.Session.Name
+	if s := p.State(); s != "" {
+		return t + " · " + s
+	}
+	return t + " · running"
+}
+
+// State is what the title says of the pane beyond whose it is: ended,
+// copying, scrolled back; "" while it runs at the bottom.
+func (p *TermPane) State() string {
+	if p.Session == nil {
+		return ""
+	}
+	var parts []string
 	if done, err := p.Session.Exit(); done {
-		state = "ended"
+		parts = append(parts, "ended")
 		if err != nil {
-			state = "ended · " + err.Error()
+			parts = append(parts, err.Error())
 		}
 	}
-	t := p.Session.Project + " · " + p.Session.Name + " · " + state
 	if p.Sel.Active {
-		t += " · copy"
+		parts = append(parts, "copy")
 	} else if p.Drag.Active && p.Drag.copied > 0 {
-		t += fmt.Sprintf(" · copied %d", p.Drag.copied)
+		parts = append(parts, fmt.Sprintf("copied %d", p.Drag.copied))
 	} else if !p.Live {
 		_, rows := p.Session.Size()
-		t += fmt.Sprintf(" · ↑ %d", max(0, p.Session.Total()-rows-p.Top))
+		parts = append(parts, fmt.Sprintf("↑ %d", max(0, p.Session.Total()-rows-p.Top)))
 	}
-	return t
+	return strings.Join(parts, " · ")
 }
 
 // Scroll moves the window by n rows (negative is up, into the history) and

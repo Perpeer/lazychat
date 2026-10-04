@@ -162,11 +162,14 @@ func (c *Chat) reportFollow() tea.Cmd {
 	return nil
 }
 
-// working says the shown session is at work now: lazychat's board says so
-// for one of its own, else its transcript or an agent moved lately.
+// working says the shown session is at work now: lazychat's board for one
+// it runs — so the page and the session's row agree — else its transcript
+// or an agent moved lately.
 func (c *Chat) working(s *usage.Session, now time.Time) bool {
-	if r, ok := c.core.Store.SessionByID(s.ID); ok && c.board.Working(r.Key) {
-		return true
+	if r, ok := c.core.Store.SessionByID(s.ID); ok {
+		if p, live := c.act.Live.Get(r.Key); live && p.Alive() {
+			return c.board.Working(r.Key)
+		}
 	}
 	return now.Sub(s.Last) <= liveWithin || len(s.Running(now, liveWithin)) > 0
 }

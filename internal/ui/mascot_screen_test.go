@@ -82,7 +82,7 @@ func TestMascot(t *testing.T) {
 
 	d.tab(3) // from another tab
 	d.mouse(tea.MouseMsg{X: 2, Y: wsRows + 1, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
-	d.expect("demo2 · ivy · running", "(ctrl+q) back to lazychat")
+	d.expect("-n ivy", "(ctrl+q) back to lazychat")
 	// Looked at, ivy stops calling: the party ends.
 	d.raw("work\r") // and a new turn, which it finishes while no one looks
 	d.leave()
@@ -91,13 +91,13 @@ func TestMascot(t *testing.T) {
 	// From inside another session, whose pane has the keys and the mouse.
 	d.session("oak", "")
 	d.key("enter")
-	d.expect("demo2 · oak · running", "ivy waits")
+	d.expect("-n oak", "ivy waits")
 	d.focus.mu.Lock()
 	mouse := d.focus.mouse
 	d.focus.mu.Unlock()
 	mouse(0, 3, wsRows+2, false) // one-based, as the terminal reports it
 	mouse(0, 3, wsRows+2, true)
-	d.expect("demo2 · ivy · running", "(ctrl+q) back to lazychat")
+	d.expect("-n ivy", "(ctrl+q) back to lazychat")
 	d.leave()
 	d.until("ivy still calls once it was looked at", func() bool { return !strings.Contains(d.screen(), "ivy waits") })
 	d.until("the party went on once ivy was looked at", func() bool { return !strings.Contains(d.mascot(), "✦") })
@@ -123,7 +123,7 @@ func TestMascotQuestions(t *testing.T) {
 
 	d.selectSession("oak")
 	d.key("enter")
-	d.expect("demo2 · oak · running", "(ctrl+q) back to lazychat")
+	d.expect("-n oak", "(ctrl+q) back to lazychat")
 	d.holds(1500*time.Millisecond, "the question ended once oak was open", asks)
 	d.raw("work\r") // the answer
 	d.until("the question stayed once it was answered", func() bool { return !asks() && !strings.Contains(d.screen(), "oak asks") })
@@ -267,7 +267,7 @@ func TestMascotTwoSessions(t *testing.T) {
 
 	d.selectSession("ivy")
 	d.key("enter")
-	d.expect("demo2 · ivy · running", "(ctrl+q) back to lazychat")
+	d.expect("-n ivy", "(ctrl+q) back to lazychat")
 	d.leave()
 	d.holds(1200*time.Millisecond, "ivy, looked at, does not keep a steady ✓", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 	d.until("oak stopped blinking", func() bool { return !strings.Contains(d.screen(), "✓ oak") })
@@ -289,7 +289,7 @@ func TestMascotTwoSessions(t *testing.T) {
 
 	// The mascot's click goes to oak, the one not looked at.
 	d.mouse(tea.MouseMsg{X: 2, Y: wsRows + 1, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
-	d.expect("demo2 · oak · running", "(ctrl+q) back to lazychat")
+	d.expect("-n oak", "(ctrl+q) back to lazychat")
 	d.leave()
 	d.until("oak's news went on once it was looked at", func() bool { return !strings.Contains(d.screen(), "oak waits") })
 

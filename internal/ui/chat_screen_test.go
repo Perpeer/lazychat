@@ -22,7 +22,7 @@ func TestChatFlow(t *testing.T) {
 	e := newEnv(t)
 	dir := project(t, e)
 	d := start(t, e, 120, 32)
-	d.expect("[1] projects", "[2] session │ [3] report", "none yet", "no session shown")
+	d.expect("[1] projects", "[2] session │ [3] details", "none yet", "no session shown")
 	d.expectCount(0, 0)
 	d.expect("AI tools", "● claude  9.9.9", "● codex   9.9.9")
 
@@ -71,7 +71,7 @@ func TestChatFlow(t *testing.T) {
 	d.key("tab", "tab")
 	d.typ("ivy")
 	d.key("enter")
-	d.expect("[1] projects", "ivy", "FAKE CLAUDE READY", "demo2 · ivy · running")
+	d.expect("[1] projects", "ivy", "FAKE CLAUDE READY", "-n ivy", "[2] session │")
 	d.expectSessions(2)
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("hello\r")
@@ -83,12 +83,14 @@ func TestChatFlow(t *testing.T) {
 	d.key("n")
 
 	d.key("j")
-	d.expect("demo2 · session ")
-	d.key("2") // panel 2, the session on the right, takes the keys as Enter does
-	d.expect("[2] demo2 · session ", "(ctrl+q) back to lazychat")
+	d.expect("[2] session │")
+	d.key("2") // panel 2, the session on the right, is chosen: the keys stay here
+	d.expect("session: (enter) go in · (esc) back")
+	d.key("enter")
+	d.expect("(ctrl+q) back to lazychat")
 	d.leave()
 	d.key("g") // the first session, over the heading
-	d.expect("demo2 · ivy · running")
+	d.expect("-n ivy")
 	d.key("enter")
 	d.expect("(ctrl+q) back to lazychat")
 	d.leave()
@@ -154,7 +156,7 @@ func TestNarrow(t *testing.T) {
 	d := start(t, e, 70, 20)
 	d.expect("[1] projects", "TASK-9 old session")
 	d.expectCount(1, 1)
-	d.expectNot("[3] report")
+	d.expectNot("[3] details")
 	d.key("n", "tab", "tab", "enter")
 	d.expect("FAKE CLAUDE READY")
 	d.leave()
@@ -269,7 +271,7 @@ func TestMoves(t *testing.T) {
 	order(d, "│ demo2 ", "alpha", "beta", "│ second ", "gamma")
 	d.selectSession("beta")
 	d.key("K", "J", "ctrl+k", "ctrl+j") // m is the one way to move: these do nothing
-	d.key("1", "2")                     // and digits pick no project: the cursor stays on beta
+	d.key("1", "2", "esc")              // and digits pick no project: the cursor stays on beta
 	d.expect("(enter) continue · (n) new")
 	order(d, "│ demo2 ", "alpha", "beta", "│ second ", "gamma")
 	d.key("M", "j", "enter") // M carries beta's project, demo2, below second

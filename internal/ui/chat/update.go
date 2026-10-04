@@ -32,7 +32,11 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		}
 		c.act.LearnIDs()
 		c.watchSessions()
-		return c.reportTick(msg.N)
+		var clock tea.Cmd
+		if msg.N%2 == 0 {
+			clock = c.readClocks()
+		}
+		return tea.Batch(c.reportTick(msg.N), clock)
 	case termMsg:
 		c.act.Live.AckAll()
 		c.act.Reap()
@@ -42,6 +46,8 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		c.draftSent(msg)
 	case reportMsg:
 		return c.reported(msg)
+	case clocksMsg:
+		c.clocked(msg)
 	case kit.CmdEnter:
 		if c.drafting {
 			return c.sendDraft()
@@ -135,10 +141,11 @@ func (c *Chat) followCursor() {
 }
 
 // toList is panel 1, the tree: the keys were already there.
-func (c *Chat) toList() { c.fullTerm = false }
+func (c *Chat) toList() { c.fullTerm, c.paneSel = false, false }
 
 // toPanel gives the keys to panel p: 1 the tree, 2 the session on the
-// right, which Enter opens.
+// right, lit but not entered — Enter goes in, so a number never lands the
+// keys in a prompt — 3 the details.
 func (c *Chat) toPanel(p int) tea.Cmd {
 	switch p {
 	case 1:
@@ -146,20 +153,18 @@ func (c *Chat) toPanel(p int) tea.Cmd {
 		c.toList()
 		return nil
 	case 3:
-		c.repFocus = true
+		c.repFocus, c.paneSel = true, false
 		return c.showReport()
 	}
 	if c.rep.shown {
-		// The chat comes back first; a second 2 goes into the session.
 		c.showChat()
 		c.repFocus = false
-		return nil
 	}
 	if c.tree.OnProject() {
 		c.Note("a session takes the keys: this project has none")
 		return nil
 	}
-	c.enter()
+	c.paneSel, c.fullTerm = true, true
 	return nil
 }
 
@@ -168,6 +173,7 @@ func (c *Chat) enter() {
 	if c.capture.Held() {
 		return
 	}
+	c.paneSel = false
 	if r, ok := c.tree.Session(); ok {
 		c.act.Open(r)
 	}
@@ -209,8 +215,12 @@ func (c *Chat) cursorProject() string {
 // a running session's pane gives it the keys, unless the pane shows a
 // project, which takes no keys.
 func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
-	if kit.LeftClick(msg) && c.tabClick(msg) {
-		return nil
+	if kit.LeftClick(msg) {
+		// A click is aimed: it goes where it lands, past a selected pane.
+		c.paneSel = false
+		if c.tabClick(msg) {
+			return nil
+		}
 	}
 	hit := hits.At(msg, len(c.tree.Sessions()), len(c.core.Store.Projects))
 	if c.rep.shown {

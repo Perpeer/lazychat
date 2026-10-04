@@ -10,8 +10,10 @@ paths:
 
 - Chat's right side has two tabs in the box's top border (kit.TabTitle,
   zones `ctab-N`), not a row of their own: a row would shrink the pty and
-  claude redraws on a resize. 3 is the report, 2 the chat; the draft box
-  has no number since.
+  claude redraws on a resize. `[2] session` (with the pane's state:
+  ended, copy, ↑ N; never the names, the tree has them) and `[3] details`
+  — the user's words; the code still says report. The draft box has no
+  number.
 - Usage is Claude's capability (agent.UsageReader, api.Core.Transcripts);
   codex gets one later without touching the report.
 - core/usage reads transcripts line by line and follows them by offset

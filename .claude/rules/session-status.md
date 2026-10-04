@@ -49,9 +49,13 @@ it from there.
   user. The two orders differ on purpose.
 - Cheer: a session finishing while others work parties for `CheerTime`
   (2 s), then the mascot types on.
-- The turn timer counts from a prompt, holds while a question is up, and
-  stops when done; it lives in the board because it is driven by the same
-  ticks.
+- The turn timer is the last prompt's time as the details page counts it
+  (usage.Turn.Took): a tool that records prompts gives its last one as
+  `Signals.Last`, read off the loop (chat/clocks.go), and the board keeps
+  only running / held / done; the user saw the two disagree. A tool with
+  no record (codex) keeps the board's own clock: from a prompt, held while
+  a question is up, stopped when done. For a session lazychat runs, the
+  page's "working" is the board's, so both count the same way.
 
 ## The Swift mirror
 

@@ -124,7 +124,11 @@ func TestGitTab(t *testing.T) {
 	d.expect("(esc) projects · (v) select · (y) copy")
 	d.key("esc")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
-	d.key("3", "6")
+	d.key("3", "6") // 6 only chooses the box: digits and keys stay lazychat's
+	d.expect("(enter) write · (esc) projects")
+	d.key("esc")
+	d.expect("(c) commit · (p) pull")
+	d.key("3", "6", "enter")
 	d.expect("(ctrl+s) commit · (ctrl+n) suggest · (Tab) next · (esc) projects")
 	d.key("esc")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")

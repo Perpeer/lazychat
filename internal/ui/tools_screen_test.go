@@ -37,7 +37,7 @@ func TestNewToolEverywhere(t *testing.T) {
 	d.key("tab")
 	d.typ("hello")
 	d.key("enter")
-	d.expect("demo2 · hello · running")
+	d.expect("[2] session", "(ctrl+q) back to lazychat")
 	d.leave()
 	// The session's row names its tool; no time yet, as nothing was asked.
 	d.until("no echo row under the session", func() bool { return regexp.MustCompile(`│ +echo( •)? +│`).MatchString(d.screen()) })

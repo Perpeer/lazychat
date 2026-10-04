@@ -15,7 +15,7 @@ var act = kit.Act[*Git]
 // The tables per column: the branch under the cursor in the projects, its
 // project's own row under it, the changes, and move mode. Each is a footer
 // row, in its order, and nothing else works but moving the cursor.
-var branchKeys, worktreeRowKeys, projectKeys, emptyKeys, changeKeys, commitsKeys, diffKeys, moveKeys, commitKeys []binding
+var branchKeys, worktreeRowKeys, projectKeys, emptyKeys, changeKeys, commitsKeys, diffKeys, moveKeys, commitKeys, commitSelKeys []binding
 
 func init() {
 	keyRefresh := binding{Keys: []string{"r"}, Hint: kit.Hint{Key: "r", Does: "refresh"}, Help: "read the project's changes and the diff again now; they are read every few seconds anyway while the tab is on screen", Run: func(g *Git) tea.Cmd { return tea.Batch(g.loadCursor(), g.loadDiff()) }}
@@ -30,7 +30,7 @@ func init() {
 		{Keys: []string{"pgup"}, Name: "PgUp PgDn", Help: "scroll the diff half a page, Fn+↑↓ on a MacBook", Run: act(func(g *Git) { g.scrollDiff(-g.diffRows() / 2) })},
 		{Keys: []string{"pgdown"}, Run: act(func(g *Git) { g.scrollDiff(g.diffRows() / 2) })},
 	}
-	keyCommit := binding{Keys: []string{"c"}, Hint: kit.Hint{Key: "c", Does: "commit"}, Help: "write the commit's subject and description in the box under the diff, as 5 does; Tab walks to the Commit button", Run: act(func(g *Git) { g.startCommit() })}
+	keyCommit := binding{Keys: []string{"c"}, Hint: kit.Hint{Key: "c", Does: "commit"}, Help: "write the commit's subject and description in the box under the diff, as 6 and Enter do; Tab walks to the Commit button", Run: act(func(g *Git) { g.startCommit() })}
 	keyBranch := binding{Keys: []string{"b"}, Hint: kit.Hint{Key: "b", Does: "branches"}, Help: "the branch list: local, then remote branches, newest first, each noted where it is out (● this folder, main folder, ⑂ a worktree), the remotes fetched as it opens. Enter on a branch out in another folder takes the cursor to that folder's row — a worktree is a folder, never a checkout; on the main folder Enter switches to one that is out nowhere (a remote one as a local branch tracking it), and a name no branch has offers a new branch from the row's. A worktree keeps its branch: on its row nothing is switched or made here — w makes a worktree; d on a row deletes", Run: func(g *Git) tea.Cmd { return g.openBranches() }}
 	keyWorktree := binding{Keys: []string{"w"}, Hint: kit.Hint{Key: "w", Does: "worktrees"}, Help: "the worktree list: the repository's other worktrees. Enter goes to one's row; a new name makes a worktree on a branch of that name from the row's branch, in .worktrees/, opened as a project — with nothing typed another of the row's branch, its name suggested; d on a worktree's row removes it", Run: func(g *Git) tea.Cmd { return g.openWorktrees() }}
 	keyDelete := binding{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "delete"}, Help: "delete what the row is, asked: on a worktree's row the worktree with its folder, its project and the project's saved sessions and shells (asked again when it has changes; refused while a session of it runs; its branch stays); on the project's own row the branch it is on — the checkout switches to the default branch first, which itself is never deleted; commits not merged there are asked again, and a branch tracking a remote one then offers that one, asked twice since it goes for everyone", Run: act(func(g *Git) { g.deleteRow() })}
@@ -119,6 +119,11 @@ func init() {
 		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as ctrl+q; what is typed stays", Run: act(func(g *Git) { g.goTo(panelProjects) })},
 		keyBack,
 	}
+	commitSelKeys = append([]binding{
+		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "write"}, Help: "into the commit box: the subject takes the keys, Esc comes back", Run: act(func(g *Git) { g.startCommit() })},
+		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as from the box's fields", Run: act(func(g *Git) { g.goTo(panelProjects) })},
+		keyHelp, keyQuit, keyBack,
+	}, panelKeys()...)
 	moveKeys = append(kit.ReorderKeys(func(g *Git, d int) { g.carry(d) }, func(g *Git) { g.moving = false }),
 		binding{Keys: []string{"esc"}, Run: act(func(g *Git) { g.moving = false })})
 }
@@ -127,6 +132,8 @@ func init() {
 // column's own and, on a branch, its project's.
 func (g *Git) tables() (top, below []binding) {
 	switch {
+	case g.commitSel:
+		return commitSelKeys, nil
 	case g.focus == panelCommit:
 		return commitKeys, nil
 	case g.moving:
@@ -154,6 +161,8 @@ func (g *Git) bindings() []binding {
 func (g *Git) Lead() string {
 	top, below := g.tables()
 	switch {
+	case g.commitSel:
+		return "commit"
 	case below != nil:
 		return "branch"
 	case len(top) > 0 && top[0].Hint == emptyKeys[0].Hint:
@@ -176,7 +185,7 @@ func (g *Git) cursorProject() string {
 }
 
 func (g *Git) Key(msg tea.KeyMsg) tea.Cmd {
-	if g.focus == panelCommit {
+	if g.Typing() {
 		return g.commitKey(msg)
 	}
 	return kit.Dispatch(g.bindings(), msg.String(), g)
@@ -197,6 +206,7 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("A worktree's row, besides", worktreeRowKeys[4:5])...)
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
+	lines = append(lines, kit.HelpSection("Commit box chosen", commitSelKeys[:2])...)
 	lines = append(lines, kit.HelpSection("Changes", changeKeys)...)
 	lines = append(lines, kit.HelpSection("Commits", commitsKeys)...)
 	lines = append(lines, kit.HelpSection("Diff", diffKeys)...)

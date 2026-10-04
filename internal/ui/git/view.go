@@ -62,7 +62,7 @@ func (g *Git) View() string {
 	}
 	right := hits.Panel(int(panelDiff), g.diffBox(dw, g.diffH()))
 	if g.boxShown() {
-		right += "\n" + hits.Panel(int(panelCommit), g.box().View(panelCommit.title("commit"), dw, g.focus == panelCommit, g.box().Enabled(g.staged()), g.tick%2 == 0))
+		right += "\n" + hits.Panel(int(panelCommit), g.box().View(panelCommit.title("commit"), dw, g.Typing(), g.commitSel, g.box().Enabled(g.staged()), g.tick%2 == 0))
 	}
 	parts = append(parts, right)
 	return kit.JoinHorizontal(parts...)

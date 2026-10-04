@@ -42,12 +42,12 @@ var (
 // reads them all.
 var sessionKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, draftKeys []binding
 
-// The report's table.
-var pageKeys []binding
+// The report's table, and panel 2's while chosen but not entered.
+var pageKeys, paneKeys []binding
 
 func init() {
 	moves := []binding{keyUp, keyDown, keyFirst, keyLast, keyBack, keyPageUp, keyPageDn}
-	moves = append(moves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session shown on the right, as Enter, 3 the report: what each prompt of the Claude session spent, and on what")...)
+	moves = append(moves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session on the right, chosen — Enter goes in — 3 the details: what each prompt of the Claude session spent, and on what")...)
 	// Each table is the footer, in its order: everything that can be done
 	// there, and nothing else but moving the cursor.
 	sessionKeys = append([]binding{
@@ -83,12 +83,17 @@ func init() {
 	}
 	keyReportBack := binding{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the chat", Run: act(func(c *Chat) { c.reportBack() })}
 	pageKeys = append([]binding{
-		{Keys: []string{"up", "k"}, Hint: kit.Hint{Key: "↑↓", Does: "pick prompt"}, Help: "pick the prompt shown in full under the list: up to a newer one, down to an older one; on the newest the report follows the next prompt", Run: act(func(c *Chat) { c.pickPrompt(-1) })},
+		{Keys: []string{"up", "k"}, Hint: kit.Hint{Key: "↑↓", Does: "pick prompt"}, Help: "pick the prompt shown in full under the list: up to a newer one, down to an older one; on the newest the page follows the next prompt", Run: act(func(c *Chat) { c.pickPrompt(-1) })},
 		{Keys: []string{"down", "j"}, Run: act(func(c *Chat) { c.pickPrompt(1) })},
 		{Keys: []string{"pgup"}, Name: "PgUp PgDn", Help: "scroll the page; the wheel too", Run: act(func(c *Chat) { c.rep.scroll -= 10 })},
 		{Keys: []string{"pgdown"}, Run: act(func(c *Chat) { c.rep.scroll += 10 })},
 		keyReportBack, keyHelp, keyQuit,
-	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the chat, 3 the report")...)
+	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session, 3 the details")...)
+	paneKeys = append([]binding{
+		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "go in"}, Help: "into the session: its terminal takes the keys, " + leaveLabel + " comes back; an ended one is resumed", Run: act(func(c *Chat) { c.enter() })},
+		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the tree", Run: act(func(c *Chat) { c.toList() })},
+		keyPageUp, keyPageDn, keyHelp, keyQuit, keyBack,
+	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session, 3 the details")...)
 	termKeys = []binding{
 		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the tree, in every terminal; the session runs on, and Esc is claude's, which stops its answer"},
 		{Hint: kit.Hint{Key: "click", Does: "the tree: back there"}, Help: "a click beside the pane leaves the terminal and puts the cursor on the session clicked"},
@@ -108,6 +113,8 @@ func (c *Chat) tables() (top, below []binding) {
 		return termKeys, nil
 	case c.rep.shown && c.repFocus:
 		return pageKeys, nil
+	case c.paneSel:
+		return paneKeys, nil
 	case c.tree.Moving:
 		return moveKeys, nil
 	case onSession:
@@ -136,7 +143,9 @@ func (c *Chat) Lead() string {
 	top, below := c.tables()
 	switch {
 	case c.rep.shown && c.repFocus && !c.capture.Held():
-		return "report"
+		return "details"
+	case c.paneSel && !c.capture.Held():
+		return "session"
 	case below != nil:
 		return "session"
 	case len(top) > 0 && top[0].Hint == keyAdd.Hint:
@@ -162,8 +171,9 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
 	lines = append(lines, kit.HelpSection("Terminal", termKeys)...)
+	lines = append(lines, kit.HelpSection("Session chosen", paneKeys)...)
 	lines = append(lines, kit.HelpSection("Draft", draftKeys)...)
-	lines = append(lines, kit.HelpSection("Report", pageKeys)...)
+	lines = append(lines, kit.HelpSection("Details", pageKeys)...)
 	lines = append(lines, kit.HelpSection("Move mode", moveKeys)...)
 	lines = append(lines, kit.WorkspaceHelp...)
 	return strings.Join(append(lines, "Status     spinner running · ○ saved · • shown in the pane"), "\n")

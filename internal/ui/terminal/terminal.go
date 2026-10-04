@@ -30,6 +30,9 @@ type Terminal struct {
 	rect     kit.Rect
 	tick     int
 	fullTerm bool // narrow terminal: only the pane is shown
+	// paneSel is panel 2 chosen by its number: lit, the keys still
+	// lazychat's until Enter.
+	paneSel bool
 
 	act     *actions.Actions
 	tree    *model.Tree

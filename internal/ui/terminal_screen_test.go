@@ -51,8 +51,11 @@ func TestTerminalTab(t *testing.T) {
 	d.expect("closed server", "1 running")
 	d.expectNot("─ ◐ server")
 
-	d.key("enter") // the cursor went on to sh 1, the headings take none
-
+	d.key("2") // the cursor went on to sh 1; 2 only chooses its pane
+	d.expect("terminal: (enter) go in · (esc) back")
+	d.key("esc")
+	d.expect("(enter) continue · (n) new")
+	d.key("2", "enter")
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("exit\r")
 	d.expect("demo2 · terminals (0)", "└─ no terminals yet")

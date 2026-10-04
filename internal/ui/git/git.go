@@ -118,12 +118,15 @@ type Git struct {
 	projects kit.List // the cursor over the projects
 	changes  kit.List // the cursor over the selectable changes
 	commits  kit.List // the cursor over the row's last commits
-	focus    panel    // what has the keys
-	back     panel    // the list the diff or the commit box took the keys from
-	moving   bool     // a project is picked up (m)
-	tick     int
-	shown    bool // on screen since the last Blur
-	primed   bool // every project's status was asked for once
+	// commitSel is the commit box chosen by its number: lit, typed into
+	// only after Enter.
+	commitSel bool
+	focus     panel // what has the keys
+	back      panel // the list the diff or the commit box took the keys from
+	moving    bool  // a project is picked up (m)
+	tick      int
+	shown     bool // on screen since the last Blur
+	primed    bool // every project's status was asked for once
 
 	branches *branchPopup // the branch finder while it is open
 	wantPath string       // a folder whose row takes the cursor once it is listed
@@ -151,7 +154,7 @@ func New(core *api.Core, screen kit.Screen) *Git {
 
 func (g *Git) Name() string       { return "git" }
 func (g *Git) Resize(r kit.Rect)  { g.rect = r }
-func (g *Git) Typing() bool       { return g.focus == panelCommit }
+func (g *Git) Typing() bool       { return g.focus == panelCommit && !g.commitSel }
 func (g *Git) Running() int       { return 0 }
 func (g *Git) Stop(time.Duration) {}
 func (g *Git) Blur() {

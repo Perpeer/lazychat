@@ -59,7 +59,7 @@ func (g *Git) startCommit() {
 		if g.focus != panelCommit && g.focus != panelDiff {
 			g.back = g.focus
 		}
-		g.focus = panelCommit
+		g.focus, g.commitSel = panelCommit, false
 		b.Focus(kit.CommitSubject)
 	}
 }

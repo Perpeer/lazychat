@@ -40,7 +40,11 @@ type Chat struct {
 	drafting bool
 	// rep is the report, the right side's second tab; repFocus is it
 	// having the keys.
-	rep      report
+	rep report
+	// paneSel is panel 2 chosen by its number: lit, the keys still
+	// lazychat's until Enter.
+	paneSel  bool
+	clocks   clocks
 	repFocus bool
 }
 

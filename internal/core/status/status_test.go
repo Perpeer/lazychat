@@ -4,6 +4,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"lazychat/internal/core/usage"
 )
 
 // clock steps a board through ticks a second apart, one session "a".
@@ -136,5 +138,31 @@ func TestSummary(t *testing.T) {
 	}
 	if _, ok := (Summary{}).Target(); ok || (Summary{}).Mood() != Calm {
 		t.Fatal("nothing going on still has a target or a mood")
+	}
+}
+
+// A tool that records its prompts times the turn by them, as the details
+// page does: the prompt's time less its question's wait, counting while
+// it works, and the last prompt's time for a session lazychat saw start
+// nothing.
+func TestBoardTurnFromRecord(t *testing.T) {
+	c := newClock(t)
+	start := c.now.Add(-time.Minute)
+	last := &usage.Turn{Prompt: usage.Prompt{Time: start}, Waits: []usage.Span{{From: start.Add(10 * time.Second), To: start.Add(30 * time.Second)}}}
+	c.tick(Signals{Working: true, Given: true, Inputs: 1, Last: last})
+	if d, st := c.b.Turn("a", c.now); st != TurnRunning || d != c.now.Sub(start)-20*time.Second {
+		t.Fatalf("running: %v %v", d, st)
+	}
+	done := *last
+	done.End = start.Add(50 * time.Second)
+	c.tick(Signals{Given: true, Inputs: 1, Last: &done})
+	c.tick(Signals{Given: true, Inputs: 1, Last: &done})
+	if d, st := c.b.Turn("a", c.now); st != TurnDone || d != 30*time.Second {
+		t.Fatalf("done: %v %v", d, st)
+	}
+	b := newClock(t)
+	b.tick(Signals{Last: &done})
+	if d, st := b.b.Turn("a", b.now); st != TurnDone || d != 30*time.Second {
+		t.Fatalf("before lazychat: %v %v", d, st)
 	}
 }

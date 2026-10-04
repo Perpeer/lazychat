@@ -161,8 +161,9 @@ func (b *CommitBox) zone(part int) string { return b.zones + "-" + string(rune('
 
 // View draws the box w wide and CommitBoxHeight high under title: the
 // subject, a rule, the description, then the button at the right. The button
-// is dim while enabled is false; focused says the box has the keys.
-func (b *CommitBox) View(title string, w int, focused, enabled, cursorOn bool) string {
+// is dim while enabled is false; focused says the box has the keys, chosen
+// that its frame is lit while they wait for Enter.
+func (b *CommitBox) View(title string, w int, focused, chosen, enabled, cursorOn bool) string {
 	inner := w - 2
 	has := func(part int) bool { return focused && b.focus == part }
 
@@ -209,5 +210,5 @@ func (b *CommitBox) View(title string, w int, focused, enabled, cursorOn bool) s
 	suggest = zone.Mark(b.zone(CommitSuggestButton), suggest)
 	buttons := suggest + " " + button
 	lines = append(lines, strings.Repeat(" ", max(1, inner-text.Width(buttons)-1))+buttons)
-	return Box(title, lines, w, CommitBoxHeight, focused, false)
+	return Box(title, lines, w, CommitBoxHeight, focused || chosen, false)
 }

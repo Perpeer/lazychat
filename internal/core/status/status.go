@@ -9,6 +9,8 @@ package status
 import (
 	"slices"
 	"time"
+
+	"lazychat/internal/core/usage"
 )
 
 // State is one session's state, by the words the menu bar reads.
@@ -43,6 +45,10 @@ type Signals struct {
 	Hooked     bool  // its tool told that it waits on an answer
 	HookSince  time.Time
 	Looking    bool // its pane holds the user's keys
+	// Last is the last prompt as the tool's own record tells it, nil when
+	// the tool keeps none; its time is the turn's then, as the report
+	// counts it, and the board's clock is only the fallback.
+	Last *usage.Turn
 }
 
 // CheerTime is how long the mascot parties for a session that finished
@@ -67,6 +73,7 @@ type Board struct {
 	// inputs is the input count when a turn last began or ended, so a new
 	// prompt shows; procs the process a turn belongs to.
 	turns  map[string]*Turn
+	lasts  map[string]*usage.Turn
 	inputs map[string]int64
 	procs  map[string]any
 }
@@ -74,7 +81,7 @@ type Board struct {
 func (b *Board) init() {
 	if b.working == nil {
 		b.working, b.waiting, b.seen, b.asking, b.stopped = map[string]bool{}, map[string]time.Time{}, map[string]bool{}, map[string]time.Time{}, map[string]time.Time{}
-		b.turns, b.inputs, b.procs = map[string]*Turn{}, map[string]int64{}, map[string]any{}
+		b.turns, b.inputs, b.procs, b.lasts = map[string]*Turn{}, map[string]int64{}, map[string]any{}, map[string]*usage.Turn{}
 	}
 }
 
@@ -119,6 +126,7 @@ func (b *Board) Step(now time.Time, live map[string]Signals) (answered []string)
 	for key, s := range live {
 		onScreen := !s.Working && s.ScreenAsks
 		turn := b.turn(key)
+		b.lasts[key] = s.Last
 		if b.procs[key] != s.Proc {
 			b.procs[key], b.inputs[key] = s.Proc, 0
 			*turn = Turn{}
@@ -234,13 +242,26 @@ func (b *Board) State(key string) State {
 	return Rest
 }
 
-// Turn is how long a session's turn has run and what it does now.
+// Turn is how long a session's turn has run and what it does now: the
+// last prompt's time when its tool records prompts, else the board's own
+// clock.
 func (b *Board) Turn(key string, now time.Time) (time.Duration, TurnState) {
-	t, ok := b.turns[key]
-	if !ok {
-		return 0, TurnNone
+	var d time.Duration
+	st := TurnNone
+	if t, ok := b.turns[key]; ok {
+		d, st = t.Elapsed(now), t.State()
 	}
-	return t.Elapsed(now), t.State()
+	if last := b.lasts[key]; last != nil {
+		if st == TurnNone {
+			// A prompt given before lazychat watched it.
+			st = TurnDone
+			if b.working[key] {
+				st = TurnRunning
+			}
+		}
+		d = last.Took(now, st == TurnRunning || st == TurnHeld)
+	}
+	return d, st
 }
 
 // Summary is every session together, in the order of the keys given:

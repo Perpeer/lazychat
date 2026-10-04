@@ -19,7 +19,7 @@ func TestProjectFollowsAcrossTabs(t *testing.T) {
 	}
 	d := start(t, e, 120, 32)
 	d.key("G") // Chat: the last row, under other
-	d.expect("[2] other")
+	d.expect("Nothing runs in other")
 	for _, tab := range []int{3, 2} { // Terminal, Git
 		d.tab(tab)
 		if got := d.core.Selected; got != "other" {
@@ -29,9 +29,9 @@ func TestProjectFollowsAcrossTabs(t *testing.T) {
 	d.tab(3)
 	d.expect("[2] other · terminals")
 	d.tab(1)
-	d.key("g") // Chat: back to demo2
-	d.expect("[2] demo2")
-	d.tab(3) // Terminal comes into view on it
+	d.key("g")                                                                                 // Chat: back to demo2
+	d.until("Chat chose demo2", func() bool { d.screen(); return d.core.Selected == "demo2" }) // the choice is synced as the screen is drawn
+	d.tab(3)                                                                                   // Terminal comes into view on it
 	d.expect("[2] demo2 · terminals")
 	if got := d.core.Selected; got != "demo2" {
 		t.Errorf("the choice is %q after Chat moved to demo2", got)

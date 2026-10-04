@@ -47,7 +47,7 @@ func (t *Terminal) View() string {
 	t.shared.Sync(&t.core.Selected, on.Name, t.tree.SelectProject)
 	h, lw := t.bodyH(), t.leftW()
 	left := func() string {
-		focused := !t.capture.Held()
+		focused := !t.capture.Held() && !t.paneSel
 		rows := kit.WithSection(t.section(lw-2), h-2, func(lh int) []string { return t.list(lw-2, lh, focused) })
 		return hits.Panel(1, kit.Box(kit.PanelTitle(1, "projects"), rows, lw, h, focused, false))
 	}
@@ -55,7 +55,7 @@ func (t *Terminal) View() string {
 		if r, ok := t.tree.Current(); ok && r.Shell == nil || t.pane.Session == nil {
 			return hits.Panel(2, t.projectPanel(w, h))
 		}
-		box := kit.Box(kit.PanelTitle(2, t.pane.Title()), kit.ZoneBlock(hits.Pane, t.pane.View(w-2, h-2, t.capture.Held(), t.tick%2 == 0), w-2), w, h, t.capture.Held(), true)
+		box := kit.Box(kit.PanelTitle(2, t.pane.Title()), kit.ZoneBlock(hits.Pane, t.pane.View(w-2, h-2, t.capture.Held(), t.tick%2 == 0), w-2), w, h, t.capture.Held() || t.paneSel, true)
 		from, length := t.pane.Scrollbar(h - 2)
 		return hits.Panel(2, kit.WithScrollbar(box, from, length))
 	}

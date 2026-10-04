@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -96,7 +97,7 @@ func TestReport(t *testing.T) {
 	e.lazyHome = t.TempDir()
 	writeTranscript(t, e, dir, "garden-1", time.Now().Add(-time.Minute).UTC())
 	d := start(t, e, 180, 52)
-	d.expect("[2] ", "[3] report", "shed work")
+	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
 	d.expect("prompts", "▶  2", "now the fence", "prompt 2", "working", "find the brushes", "at work: Explore", "no skill was used", "no MCP call")
 	d.expect("(↑↓) pick prompt · (esc) back")
@@ -122,9 +123,22 @@ func TestReport(t *testing.T) {
 	d.key("3")
 	d.expect("prompts")
 	rows := strings.Split(d.screen(), "\n")
-	y = lineOf(d.screen(), "[3] report")
+	y = lineOf(d.screen(), "[3] details")
 	x = strings.Index(rows[y], "[2] ")
 	d.click(len([]rune(rows[y][:x]))+1, y)
 	d.expectNot("▶  1")
+	// Running, the session's row times its last prompt as the page does:
+	// in one frame, the row's time is the second prompt's active time.
+	d.key("1", "enter")
+	d.expect("(ctrl+q) back to lazychat")
+	d.leave()
+	d.key("3")
+	rowTime := regexp.MustCompile(`claude · (?:◷ |⏸ )?(\d+s)`)
+	pageTime := regexp.MustCompile(`\s2\s+\d\d-\d\d \d\d:\d\d\s+\S+\s+(\d+s)`)
+	d.until("the row and the page show the same time", func() bool {
+		sc := d.screen()
+		r, p := rowTime.FindStringSubmatch(sc), pageTime.FindStringSubmatch(sc)
+		return r != nil && p != nil && r[1] == p[1]
+	})
 	d.quitApp()
 }

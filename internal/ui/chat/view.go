@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"fmt"
 	"strings"
 
 	"lazychat/internal/ui/kit"
@@ -48,7 +47,7 @@ func (c *Chat) View() string {
 	c.list.follow.Sync(&c.core.Selected, c.cursorProject(), func(p string) { c.tree.SelectProject(p) })
 	g := c.geometry()
 	left := func() string {
-		focused := !c.capture.Held() && !(c.rep.shown && c.repFocus)
+		focused := !c.capture.Held() && !(c.rep.shown && c.repFocus) && !c.paneSel
 		rows := kit.WithTools(c.core.ToolStates(), g.leftW-2, g.bodyH-2, func(h int) []string { return c.list.view(g.leftW-2, h, focused) })
 		return hits.Panel(1, kit.Box(c.list.title(), rows, g.leftW, g.bodyH, focused, false))
 	}
@@ -59,16 +58,12 @@ func (c *Chat) View() string {
 		r, ok := c.tree.Current()
 		switch {
 		case c.rep.shown:
-			title := c.pane.Title()
-			if ok && r.Session == nil && r.Project != nil {
-				title = r.Project.Name
-			}
-			right = c.reportBox(title, w, h)
+			right = c.reportBox(w, h)
 		case ok && r.Session == nil:
 			right = c.projectPanel(r.Project.Name, w, h)
 		default:
 			// The block blinks with the tick while the session has the keys; unfocused it is a steady underline.
-			term := kit.Box(c.chatTabs(c.pane.Title()), c.pane.View(w-2, h-2, c.capture.Held(), c.tick%2 == 0), w, h, c.capture.Held(), true)
+			term := kit.Box(c.chatTabs(c.pane.State()), c.pane.View(w-2, h-2, c.capture.Held(), c.tick%2 == 0), w, h, c.capture.Held() || c.paneSel, true)
 			from, length := c.pane.Scrollbar(h - 2)
 			right = kit.WithScrollbar(term, from, length)
 		}
@@ -106,7 +101,7 @@ func (c *Chat) projectPanel(project string, w, h int) string {
 		for _, l := range text.Wrap(hint+".", w-4, "") {
 			lines = append(lines, kit.StyleDim.Render(" "+l))
 		}
-		return kit.Box(c.chatTabs(project), append([]string{""}, lines...), w, h, false, false)
+		return kit.Box(c.chatTabs(""), append([]string{""}, lines...), w, h, false, false)
 	}
 	for _, s := range running {
 		glyph, _ := c.list.glyph(s)
@@ -121,7 +116,7 @@ func (c *Chat) projectPanel(project string, w, h int) string {
 		foot, _ := turnFoot(c.turnTime(s.Key))
 		lines = append(lines, "   "+kit.ToolBadge(tool)+foot, "")
 	}
-	return kit.Box(c.chatTabs(fmt.Sprintf("%s · running (%d)", project, len(running))), append([]string{""}, lines...), w, h, false, false)
+	return kit.Box(c.chatTabs(""), append([]string{""}, lines...), w, h, false, false)
 }
 
 // Note shows one line in the footer for a few seconds: the result of an action.

@@ -372,7 +372,7 @@ Questions — add a project, create a session, close, quit — are popups:
 | Key | Does |
 | --- | --- |
 | `Tab` `Shift+Tab` / `⌘1`–`⌘4` / a click on a box | switch tabs (see The screen) |
-| `1` `2` … | the panel with that number in its title; no digit picks a project |
+| `1` `2` … | the panel with that number in its title; no digit picks a project. A panel with a program or a text field in it — Chat's session, a terminal, the Git commit box — is only chosen, lit: `Enter` goes in, `Esc` back, so a digit never lands in a prompt. A click on it goes in |
 | `Enter` | into the program in the pane — a session, a shell — which then has every key |
 | `ctrl+q` | out of the pane: the one key lazychat keeps, and the only one that leaves, in every terminal and keyboard layout; also back to `[1]` from any panel. A left click beside the pane leaves too, as a click on the row it landed on |
 | `Ctrl+W` | the workspace box |
@@ -397,28 +397,30 @@ selection replaces it; `Tab` types two spaces.
 The left side is one tree of the projects, each with every session
 lazychat started or resumed in it, remembered across runs: a glyph
 (spinner running, `○` saved), the name wrapped to three
-rows, and under it its tool, in its colour, and its turn's time in two
-units: from the prompt that set it working, `◷ 42s` counting while it works,
-`⏸ 1m 05s` held in the accent while a question waits for you and going on
-after the answer, the total dim once it is done (`3m 18s`); the next prompt
-starts it from zero. Work before your first input — claude starting, a resume
-loading — counts no time, and a session with no prompt since it started shows
-the tool alone. The time is kept while lazychat runs. A session whose project was
+rows, and under it its tool, in its colour, and its last prompt's time in
+two units, the same the details page shows: `◷ 42s` counting while it works,
+`⏸ 1m 05s` held in the accent while a question waits for you — that wait is
+left out — and the total dim once it is done (`3m 18s`); the next prompt
+starts it from zero. For Claude it is read from its transcript, so it counts
+from the prompt to where Claude Code ended the turn, and a session resumed
+shows its last prompt's time at once; a tool that keeps no transcript (codex)
+is timed by lazychat from the first work after your input. A session whose project was
 removed is listed at the end under "no longer registered". The AI tools
 are listed under the tree, ready or not and why. The right side is the
 shown session's terminal, its size the pty's; under 80 columns it takes the
 whole screen while shown and `Esc` brings the tree back.
 
 The right side has two tabs in its top border, as a browser has:
-`[2] <the chat's title>` and `[3] report`; `2` and `3`, or a click on one,
-switch them, and the session runs on behind the report.
+`[2] session` and `[3] details`; `2` and `3`, or a click on one, switch
+them, and the session runs on behind the details. `2` only chooses the
+session; `Enter` goes in.
 
-### Report
+### Details
 
 The tree cursor's Claude session prompt by prompt — on a project, its
 newest — read from Claude Code's own transcript (`~/.claude/projects/<folder>/<id>.jsonl`
 and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
-second while the report shows: what each prompt took and what spent it.
+second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet.
 
 ```
@@ -475,7 +477,7 @@ the tree too.
 | Key | Does |
 | --- | --- |
 | `↑↓` `j k` `g` `G` | from session to session, over the headings; on a running one the pane follows. A click on a heading goes to its first session |
-| `Enter` / `2` | into the session's terminal when it runs, else resume it (`claude --resume`); refused because it is open elsewhere, a popup offers the ways on (see How a session works) |
+| `Enter` (`2` then `Enter`) | into the session's terminal when it runs, else resume it (`claude --resume`); refused because it is open elsewhere, a popup offers the ways on (see How a session works) |
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
@@ -556,11 +558,11 @@ The panels, numbered as their titles show them:
 
 | Key | Does |
 | --- | --- |
-| `1`–`6` | the panel; `esc` and `ctrl+q` go back to `[1]` from any, the commit box too |
+| `1`–`6` | the panel; `6` only chooses the commit box, `Enter` writes in it; `esc` and `ctrl+q` go back to `[1]` from any, the commit box too |
 | `↑↓` `j k` `g` `G` | over the rows, the changes or the commits, the diff following; in the diff, a row cursor |
 | `v` `y`, a drag (in the diff) | `v` marks the cursor's row as one end of a selection, `y` copies the selected rows (or the cursor's) for a prompt — each file's part headed `path:28-35`, every line marked `+` added, `-` removed or a space; a drag over the diff selects and its release copies the same way; `Esc` drops the selection |
 | `Space` | stage the file or folder under the cursor (`git add -A`), or in Staged unstage it (`git restore --staged`, `git rm --cached` before the first commit); a conflict is left for you to resolve |
-| `c` | the commit box, as `6`; a commit on `main` (or `master`) in the main folder is asked first — the main folder is kept for pulling and merging, work goes in a worktree |
+| `c` | into the commit box, as `6` and `Enter`; a commit on `main` (or `master`) in the main folder is asked first — the main folder is kept for pulling and merging, work goes in a worktree |
 | `b` | the branches: a finder over the `Local` then `Remote` branches, newest commit first, each noted where it is out in the rows' words (`● this folder`, `main folder`, `⑂ <worktree>`), what it tracks and how long ago, fetching (`git fetch --prune`) behind it; typing narrows it. A worktree is a folder, never a checkout: `Enter` on a branch out in another folder takes the cursor to that folder's row. On the main folder `Enter` switches to a branch out nowhere — a remote one as a local branch tracking it; local changes in the way are stashed and brought back, asked — and a name no branch has adds `+ new branch <name> from <row's branch>`. A worktree keeps its branch: on its row nothing is switched or made (`w` makes a worktree). Deleting is `d` on a row |
 | `u` (a worktree's row) | bring the worktree's branch up to date with main, asked: `git fetch`, then `git rebase --autostash <remote>/<default branch>`. A conflict stops the rebase, the files named in the status area, for you to resolve and `git rebase --continue` (or `--abort`) |
 | `w` | the worktrees: a finder over the repository's other worktrees. `Enter` takes the cursor to one's row. A new name adds `+ new worktree <name> from <row's branch>`: a worktree on a new branch in `.worktrees/<name>` inside the repository (kept out of git through `.git/info/exclude`), opened as a project `<project> · <name>` so Chat and Terminal can run in it, the cursor on its row; with nothing typed it offers another worktree of the row's branch under a free name (`<branch>-2`, `-3`…), for several sessions on one line of work: git keeps a branch in one worktree, so each gets a branch of its own. |

@@ -38,7 +38,7 @@ func (g *Git) listRight() bool {
 // goTo gives the keys to a panel. The diff and the commit box remember the
 // list they were taken from, where Esc goes back.
 func (g *Git) goTo(p panel) tea.Cmd {
-	g.moving = false
+	g.moving, g.commitSel = false, false
 	if g.focus != panelDiff && g.focus != panelCommit {
 		g.back = g.focus
 	}
@@ -65,7 +65,11 @@ func (g *Git) goTo(p panel) tea.Cmd {
 	case panelDiff:
 		g.focus = panelDiff
 	case panelCommit:
-		g.startCommit()
+		// Chosen, not typed into: Enter goes in, so a number never lands
+		// the keys in the subject.
+		if g.boxShown() {
+			g.focus, g.commitSel = panelCommit, true
+		}
 	}
 	return nil
 }
@@ -97,14 +101,14 @@ func (g *Git) leave() {
 	if g.back == 0 {
 		g.back = panelProjects
 	}
-	g.focus = g.back
+	g.focus, g.commitSel = g.back, false
 }
 
 // panelKeys are 1 to 6, the same from every panel but the commit box's
 // fields, which take digits as text.
 func panelKeys() []binding {
 	return kit.PanelKeys(int(panelCommit), func(g *Git, p int) tea.Cmd { return g.goTo(panel(p)) },
-		"1 projects, 2 unstaged, 3 staged, 4 commits, 5 the diff, 6 the commit box")
+		"1 projects, 2 unstaged, 3 staged, 4 commits, 5 the diff, 6 the commit box, chosen — Enter writes in it")
 }
 
 // keyBack is Ctrl+Q: back to the projects from any panel, the commit box too.

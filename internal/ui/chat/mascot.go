@@ -29,6 +29,7 @@ func (c *Chat) watchSessions() {
 			Hooked:     hooked,
 			HookSince:  q.Since,
 			Looking:    c.capture.Held() && c.pane.Key == r.Key,
+			Last:       c.clocks.last[r.Key],
 		}
 	}
 	for _, key := range c.board.Step(time.Now(), live) {

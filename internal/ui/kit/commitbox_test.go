@@ -64,7 +64,7 @@ func TestCommitBox(t *testing.T) {
 // The box is its height and width, with its placeholders when empty.
 func TestCommitBoxView(t *testing.T) {
 	zone.NewGlobal()
-	v := ansi.Strip(NewCommitBox("t").View("commit", 50, false, false, false))
+	v := ansi.Strip(NewCommitBox("t").View("commit", 50, false, false, false, false))
 	rows := strings.Split(v, "\n")
 	if len(rows) != CommitBoxHeight {
 		t.Fatalf("%d rows:\n%s", len(rows), v)

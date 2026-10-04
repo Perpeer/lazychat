@@ -6,6 +6,10 @@ paths:
 # Keys and layout
 
 - Ctrl+Q is the only key that leaves a pane; Esc goes to the program.
+- A panel number only chooses a panel that holds a program or a text field
+  (Chat 2, Terminal 2, Git 6): lit, its own footer (enter go in, esc
+  back), the keys still lazychat's; Enter goes in. The user's digits kept
+  landing in the prompt. A click on it goes in: a click is aimed.
 - `q` asks before quitting, everywhere. There are no menus: every action
   is on its context's footer, from the tab's `keymap.go`
   (`kit.Unlisted` for the rest; `TestKeymapTables` checks them).
