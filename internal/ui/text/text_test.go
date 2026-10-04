@@ -15,6 +15,8 @@ func TestCutAndPad(t *testing.T) {
 		{"fit counts wide runes as two", Fit("née long", 5), "née …"},
 		{"fitExact cuts without one", FitExact("abcdef", 4), "abcd"},
 		{"fitLeft keeps the tail", FitLeft("/a/b/project", 8), "…project"},
+		{"fitLeft counts wide runes", FitLeft("née/ab", 4), "…/ab"},
+		{"fitLeft keeps a long tail whole", FitLeft(strings.Repeat("x", 100_000)+"/tail", 8), "…xx/tail"},
 		{"pad fills to the width", Pad("ab", 4), "ab  "},
 		{"pad leaves a longer string", Pad("abcdef", 4), "abcdef"},
 		{"wrap breaks at words", strings.Join(Wrap("one two three", 8, ""), "|"), "one two|three"},

@@ -49,24 +49,23 @@ func wrapDim(note string, w int) []string {
 }
 
 // timelineRow is the session's life in one row: a strip of its events in
-// time order — ▮ a prompt, ↻ a resume, │ a compaction — cut from its start
-// so the newest show, and their counts.
+// time order — ▮ a prompt, ↻ a resume, │ a compaction — the newest that
+// fit, a dim … before them when older ones are left out, and their counts.
+// The strip is drawn from the events that fit, never cut afterwards: a
+// styled strip of hundreds of glyphs cut rune by rune cost a long session
+// most of a core on every frame.
 func timelineRow(events []usage.Event, w int) string {
 	if len(events) == 0 {
 		return ""
 	}
-	var strip strings.Builder
 	prompts, resumes, compacts := 0, 0, 0
 	for _, e := range events {
 		switch e.Kind {
 		case usage.PromptEvent:
-			strip.WriteString(kit.StyleAccent.Render("▮"))
 			prompts++
 		case usage.ResumeEvent:
-			strip.WriteString(kit.StyleBusy.Render("↻"))
 			resumes++
 		case usage.CompactEvent:
-			strip.WriteString(kit.StyleBold.Render("│"))
 			compacts++
 		}
 	}
@@ -79,7 +78,23 @@ func timelineRow(events []usage.Event, w int) string {
 	}
 	label := " " + kit.StyleBold.Render("timeline") + " "
 	room := max(4, w-text.Width(label)-text.Width(counts)-2)
-	return label + text.FitLeft(strip.String(), room) + "  " + kit.StyleDim.Render(counts)
+	var strip strings.Builder
+	shown := events
+	if len(shown) > room {
+		shown = shown[len(shown)-(room-1):]
+		strip.WriteString(kit.StyleDim.Render("…"))
+	}
+	for _, e := range shown {
+		switch e.Kind {
+		case usage.PromptEvent:
+			strip.WriteString(kit.StyleAccent.Render("▮"))
+		case usage.ResumeEvent:
+			strip.WriteString(kit.StyleBusy.Render("↻"))
+		case usage.CompactEvent:
+			strip.WriteString(kit.StyleBold.Render("│"))
+		}
+	}
+	return label + strip.String() + "  " + kit.StyleDim.Render(counts)
 }
 
 func plural(n int) string {

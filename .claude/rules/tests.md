@@ -24,3 +24,8 @@ paths:
   reply pipe, or the first query blocks every later write.
 - 3 s tool checks (`TestDoctor`, `TestClaudeCheck`, `TestInATerminal`)
   can time out under full load; rerun alone before blaming a change.
+- Opt-in measurements (LAZYCHAT_BENCH=1, skipped otherwise): TestFrameCost
+  and TestDetailsCost on invented sessions; TestDetailsOpen,
+  TestDetailsProfile and TestDetailsCPU on a real transcript named by
+  LAZYCHAT_BENCH_FILE, copied under an invented id — only its size and
+  the times are printed. A CPU profile of a real run: LAZYCHAT_CPUPROFILE.

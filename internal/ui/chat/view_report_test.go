@@ -73,6 +73,23 @@ func TestTimelineRow(t *testing.T) {
 	if timelineRow(nil, 80) != "" {
 		t.Error("no events, yet a row")
 	}
+	// A long session: thousands of events draw in no time, the newest kept.
+	var many []usage.Event
+	for i := range 5000 {
+		kind := usage.PromptEvent
+		if i%97 == 0 {
+			kind = usage.CompactEvent
+		}
+		many = append(many, usage.Event{Kind: kind, Time: at.Add(time.Duration(i) * time.Minute)})
+	}
+	began := time.Now()
+	long := ansi.Strip(timelineRow(many, 80))
+	if took := time.Since(began); took > time.Millisecond {
+		t.Errorf("5000 events took %v", took)
+	}
+	if !strings.Contains(long, "4948 prompts · 52 compactions") || !strings.Contains(long, "…▮") || ansi.StringWidth(long) > 80 {
+		t.Errorf("long timeline %q", long)
+	}
 }
 
 // A project's line sums today's calls of its sessions, used tokens and the

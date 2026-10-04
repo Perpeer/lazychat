@@ -156,6 +156,14 @@ piece of screen is its own file, in `kit` once a second tab could use it.
   Esc passed on, ctrl+q and its kitty form leaving, ⌘ keys, a click, the
   wheel), characters typed as a keyboard layout sends them, a second
   lazychat refused, and quit leaving no child.
+- **Measurements**, opt-in with `LAZYCHAT_BENCH=1` and skipped otherwise:
+  a frame and a tick (`TestFrameCost`), the details page on an invented
+  long session (`TestDetailsCost`) and on a real transcript named by
+  `LAZYCHAT_BENCH_FILE` — the time to the page and a frame
+  (`TestDetailsOpen`), a CPU profile with `-cpuprofile`
+  (`TestDetailsProfile`), lazychat itself in a pty with its CPU per second
+  (`TestDetailsCPU`). `LAZYCHAT_CPUPROFILE=<file>` makes any run write a
+  CPU profile for `go tool pprof`.
 
 Every test package runs through `testenv.Main`: its own home, temp folder
 and Claude config, no global git config, so no test touches the machine

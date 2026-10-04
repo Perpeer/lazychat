@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -40,6 +41,13 @@ var version = "dev"
 var releaseTag = ""
 
 func main() {
+	// LAZYCHAT_CPUPROFILE names a file for a CPU profile of this run, for
+	// finding what a screen costs with go tool pprof; off without it.
+	if path := os.Getenv("LAZYCHAT_CPUPROFILE"); path != "" {
+		if f, err := files.Create(path); err == nil && pprof.StartCPUProfile(f) == nil {
+			defer func() { pprof.StopCPUProfile(); _ = f.Close() }()
+		}
+	}
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "lazychat:", err)
 		os.Exit(1)

@@ -159,3 +159,38 @@ func TestDetailsOpen(t *testing.T) {
 	t.Logf("%d MB: key to page %v · details view: %s %s", len(body)>>20, opened, view, view.MemString())
 	d.quitApp()
 }
+
+// TestDetailsProfile is TestDetailsOpen followed by twenty seconds of ticks
+// delivered at once, each one a read of the transcript and a redraw, so a
+// CPU profile (-cpuprofile) shows what the details page costs per second.
+func TestDetailsProfile(t *testing.T) {
+	src := os.Getenv("LAZYCHAT_BENCH_FILE")
+	if os.Getenv("LAZYCHAT_BENCH") == "" || src == "" {
+		t.Skip("LAZYCHAT_BENCH=1 LAZYCHAT_BENCH_FILE=<transcript> runs it")
+	}
+	e, dir := seeded(t, state.Session{Tool: "claude", Name: "long work", ID: "garden-real"})
+	e.lazyHome = t.TempDir()
+	folder := filepath.Join(e.history, history.Slug(dir))
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(folder, "garden-real.jsonl"), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	d := start(t, e, 180, 60)
+	d.expect("long work")
+	d.key("3")
+	d.expect("prompts", " in all")
+	began := time.Now()
+	for i := 1; i <= 20; i++ {
+		d.deliver(kit.Tick{N: 2 * i})
+		d.pump(200 * time.Millisecond)
+		d.pump(50 * time.Millisecond)
+	}
+	t.Logf("twenty ticks with the details open: %v", time.Since(began).Round(time.Millisecond))
+	d.quitApp()
+}

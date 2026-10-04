@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
 
@@ -88,18 +89,26 @@ func fitPad(s string, n int, tail string) string {
 }
 
 // FitLeft keeps the end of a string, for paths whose last segments matter.
+// It takes a plain string: one pass drops runes from the left by their
+// width until the rest with … fits. Measuring the whole rest after each
+// dropped rune, as it once did, was quadratic and cost a long styled
+// strip most of a core per frame.
 func FitLeft(s string, n int) string {
 	if n <= 0 {
 		return ""
 	}
-	if Width(s) <= n {
+	w := Width(s)
+	if w <= n {
 		return s
 	}
-	r := []rune(s)
-	for len(r) > 0 && Width("…"+string(r)) > n {
-		r = r[1:]
+	drop := w - (n - 1) // columns to lose, … taking one
+	i := 0
+	for i < len(s) && drop > 0 {
+		_, size := utf8.DecodeRuneInString(s[i:])
+		drop -= Width(s[i : i+size])
+		i += size
 	}
-	return "…" + string(r)
+	return "…" + s[i:]
 }
 
 // Pad fills s with spaces to n display columns.

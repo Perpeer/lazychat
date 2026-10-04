@@ -36,7 +36,20 @@ paths:
   the transcript: no estimate stands in for them.
 - The context part's `timeline` row is usage.Session.Timeline(): prompts,
   Resumes (a quiet longer than ResumeGap) and Compacts in time order; it
-  is a row, not a fourth part.
+  is a row, not a fourth part. It is drawn from the newest events that
+  fit, a dim … before them: the first version built a styled glyph per
+  event and cut the strip with text.FitLeft, which dropped a rune at a
+  time and measured the rest each time — quadratic through the escape
+  codes, on every View — and cost a 287-prompt session 0.65 CPU-seconds
+  per second with the details open (the user saw 110 %). Never cut a
+  styled string rune by rune; draw from the data what fits.
+- Measuring the details page: `LAZYCHAT_BENCH=1 LAZYCHAT_BENCH_FILE=<a
+  transcript>` runs TestDetailsOpen and TestDetailsProfile (internal/ui,
+  the driver; `-cpuprofile` on the second) and TestDetailsCPU
+  (cmd/lazychat, lazychat in a pty, ps per second); `LAZYCHAT_CPUPROFILE=
+  <file>` makes any lazychat run write a CPU profile for `go tool pprof`.
+  The in-process driver missed this one — its ticks are not a terminal's
+  frames — so the pty measurement is the one to trust for "how much CPU".
 - Chat's project headings carry "today … used · $…" (chat/usage.go): the
   project's listed sessions' transcripts, one reader each kept across
   reads, summed every 30 s off the loop; only calls of today, local time;
