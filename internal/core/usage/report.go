@@ -54,8 +54,8 @@ type Price struct {
 	Output     float64 `json:"output"`
 }
 
-// Prices are the user's, by model id; nothing is built in, since prices
-// change and differ by plan.
+// Prices are the user's, by model id, over the list prices built in
+// (prices.go): a price that changed, or a plan that pays less, is set there.
 type Prices map[string]Price
 
 // PriceFile is the prices file read again only when it changed; one
@@ -102,12 +102,15 @@ func LoadPrices(path string) (Prices, error) {
 // Cost is calls' cost; ok is false when a call's model has no price, and
 // then the cost is not shown at all rather than shown short.
 func (p Prices) Cost(calls []Call) (float64, bool) {
-	if len(p) == 0 {
+	if len(calls) == 0 {
 		return 0, false
 	}
 	var sum float64
 	for _, c := range calls {
-		pr, ok := p[c.Model]
+		if c.Tokens.Sum() == 0 {
+			continue // Claude Code's own notes (model "<synthetic>") cost nothing
+		}
+		pr, ok := p.priceOf(c.Model)
 		if !ok {
 			return 0, false
 		}

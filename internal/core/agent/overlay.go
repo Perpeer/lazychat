@@ -24,7 +24,7 @@ type piece func(Extras) map[string]any
 // claude session starts with. They live only in that session's command
 // line: no file of the user's is written, and Claude merges them with the
 // user's own settings, lists added to, never replaced.
-var claudePieces = []piece{questionHook, statuslinePiece}
+var claudePieces = []piece{questionHook, failHook, statuslinePiece}
 
 // askMatcher is the notices that mean claude waits on an answer: a
 // permission prompt (AskUserQuestion and plan approval come as one too), an
@@ -41,6 +41,21 @@ func questionHook(x Extras) map[string]any {
 	return map[string]any{"hooks": map[string]any{"Notification": []any{map[string]any{
 		"matcher": askMatcher,
 		"hooks":   []any{map[string]any{"type": "command", "command": "cat > " + shellQuote(x.NoticeFile)}},
+	}}}}
+}
+
+// FailSuffix names the file beside the notice file where claude says an
+// answer ended on an API error (rate limit, overloaded, billing…).
+const FailSuffix = ".fail"
+
+// failHook has claude write its StopFailure event beside the question
+// notice; lazychat plays its error sound once and drops the file.
+func failHook(x Extras) map[string]any {
+	if x.NoticeFile == "" {
+		return nil
+	}
+	return map[string]any{"hooks": map[string]any{"StopFailure": []any{map[string]any{
+		"hooks": []any{map[string]any{"type": "command", "command": "cat > " + shellQuote(x.NoticeFile+FailSuffix)}},
 	}}}}
 }
 

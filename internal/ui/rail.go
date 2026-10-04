@@ -7,6 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
 
+	"lazychat/internal/core/sound"
+	"lazychat/internal/core/status"
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/text"
 )
@@ -229,3 +231,58 @@ func (a *App) beating() bool {
 // works: the mascot parties until it is looked at, or works again. With a
 // session at work it types instead, the news a ✦ on its corner.
 func (a *App) celebrating(st kit.MascotState) bool { return st.Finished > 0 && st.Mood != kit.Working }
+
+// sound plays one of Lazy's sounds unless they are off.
+func (a *App) sound(n sound.Name) {
+	if a.play != nil && (a.core.Settings == nil || !a.core.Settings.NoSounds) {
+		a.play(n)
+	}
+}
+
+// hearNews plays what changed since the last tick: a session that began to
+// ask, one that finished — looked at or not. The board decided both; this only listens.
+func (a *App) hearNews() {
+	st, ok := a.mascotState()
+	if !ok {
+		return
+	}
+	var names []sound.Name
+	names, a.heard = newsSounds(a.heard, st.Sessions)
+	for _, n := range names {
+		a.sound(n)
+	}
+}
+
+// newsSounds are the sounds for the sessions' changes since was, and the
+// states to compare the next tick with. The first look hears nothing: what
+// was already so when lazychat started is no news.
+func newsSounds(was map[string]status.State, now []kit.SessionNews) ([]sound.Name, map[string]status.State) {
+	next := make(map[string]status.State, len(now))
+	var out []sound.Name
+	for _, s := range now {
+		next[s.Key] = s.State
+		if was == nil || was[s.Key] == s.State {
+			continue
+		}
+		switch s.State {
+		case status.Asks:
+			out = appendOnce(out, sound.Ask)
+		case status.Done:
+			out = appendOnce(out, sound.Done)
+		case status.Idle:
+			if was[s.Key] == status.Working {
+				out = appendOnce(out, sound.Done)
+			}
+		}
+	}
+	return out, next
+}
+
+func appendOnce(names []sound.Name, n sound.Name) []sound.Name {
+	for _, have := range names {
+		if have == n {
+			return names
+		}
+	}
+	return append(names, n)
+}

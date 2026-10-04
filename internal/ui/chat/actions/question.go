@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"lazychat/internal/core/agent"
 	"lazychat/internal/core/state"
 
 	"lazychat/internal/core/files"
@@ -50,6 +51,20 @@ func (a *Actions) Asked(key string) (Question, bool) {
 		return Question{}, false
 	}
 	return Question{Since: st.ModTime()}, true
+}
+
+// Failed says a session's answer ended on an API error since the last
+// look, and forgets it: each failure is told once.
+func (a *Actions) Failed(key string) bool {
+	if a.questions == "" {
+		return false
+	}
+	path := filepath.Join(a.questions, key+agent.FailSuffix)
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	_ = files.Remove(path)
+	return true
 }
 
 // Answered forgets a session's question: it was seen, answered, or the

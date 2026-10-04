@@ -41,6 +41,9 @@ type Settings struct {
 	// NoStatusLine keeps lazychat's status line from claude sessions whose
 	// own settings have none.
 	NoStatusLine bool `json:"no_status_line,omitempty"`
+	// NoSounds keeps Lazy quiet: no sound for a question, a finished or
+	// failed answer, a worker back.
+	NoSounds bool `json:"no_sounds,omitempty"`
 
 	// Home is lazychat's folder of this machine, where the file lives.
 	Home string `json:"-"`

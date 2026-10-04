@@ -310,61 +310,34 @@ and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
 second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet.
 
-At the top, the picked prompt as a village. Lazy leads from the middle and
-up to eight buildings stand around it, one per worker: a subagent (Explore
-a tower, Plan a library, general-purpose a forge, any other a hut), a
-skill (a scribe's house) or an MCP server (a market; its tools are one
-worker). A worker walks from Lazy to its building with its job in a
-bubble, `‹title: job›`, works there with its windows lit, walks back with
-`‹title ✓›`, then goes home. A building is dim until its worker starts and
-again when the job is done, `(^^)✓` at the door. Lazy types while the
-prompt runs, asks as on the rail while a question waits for you, and
-cheers a moment when it ends. A ninth worker and later ones are counted
-under Lazy (`+2`). Positions come from the transcript's times. A worker
-with no time stays home, and an older prompt shows everyone done.
+At the top, the picked prompt as a small village: Lazy at the left, and
+one line beside it per worker the prompt had — its subagents by type
+(`⌂`), its skills (`≡`), its MCP servers (`▭`, its tools one line). Each
+line says how many ran (`×2`), the job given (the newest subagent's
+description, a server's tools) and how it stands: `(••) 11s` at work, `✓
+40s` back, a dim `·` while the transcript gives no time. A skill or MCP
+call has no end in the transcript, so it shows no time. The village is as
+tall as Lazy or its lines, at most six lines, the rest `+N more`; a prompt
+that called none says "worked alone". Lazy types while the prompt runs,
+asks as on the rail while a question waits for you, and cheers a moment
+when it ends. It follows the picked prompt.
 
 ```
-                                             ‹shed-painter: sand…›
-     ╱────╲               ╱══════╲              ╱──────╲
-    │ ▫  ▫ │              │ ≡ ≡≡ │              │ ▓▓▓▓ │
-    │  ▯▯  │ (^^)✓        │  ▯▯  │ (^^)✓        │  ▯▯  │ (◦•)
-    └──────┘              └──────┘              └──────┘
-    Explore               brush-care            shed-painter
-
-                              ╭────╮            ┬┬┬┬┬┬┬┬
-                              │ ◦• │         ‹paint-shop ✓›
-                              ╰─┬┬─╯            │ (◦•) │
-    · · · ·                   [▫▫▪▫]            └──────┘
-                                                paint-shop
-                               Lazy
+ ╭────╮  ⌂ Explore     ×2  find the brushes   (••) 11s
+ │ ^^ │  ≡ brush-care      rinse twice        ✓
+ ╰────╯  ▭ paint-shop  ×3  list_colours, mix  ✓
+   Lazy
 ```
 
-Under it, the prompts as a table, newest first, two rows each: its number
-(`▶` the picked one), when it started and `→` when it ended (where Claude
-Code wrote the turn's end, or `working`), its active time, its tokens and
-output, its cost when priced, and its text over two rows. `↑↓` picks one;
-the newest is followed.
-
-```
- ┌──────┬─────────────┬────────┬──────────┬───────┬──────────────────────┐
- │ #    │ started     │ active │ tokens   │ cost  │ prompt               │
- ├──────┼─────────────┼────────┼──────────┼───────┼──────────────────────┤
- │ ▶ 3  │ 10-04 14:02 │ 2m10s  │ 412k     │ —     │ paint the garden     │
- │      │ → working   │        │ out 1.2k │       │ shed blue            │
- ├──────┼─────────────┼────────┼──────────┼───────┼──────────────────────┤
- │   2  │ 10-04 13:40 │ 9m02s  │ 1.2M     │ —     │ /tidy-up the garage  │
- │      │ → 13:51:02  │        │ out 5.0k │       │                      │
- └──────┴─────────────┴────────┴──────────┴───────┴──────────────────────┘
-```
-
-Then the picked prompt's report:
+Under it, the picked prompt's report:
 
 - its time (`14:02:10 → working · 2m10s active`) and how long questions
   (`AskUserQuestion`) waited for your answer, which is left out of the
   active time. A permission prompt's wait is not in the transcript and
   stays in;
 - its tokens by kind (`░` cache read, `▒` input, `▓` cache write, `█`
-  output, each with a colour-blind safe colour too), its calls, its cost;
+  output, each with a colour-blind safe colour too), its calls, and its
+  API price;
 - workers: a table of its subagents, skills and MCP servers, each with
   how long it took, its tokens and its calls. `★` marks a subagent defined
   by the user (`~/.claude/agents`), the project (`.claude/agents`) or a
@@ -378,14 +351,37 @@ Then the picked prompt's report:
   `git status`), with `cd` and `echo` left out;
 - files: its edits by tool and the lines its subagents say they changed.
 
+At the box's bottom, held there while the rest scrolls above it, the
+prompts as a table: ten around the picked one, newest first, two rows each
+— its number (`▶` the picked one), when it started and `→` when it ended
+(where Claude Code wrote the turn's end, or `working`), its active time,
+its tokens and output, its API price, and its text over two rows. Each
+column is as wide as its longest value. `↑↓` picks one; the newest is
+followed.
+
+```
+ ┌───────┬─────────────┬─────────┬──────────┬────────┬──────────────────┐
+ │ #     │ started     │ active  │ tokens   │ API $  │ prompt           │
+ ├───────┼─────────────┼─────────┼──────────┼────────┼──────────────────┤
+ │ ▶ 245 │ 10-04 14:02 │ 2m10s   │ 412k     │ 0.42   │ paint the garden │
+ │       │ → working   │         │ out 1.2k │        │ shed blue        │
+ │   244 │ 10-04 13:40 │ 20m 50s │ 19.1M    │ 11.80  │ /tidy-up the     │
+ │       │ → 14:01:02  │         │ out 63k  │        │ garage           │
+ └───────┴─────────────┴─────────┴──────────┴────────┴──────────────────┘
+```
+
+The API price is what the same calls cost on Anthropic's API at its list
+prices, built in for Claude's models (a cache write at the 5-minute rate,
+since the transcript does not say which); a subscription pays none of it.
+A price in `~/.lazychat/prices.json` (per million tokens: `input`,
+`cache_write`, `cache_read`, `output`, by model id) wins over the list.
+A prompt that called a model with no price shows `—`.
+
 What the transcript does not say — an older Claude Code, a transcript cut
 short — is a dash, never a guess.
 
 A reply written over several lines counts once, its largest numbers kept;
-a fork's copied history counts once. Costs show only for models priced in
-`~/.lazychat/prices.json` (per million tokens: `input`, `cache_write`,
-`cache_read`, `output`); nothing is priced by lazychat. `PgUp` `PgDn` and
-the wheel scroll, `Esc` goes back to the chat, and a click on a session in
+a fork's copied history counts once. `PgUp` `PgDn` and the wheel scroll, `Esc` goes back to the chat, and a click on a session in
 the tree too.
 
 | Key | Does |
@@ -534,6 +530,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | version | shown | the corner's `v1.0(N)` |
 | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
+| sounds | on | on macOS, Lazy's sounds: a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
 
 One accent colour, the theme's, marks the focused frame, fills the selected
 entry as one band (only its text is coloured while a pane has the keys) and
@@ -590,8 +587,10 @@ later. The question goes when the session works again. Codex has no such
 hook and only waits.
 
 What lazychat adds to a claude session — that hook, which writes a notice
-to a file in `$TMPDIR/lazychat-notices-<pid>-…`, and a status line for a
-session that has none — is built in memory for that session and passed as one `claude --settings
+to a file in `$TMPDIR/lazychat-notices-<pid>-…`, a StopFailure hook that
+writes `<notice>.fail` when an answer ends on an API error (lazychat plays
+its error sound once and drops the file), and a status line for a session
+that has none — is built in memory for that session and passed as one `claude --settings
 <json>`. No settings file of yours is written: Claude Code merges the
 flag's settings with yours, lists added to, never replaced, so your own
 hooks and status line run in lazychat's sessions as anywhere. The pieces

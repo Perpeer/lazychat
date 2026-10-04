@@ -79,6 +79,7 @@ func (s *Settings) settings() []setting {
 			return st.Save()
 		}),
 		onOff("status line", "lazychat's status line in claude sessions whose own settings name none (user, project or project local): model, branch, context, cost, limits. Claude then hides most of its footer hints (esc to interrupt, ? for shortcuts); hide it to get them back. A status line of your own always wins", &st.NoStatusLine, st.Save),
+		switched("sounds", "Lazy's sounds, on macOS: a session asks something, finishes, or ends on an API error (a rate limit, an outage); in the details, a subagent comes back with its answer", "on", "off", &st.NoSounds, st.Save),
 	}
 }
 
@@ -159,17 +160,22 @@ func (s *Settings) themeSetting() setting {
 // onOff is a row that shows something or not; off is kept as true in the
 // settings file so the default needs no line there.
 func onOff(name, about string, off *bool, save func() error) setting {
+	return switched(name, about, "shown", "hidden", off, save)
+}
+
+// switched is a row with two values, on and off, saved as off.
+func switched(name, about, on, offWord string, off *bool, save func() error) setting {
 	return setting{
 		name:  name,
 		about: about,
 		value: func() string {
 			if *off {
-				return "hidden"
+				return offWord
 			}
-			return "shown"
+			return on
 		},
 		choices: func() []choice {
-			return []choice{{name: "shown", chosen: !*off}, {name: "hidden", chosen: *off}}
+			return []choice{{name: on, chosen: !*off}, {name: offWord, chosen: *off}}
 		},
 		set: func(i int) error {
 			*off = i == 1

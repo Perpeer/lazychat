@@ -3,6 +3,7 @@ package usage
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -206,8 +207,8 @@ func TestTail(t *testing.T) {
 	}
 }
 
-// Costs come only from prices the user gave, and a model without one
-// shows no cost.
+// Costs come from prices the user gave, else the list price of a Claude
+// model's family; a model with neither shows no cost.
 func TestCost(t *testing.T) {
 	at := time.Date(2026, 3, 2, 10, 0, 0, 0, time.Local)
 	a := []Call{{ID: "same", Time: at, Model: "model-x", Tokens: Tokens{Input: 1, Output: 10}}}
@@ -221,6 +222,17 @@ func TestCost(t *testing.T) {
 	}
 	if _, ok := p.Cost(b); ok {
 		t.Error("a cost though model-y has no price")
+	}
+	listed := []Call{
+		{Model: "claude-opus-5-5", Tokens: Tokens{Input: 1_000_000, CacheRead: 1_000_000, Output: 1_000_000}},
+		{Model: "claude-sonnet-4-5-20250929", Tokens: Tokens{CacheWrite: 1_000_000}},
+		{Model: "<synthetic>"},
+	}
+	if c, ok := (Prices{}).Cost(listed); !ok || math.Abs(c-(4+0.2+20+3.75)) > 1e-9 {
+		t.Errorf("list prices: %v %v", c, ok)
+	}
+	if c, ok := (Prices{"claude-opus-5-5": {Output: 1}}).Cost(listed[:1]); !ok || c != 1 {
+		t.Errorf("the user's price first: %v %v", c, ok)
 	}
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "prices.json"), []byte(`{"model-x":{"input":1}}`), 0o600); err != nil {

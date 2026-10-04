@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"lazychat/internal/core/sound"
 	"lazychat/internal/core/usage"
 	"lazychat/internal/ui/kit"
 )
@@ -42,6 +43,10 @@ type report struct {
 	scroll int
 	back   int  // the prompt shown in full, counted back from the newest
 	moving bool // the picked prompt's village shows motion, at the last draw
+	// backFor and back are the newest prompt read last and how many of its
+	// subagents had come back then: one more is a worker's tick.
+	backFor time.Time
+	backN   int
 }
 
 // reportMsg is a read's result.
@@ -138,8 +143,35 @@ func (c *Chat) reported(msg reportMsg) tea.Cmd {
 	if t, _ := c.reportTarget(); t != msg.shownFor {
 		return c.readReport()
 	}
+	same := r.read && r.shownFor == msg.shownFor
 	r.read, r.shownFor = true, msg.shownFor
 	r.s, r.path, r.prices, r.err = msg.s, msg.path, msg.prices, msg.err
+	return r.heardBack(same)
+}
+
+// heardBack is the tick for a subagent of the newest prompt come back since
+// the last read of the same session; the first read hears nothing.
+func (r *report) heardBack(same bool) tea.Cmd {
+	if r.s == nil {
+		return nil
+	}
+	turns := r.s.Turns()
+	if len(turns) == 0 {
+		return nil
+	}
+	t := turns[len(turns)-1]
+	n := 0
+	for _, a := range t.Agents {
+		if a != nil && (!a.Back.IsZero() || a.Done()) {
+			n++
+		}
+	}
+	was := r.backN
+	grew := same && t.Time.Equal(r.backFor) && n > was
+	r.backFor, r.backN = t.Time, n
+	if grew {
+		return playSound(sound.Tick)
+	}
 	return nil
 }
 

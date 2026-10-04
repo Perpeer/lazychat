@@ -15,47 +15,49 @@ func villageText(v Village, frame int) string {
 	return strings.Join(rows, "\n")
 }
 
-// An empty village is Lazy and eight empty plots; workers fill the plots
-// clockwise, the rest counted, never drawn.
-func TestVillagePlots(t *testing.T) {
-	empty := villageText(Village{}, 0)
-	if n := strings.Count(empty, "· · · ·"); n != Plots || !strings.Contains(empty, "Lazy") || !strings.Contains(empty, "^^") {
-		t.Errorf("empty village (%d plots):\n%s", n, empty)
+// The village is as tall as Lazy or its workers, never a fixed grid: none is
+// one line saying so, each worker a line, past VillageLines counted.
+func TestVillageRows(t *testing.T) {
+	lazy := len(DrawVillage(Village{}, 0, 96))
+	if empty := villageText(Village{}, 0); !strings.Contains(empty, "worked alone") || !strings.Contains(empty, "Lazy") {
+		t.Errorf("empty village:\n%s", empty)
 	}
-	v := Village{More: 3}
-	for range Plots {
-		v.Workers = append(v.Workers, Worker{Building: Hut, Title: "hut", Phase: Idle})
+	one := DrawVillage(Village{Workers: []Worker{{Title: "Explore"}}}, 0, 96)
+	if len(one) != lazy {
+		t.Errorf("one worker: %d rows, Lazy alone %d", len(one), lazy)
 	}
-	full := villageText(v, 0)
-	if strings.Count(full, "· · · ·") != 0 || strings.Count(full, "└──────┘") != Plots || !strings.Contains(full, "+3") {
-		t.Errorf("full village:\n%s", full)
+	var v Village
+	for range VillageLines + 2 {
+		v.Workers = append(v.Workers, Worker{Title: "Plan"})
 	}
-	if got := len(DrawVillage(v, 0, 96)); got != VillageRows {
-		t.Errorf("%d rows, want %d", got, VillageRows)
+	many := villageText(v, 0)
+	if strings.Count(many, "⌂ Plan") != VillageLines || !strings.Contains(many, "+2 more") {
+		t.Errorf("crowded:\n%s", many)
+	}
+	for _, row := range DrawVillage(v, 0, 60) {
+		if n := ansi.StringWidth(row); n > 60 {
+			t.Errorf("row %d wide: %q", n, ansi.Strip(row))
+		}
 	}
 }
 
-// A worker at work says its job over its building; one walking carries its
-// bubble along; one done shows ✓; Lazy's rows follow its mood.
+// Each line says what the worker is, how many ran, its job and how it
+// stands; Lazy's rows follow its mood.
 func TestVillageWorkers(t *testing.T) {
-	work := villageText(Village{Leader: LeaderWorking, Workers: []Worker{{Building: Tower, Title: "Explore", Say: "find the brushes", Phase: AtWork}}}, 1)
-	if !strings.Contains(work, "‹Explore: find the brushes›") || !strings.Contains(work, "▪") || !strings.Contains(work, "┬┬") {
-		t.Errorf("at work:\n%s", work)
+	work := villageText(Village{Leader: LeaderWorking, Workers: []Worker{
+		{Kind: Agent, Title: "Explore", Count: 2, Say: "find the brushes", Phase: AtWork, Took: "11s"},
+		{Kind: Skill, Title: "brush-care", Count: 1, Say: "", Phase: Done, Took: "2s"},
+		{Kind: MCP, Title: "paint-shop", Count: 3, Say: "mix", Phase: Idle},
+	}}, 1)
+	for _, want := range []string{"⌂ Explore", "×2", "find the brushes", "11s", "≡ brush-care", "✓ 2s", "▭ paint-shop", "×3", "mix"} {
+		if !strings.Contains(work, want) {
+			t.Errorf("%q missing:\n%s", want, work)
+		}
 	}
-	walk := villageText(Village{Workers: []Worker{{Building: Forge, Title: "forge", Say: "boards", Phase: Out, Progress: 0.5}}}, 0)
-	if !strings.Contains(walk, "‹forge: boards›") {
-		t.Errorf("walking:\n%s", walk)
+	if strings.Contains(work, "×1") {
+		t.Errorf("a single worker has no count:\n%s", work)
 	}
-	back := villageText(Village{Workers: []Worker{{Building: Market, Title: "paint-shop", Phase: Return, Progress: 0.5}}}, 0)
-	if !strings.Contains(back, "‹paint-shop ✓›") {
-		t.Errorf("walking back:\n%s", back)
-	}
-	done := villageText(Village{Leader: LeaderParty, Workers: []Worker{{Building: Scribe, Title: "brush-care", Phase: Done}}}, 0)
-	if !strings.Contains(done, "(^^)✓") || strings.Contains(done, "‹") || !strings.Contains(done, "^^") {
-		t.Errorf("done:\n%s", done)
-	}
-	asking := villageText(Village{Leader: LeaderAsking}, 0)
-	if !strings.Contains(asking, "?") {
+	if asking := villageText(Village{Leader: LeaderAsking}, 0); !strings.Contains(asking, "?") {
 		t.Errorf("asking:\n%s", asking)
 	}
 }

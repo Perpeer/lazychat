@@ -40,7 +40,7 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 		for _, b := range tools {
 			content = append(content, b)
 		}
-		add(map[string]any{"type": "assistant", "message": map[string]any{"id": msg, "model": "model-x", "content": content, "usage": usage(cw, cr, out)}})
+		add(map[string]any{"type": "assistant", "message": map[string]any{"id": msg, "model": "claude-sonnet-4-5-20250929", "content": content, "usage": usage(cw, cr, out)}})
 	}
 	call := func(id, name string, input map[string]any) map[string]any {
 		return map[string]any{"type": "tool_use", "id": id, "name": name, "input": input}
@@ -78,7 +78,7 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 	write(id+".jsonl", strings.Join(lines, "\n")+"\n")
 	sub := func(agent, desc, toolUse string, after time.Duration) {
 		b, _ := json.Marshal(map[string]any{"type": "assistant", "uuid": agent + "-1", "timestamp": at.Add(after).Format(time.RFC3339Nano), "agentId": agent, "isSidechain": true,
-			"message": map[string]any{"id": agent + "-m", "model": "model-x", "content": []any{}, "usage": usage(900, 20000, 120)}})
+			"message": map[string]any{"id": agent + "-m", "model": "claude-haiku-4-5-20251001", "content": []any{}, "usage": usage(900, 20000, 120)}})
 		write(filepath.Join(id, "subagents", "agent-"+agent+".jsonl"), string(b)+"\n")
 		write(filepath.Join(id, "subagents", "agent-"+agent+".meta.json"), `{"agentType":"Explore","description":"`+desc+`","toolUseId":"`+toolUse+`"}`)
 	}
@@ -88,11 +88,11 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 
 // Chat's right side has two tabs, the chat and the report; 3 opens the
 // report on the tree cursor's session alone, prompt by prompt: the newest
-// picked and followed, its village with the agent at work in its building
-// and the prompts as a table under it; ↓ picks the one before, its workers
-// home and done, its skill, its MCP server, its tools and the agent that
-// came back in the report, its question's wait left out; a click on the
-// session's row in the tree brings its chat back.
+// picked and followed, its village listing the agent at work, its report
+// with an API price, and the prompts as a table held at the box's bottom;
+// ↓ picks the one before, its workers done — a subagent, a skill, an MCP
+// server — its tools in the report, its question's wait left out; a click
+// on the session's row in the tree brings its chat back.
 func TestReport(t *testing.T) {
 	e, dir := seeded(t, state.Session{Tool: "claude", Name: "shed work", ID: "garden-1"})
 	e.lazyHome = t.TempDir()
@@ -100,11 +100,16 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect("Lazy", "‹Explore: find the brushes›", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "workers", "Explore · find the brushes")
+	d.expect("Lazy", "⌂ Explore", "find the brushes", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API price $", "API $", "workers", "Explore · find the brushes")
 	d.expect("(↑↓) pick prompt · (esc) back")
+	rows := strings.Split(d.screen(), "\n")
+	bottom := lineOf(d.screen(), "┴")
+	if bottom < 0 || bottom+2 >= len(rows) || !strings.Contains(rows[bottom+2], "(↑↓) pick prompt") {
+		t.Fatalf("the prompts table is not at the box's bottom:\n%s", d.screen())
+	}
 	d.key("down")
-	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "waiting for your answer, left out", "(^^)✓", "Explore · count the boards", "★ brush-care", "paint-shop", "Skill ×1", "Agent ×1")
-	d.expectNot("‹Explore")
+	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "waiting for your answer, left out", "⌂ Explore", "count the boards", "≡ brush-care", "▭ paint-shop", "list_colours", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
+	d.expectNot("find the brushes")
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {
 		d.expectNot(gone)
 	}
@@ -124,7 +129,7 @@ func TestReport(t *testing.T) {
 	}
 	d.key("3")
 	d.expect("prompts")
-	rows := strings.Split(d.screen(), "\n")
+	rows = strings.Split(d.screen(), "\n")
 	y = lineOf(d.screen(), "[3] details")
 	x = strings.Index(rows[y], "[2] ")
 	d.click(len([]rune(rows[y][:x]))+1, y)

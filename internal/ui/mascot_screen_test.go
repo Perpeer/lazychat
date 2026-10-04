@@ -10,7 +10,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"lazychat/internal/core/sound"
 	"lazychat/internal/core/state"
+	"slices"
 )
 
 // mascot is the mascot's rows on the rail, its top four, as text.
@@ -409,4 +411,31 @@ func secs(row string) int {
 		n += 60 * mins
 	}
 	return n
+}
+
+// Lazy is heard as the board changes: a session asking plays ask, one
+// whose answer ends on an API error plays error, once.
+func TestMascotSounds(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	d := start(t, e, 120, 32)
+	var played []sound.Name
+	d.app.play = func(n sound.Name) { played = append(played, n) }
+	heard := func(n sound.Name) func() bool {
+		return func() bool { return slices.Contains(played, n) }
+	}
+	d.session("oak", "ask")
+	d.until("no sound for oak's question", heard(sound.Ask))
+	d.session("pine", "fail")
+	d.until("no sound for pine's failure", heard(sound.Error))
+	d.pump(1200 * time.Millisecond)
+	errors := 0
+	for _, n := range played {
+		if n == sound.Error {
+			errors++
+		}
+	}
+	if errors != 1 {
+		t.Fatalf("the failure played %d times: %v", errors, played)
+	}
+	d.quitApp()
 }

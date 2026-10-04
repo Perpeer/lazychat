@@ -4,6 +4,8 @@ paths:
   - "internal/ui/chat/report*.go"
   - "internal/ui/chat/view_report.go"
   - "internal/ui/kit/tabstrip.go"
+  - "internal/ui/kit/village.go"
+  - "internal/ui/chat/village.go"
 ---
 
 # Report
@@ -24,19 +26,29 @@ paths:
   a background agent first writes `async_launched` with no totals, and
   its result's totalTokens is the last call's context, not a sum.
 - The report is the tree cursor's session prompt by prompt: the picked
-  prompt's village on top, the prompts as a two-row table (the user's
-  "Excel-like", prompts are long), then the picked prompt's report:
-  tokens, workers table, tools, commands, files. ↑↓ pick; the newest is
-  followed. On a project, its newest session.
-- The village (kit.DrawVillage, chat/village.go) only draws what usage
-  gives: a worker's place comes from its own times (Left/First, Back, a
-  use's time plus useTime), walks are walkTime long. Every field may be
-  missing in another Claude Code version: no time stays home, no name is
-  "agent" or left out, a turn not running shows all done. MCP is one
-  worker per server, skills one per name; past 8 plots the newest stay.
+  prompt's village and report on top, which scroll, and the prompts as a
+  two-row table of ten held at the box's bottom (the user's "en altta 10
+  tane sabit"); a box too short for both scrolls the whole page. Table
+  columns are as wide as their longest value: fixed widths cut "245" and
+  "20m 50s". ↑↓ pick; the newest is followed. On a project, its newest
+  session.
+- The village is a roster, not a map: the user found a ring of eight
+  building plots took half the screen and said nothing. Lazy at the left,
+  a line per worker (subagents by type, skills by name, MCP by server),
+  ×N, the newest job, its state; as tall as Lazy or its lines, six at
+  most. Every field may be missing in another Claude Code version: no
+  time is a dim `·`, no type "agent", a nameless MCP call left out, a turn
+  not running all done. A skill's or MCP call's end is not recorded, so
+  they show no time.
 - The fast beat (animBeat) reaches the active tab as kit.Beat only while
-  it is a kit.Animator saying so: Chat says so while the picked village
-  moves, so an idle page costs no redraws.
+  it is a kit.Animator saying so: Chat says so while a worker is at work
+  or Lazy moves, so an idle page costs no redraws.
+- Costs are API list prices built in (usage/prices.go, by model id
+  prefix, from Anthropic's pricing page), prices.json over them per model
+  id; the user saw only "—" with no file. A cache write is priced at the
+  5-minute rate: the transcript keeps no duration. Calls with no tokens
+  (Claude Code's "<synthetic>" notes) cost nothing. Prices change: update
+  the table from the pricing page when a model ships.
 - Commands are the Bash tool's `command`, cut on ; | & and newlines, by
   their first word and a second one that is no flag or path; env
   assignments, sudo, env, cd and echo are skipped (usage.commandHeads).
@@ -58,8 +70,7 @@ paths:
   goroutine and the screen keeps Clones (Uses copied too). Every second
   while the report shows, and at once when the cursor moves to another
   session; an answer for a session no longer under the cursor is dropped.
-- Costs only from ~/.lazychat/prices.json, never built in. Tests use
-  invented transcripts (the repository is public): made-up skills,
+- Tests use invented transcripts (the repository is public): made-up skills,
   servers and agents.
 - Token kinds keep a glyph beside their Okabe–Ito colour
   (kit.SeriesGlyphs, Theme.Series), readable without colour.

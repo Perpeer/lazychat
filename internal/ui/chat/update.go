@@ -3,6 +3,7 @@ package chat
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"lazychat/internal/core/sound"
 	"lazychat/internal/ui/kit"
 )
 
@@ -35,12 +36,15 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 			}
 		}
 		c.act.LearnIDs()
-		c.watchSessions()
+		var failed tea.Cmd
+		if c.watchSessions() {
+			failed = playSound(sound.Error)
+		}
 		var clock tea.Cmd
 		if msg.N%2 == 0 {
 			clock = c.readClocks()
 		}
-		return tea.Batch(c.reportTick(msg.N), clock)
+		return tea.Batch(c.reportTick(msg.N), clock, failed)
 	case termMsg:
 		c.act.Live.AckAll()
 		c.act.Reap()

@@ -22,7 +22,7 @@ internal/ui/kit           what tabs share
 internal/ui/vm            shared plain-Go state: the list cursor
 internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
-internal/core             agent, api, files, git, history, keylayout, presence, settings, state, status, usage, workspace — no terminal packages; api runs no subprocess; testenv, the tests' own home and temp folder
+internal/core             agent, api, files, git, history, keylayout, presence, settings, sound, state, status, usage, workspace — no terminal packages; api runs no subprocess; testenv, the tests' own home and temp folder
 macos/Lazychat            Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions, permissions.swift every macOS permission it asks for
 assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes; lazy.svg, Lazy's rail frames playing in the README, written by `LAZYCHAT_WRITE_ASSETS=1 go test -run TestLazySVG ./internal/ui/kit` (the test fails when it is out of date)
 ```
@@ -64,7 +64,9 @@ signals on the tick (its process, its tool's capabilities, the notice
 hook, whether its pane has the keys) and hands them to the `Board`;
 everything that shows a state reads it back from there. The menu bar app
 gets the same states through `presence` and applies the same two orders
-across every lazychat and Claude desktop.
+across every lazychat and Claude desktop. Lazy's sounds (`internal/core/sound`)
+only listen to the board's states changing; a tab asks for one with
+`kit.PlaySound`.
 
 ### AI tools
 

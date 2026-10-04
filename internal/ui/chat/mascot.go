@@ -10,8 +10,9 @@ import (
 )
 
 // watchSessions reads every running session's Signals on the tick and
-// hands them to the board, which decides what each is doing.
-func (c *Chat) watchSessions() {
+// hands them to the board, which decides what each is doing; failed is a
+// session's answer having ended on an API error since the last tick.
+func (c *Chat) watchSessions() (failed bool) {
 	live := map[string]status.Signals{}
 	for _, r := range c.core.Store.Sessions {
 		s, ok := c.act.Live.Get(r.Key)
@@ -31,10 +32,14 @@ func (c *Chat) watchSessions() {
 			Looking:    c.Capture.Held() && c.Pane.Key == r.Key,
 			Last:       c.clocks.last[r.Key],
 		}
+		if c.act.Failed(r.Key) {
+			failed = true
+		}
 	}
 	for _, key := range c.board.Step(time.Now(), live) {
 		c.act.Answered(key)
 	}
+	return failed
 }
 
 // summary is the board over the sessions in the store's order.

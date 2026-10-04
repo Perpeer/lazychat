@@ -67,7 +67,18 @@ func (c *Chat) reportBox(w, h int) string {
 		}
 		lines = []string{"", kit.StyleDim.Render(msg)}
 	default:
-		lines = c.pageView(r.s, inner)
+		top, table := c.pageView(r.s, inner)
+		// The table stays at the bottom while the rest has room to show
+		// more than a few rows; a short box scrolls the whole page.
+		if room := rows - len(table); room >= 8 {
+			body := scrolled(top, &r.scroll, room)
+			body = body[:min(len(body), room)]
+			for len(body) < room {
+				body = append(body, "")
+			}
+			return kit.Box(c.chatTabs(""), append(body, table...), w, h, c.repFocus, false)
+		}
+		lines = append(top, table...)
 	}
 	return kit.Box(c.chatTabs(""), scrolled(lines, &r.scroll, rows), w, h, c.repFocus, false)
 }
@@ -83,25 +94,26 @@ func section(title, note string) string {
 	return kit.StyleBold.Render(" "+title) + kit.StyleDim.Render("  "+note)
 }
 
-// promptRows is how many prompts the table shows around the picked one.
-const promptRows = 12
+// promptRows is how many prompts the table at the page's bottom shows.
+const promptRows = 10
 
-// pageView is the session prompt by prompt: the picked prompt's village on
-// top, the prompts as a table under it, and the picked one's report.
-func (c *Chat) pageView(s *usage.Session, w int) []string {
+// pageView is the session prompt by prompt: on top the picked prompt's
+// village and its report, which scroll; under them the prompts as a table,
+// held at the box's bottom.
+func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	now := time.Now()
 	working := c.working(s, now)
 	state := kit.StyleDim.Render("idle")
 	if working {
 		state = kit.StyleBusy.Render(kit.Spinner[(c.Tick/2)%len(kit.Spinner)] + " working")
 	}
-	out := []string{" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state}
+	top = []string{" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state}
 	if s.Bad > 0 {
-		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %d line(s) were not JSON and are left out", s.Bad)))
+		top = append(top, kit.StyleDim.Render(fmt.Sprintf(" %d line(s) were not JSON and are left out", s.Bad)))
 	}
 	turns := s.Turns()
 	if len(turns) == 0 {
-		return append(out, "", kit.StyleDim.Render(" no prompt yet"))
+		return append(top, "", kit.StyleDim.Render(" no prompt yet")), nil
 	}
 	last := len(turns) - 1
 	c.rep.back = kit.Clamp(c.rep.back, 0, last)
@@ -110,13 +122,15 @@ func (c *Chat) pageView(s *usage.Session, w int) []string {
 	running := picked == last && working
 	v := villageOf(t, now, running, running && openWait(t))
 	c.rep.moving = moving(v)
-	out = append(out, "")
+	costs := c.costs(s, turns)
+	top = append(top, "")
 	for _, row := range kit.DrawVillage(v, c.beat, w-1) {
-		out = append(out, " "+row)
+		top = append(top, " "+row)
 	}
-	out = append(out, "", section("prompts", "↑↓ picks one · newest first"))
-	out = append(out, c.promptTable(turns, picked, working, now, w)...)
-	return append(out, c.report(s, turns, picked, working, now, w)...)
+	top = append(top, c.report(turns, picked, working, now, costs[picked], w)...)
+	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
+		c.promptTable(turns, picked, working, now, costs, w)...)
+	return top, table
 }
 
 // openWait says a question of the turn waits for the user's answer now.
@@ -129,11 +143,39 @@ func openWait(t usage.Turn) bool {
 	return false
 }
 
-// promptTable is the prompts newest first, two rows each, as a table: its
-// number, when, how long, its tokens and cost, and its text over two rows.
-func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now time.Time, w int) []string {
+// promptTable is promptRows prompts around the picked one, newest first,
+// two rows each, as a table: its number, when, how long, its tokens and
+// cost, and its text over two rows. Each column is as wide as its longest
+// value; the text takes the rest.
+func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now time.Time, costs []string, w int) []string {
 	last := len(turns) - 1
-	cols := []int{6, 13, 8, 10, 7}
+	top := min(last, max(picked+promptRows/2, promptRows-1))
+	type entry struct {
+		i        int
+		one, two []string
+		fullText string
+	}
+	var rows []entry
+	for i := top; i >= 0 && i > top-promptRows; i-- {
+		tn := turns[i]
+		end, _ := turnEnd(tn, i == last, working, now)
+		mark := "  "
+		if i == picked {
+			mark = "▶ "
+		}
+		rows = append(rows, entry{i: i, fullText: tn.Text,
+			one: []string{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), num(tn.Tokens.Sum()), costs[i]},
+			two: []string{"", "→ " + end, "", "out " + num(tn.Tokens.Output), ""}})
+	}
+	head := []string{"#", "started", "active", "tokens", "API $"}
+	cols := make([]int, len(head))
+	for k, h := range head {
+		cols[k] = len([]rune(h))
+		for _, r := range rows {
+			cols[k] = max(cols[k], len([]rune(r.one[k])), len([]rune(r.two[k])))
+		}
+		cols[k] += 2
+	}
 	used := 3 // the left margin, the first and the last border
 	for _, n := range cols {
 		used += n + 1
@@ -159,61 +201,40 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 		}
 		return b.String()
 	}
-	out := []string{line("┌", "┬", "┐"), row([]string{"#", "started", "active", "tokens", "cost", "prompt"}, false), line("├", "┼", "┤")}
-	top := min(last, max(picked+promptRows/2, promptRows-1))
-	for i := top; i >= 0 && i > top-promptRows; i-- {
-		tn := turns[i]
-		end, _ := turnEnd(tn, i == last, working, now)
-		words := text.Wrap(tn.Text, textW, "")
+	out := []string{line("┌", "┬", "┐"), row(append(head, "prompt"), false), line("├", "┼", "┤")}
+	for _, r := range rows {
+		words := text.Wrap(r.fullText, textW, "")
 		first, second := "", ""
 		if len(words) > 0 {
 			first = words[0]
 		}
 		if len(words) > 1 {
-			second = words[1]
-			if len(words) > 2 {
-				second = text.Fit(second+" "+strings.Join(words[2:], " "), textW)
-			}
+			second = text.Fit(strings.Join(words[1:], " "), textW)
 		}
-		mark := "  "
-		if i == picked {
-			mark = "▶ "
-		}
-		lit := i == picked
-		out = append(out,
-			row([]string{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), num(tn.Tokens.Sum()), c.costOf(turns, i), first}, lit),
-			row([]string{"", "→ " + end, "", "out " + num(tn.Tokens.Output), "", second}, lit))
-		if i > 0 && i > top-promptRows+1 {
-			out = append(out, line("├", "┼", "┤"))
-		}
+		lit := r.i == picked
+		out = append(out, row(append(r.one, first), lit), row(append(r.two, second), lit))
 	}
-	out = append(out, line("└", "┴", "┘"))
-	if top-promptRows >= 0 {
-		out = append(out, kit.StyleDim.Render(fmt.Sprintf("   … %d older", top-promptRows+1)))
-	}
-	return out
+	return append(out, line("└", "┴", "┘"))
 }
 
-// callsOf are the calls of the i-th turn: from its prompt to the next.
-func callsOf(s *usage.Session, turns []usage.Turn, i int) []usage.Call {
-	var out []usage.Call
+// costs are every turn's API price, "—" where a model has none: the
+// session's calls are bucketed once by the prompt they follow.
+func (c *Chat) costs(s *usage.Session, turns []usage.Turn) []string {
+	byTurn := make([][]usage.Call, len(turns))
 	for _, cl := range s.AllCalls() {
-		if !cl.Time.Before(turns[i].Time) && (i == len(turns)-1 || cl.Time.Before(turns[i+1].Time)) {
-			out = append(out, cl)
+		i := sort.Search(len(turns), func(i int) bool { return turns[i].Time.After(cl.Time) }) - 1
+		if i >= 0 {
+			byTurn[i] = append(byTurn[i], cl)
+		}
+	}
+	out := make([]string, len(turns))
+	for i, calls := range byTurn {
+		out[i] = "—"
+		if v, ok := c.rep.prices.Cost(calls); ok {
+			out[i] = fmt.Sprintf("%.2f", v)
 		}
 	}
 	return out
-}
-
-// costOf is the i-th turn's cost when every model it called has a price.
-func (c *Chat) costOf(turns []usage.Turn, i int) string {
-	if c.rep.s == nil {
-		return "—"
-	}
-	if v, ok := c.rep.prices.Cost(callsOf(c.rep.s, turns, i)); ok {
-		return fmt.Sprintf("%.2f", v)
-	}
-	return "—"
 }
 
 // turnEnd is when a turn ended as the list writes it, and whether it is
@@ -235,7 +256,7 @@ func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 // report is the picked prompt in full: its time and tokens, its workers as a
 // table, the tools and shell commands it ran and the files it changed.
 // What the transcript does not say is a dash.
-func (c *Chat) report(s *usage.Session, turns []usage.Turn, i int, working bool, now time.Time, w int) []string {
+func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, cost string, w int) []string {
 	t := turns[i]
 	newest := i == len(turns)-1
 	end, _ := turnEnd(t, newest, working, now)
@@ -253,13 +274,21 @@ func (c *Chat) report(s *usage.Session, turns []usage.Turn, i int, working bool,
 	}
 	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), note),
 		" " + kit.StyleAccent.Render("❯ "+text.Fit(t.Text, max(10, w-4))),
-		" " + kinds(t.Tokens) + kit.StyleDim.Render(fmt.Sprintf("   %s · %d calls · cost %s", strings.Join(tokenLabels, " · "), t.Calls, c.costOf(turns, i))),
+		" " + kinds(t.Tokens) + kit.StyleDim.Render(fmt.Sprintf("   %s · %d calls · %s", strings.Join(tokenLabels, " · "), t.Calls, costNote(cost))),
 		"", section("workers", "who did the work: subagents, skills, MCP servers; ★ one of yours")}
 	out = append(out, workerRows(t, now, newest && working, w)...)
 	out = append(out, "", section("tools", "every call of the prompt, by tool"), " "+text.Fit(counted(t.Tools, "×"), max(10, w-2)))
 	out = append(out, "", section("commands", "the shell commands run, by their first words"), " "+text.Fit(counted(t.Commands, "×"), max(10, w-2)))
 	out = append(out, "", section("files", "edits, and lines the subagents changed"), " "+text.Fit(filesLine(t), max(10, w-2)))
 	return out
+}
+
+// costNote is a turn's API price as the report says it.
+func costNote(cost string) string {
+	if cost == "—" {
+		return "no API price for its model"
+	}
+	return "API price $" + cost
 }
 
 // workerRows are the turn's workers as a table: kind, name, how long, its

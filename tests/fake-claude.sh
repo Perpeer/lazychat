@@ -134,9 +134,16 @@ while IFS= read -r line; do
   # Notification hook lazychat gave it in --settings writes the notice to
   # lazychat's file.
   if [ "$line" = ask ]; then
-    q=$(printf '%s' "$*" | sed -n "s/.*cat > '\([^']*\)'.*/\1/p")
+    q=$(printf '%s' "$*" | grep -o "cat > '[^']*'" | head -n 1 | sed "s/^cat > '//; s/'$//")
     printf '\033]0;\342\234\263 fake\007'
     printf 'asked\n'
     [ -n "$q" ] && (sleep 1; printf '{"notification_type":"permission_prompt","message":"Claude needs your permission"}' > "$q") &
+  fi
+  # "fail" is an answer ending on an API error: the StopFailure hook writes
+  # its event to the file beside the question's.
+  if [ "$line" = fail ]; then
+    f=$(printf '%s' "$*" | grep -o "cat > '[^']*\.fail'" | head -n 1 | sed "s/^cat > '//; s/'$//")
+    printf 'failed\n'
+    [ -n "$f" ] && printf '{"hook_event_name":"StopFailure","error_type":"rate_limit"}' > "$f"
   fi
 done

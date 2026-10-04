@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"lazychat/internal/core/sound"
 	"lazychat/internal/core/usage"
 	"lazychat/internal/ui/kit"
 )
 
 // A turn from an older Claude Code or a cut transcript may lack any time or
-// name: the village and the report still draw, the worker staying home.
+// name: the village and the report still draw, the line saying less.
 func TestVillageGaps(t *testing.T) {
 	now := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
 	var empty usage.Turn
@@ -31,67 +32,90 @@ func TestVillageGaps(t *testing.T) {
 		t.Fatalf("want the one agent, the nameless MCP call left out: %+v", v.Workers)
 	}
 	w := v.Workers[0]
-	if w.Title != "agent" || w.Say != "sort the seeds" || w.Phase != kit.Idle || w.Building != kit.Hut {
+	if w.Title != "agent" || w.Say != "sort the seeds" || w.Phase != kit.Idle || w.Took != "" {
 		t.Fatalf("agent with no times or type: %+v", w)
 	}
 	if rows := workerRows(gaps, now, true, 80); !strings.Contains(strings.Join(rows, "\n"), "—") {
 		t.Fatalf("an unknown time is a dash: %q", rows)
 	}
+	if v := villageOf(gaps, now, false, false); v.Workers[0].Phase != kit.Done {
+		t.Fatalf("a finished turn has its workers done: %+v", v.Workers[0])
+	}
 	kit.DrawVillage(v, 3, 40)
 }
 
-// A worker walks out, works, walks back and goes home by its own times; a
-// turn that no longer runs has every worker done and Lazy cheering a while.
-func TestVillagePhases(t *testing.T) {
-	left := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
-	back := left.Add(30 * time.Second)
-	turn := usage.Turn{Agents: []*usage.Agent{{Type: "Explore", Description: "count the pots", Left: left, Back: back}}}
-	for _, c := range []struct {
-		at   time.Time
-		want kit.Phase
-	}{
-		{left.Add(-time.Second), kit.Idle},
-		{left.Add(walkTime / 2), kit.Out},
-		{left.Add(10 * time.Second), kit.AtWork},
-		{back.Add(walkTime / 2), kit.Return},
-		{back.Add(walkTime + walkTime/2), kit.Home},
-		{back.Add(time.Minute), kit.Done},
-	} {
-		if got := villageOf(turn, c.at, true, false).Workers[0]; got.Phase != c.want || got.Building != kit.Tower {
-			t.Errorf("at %s: %+v, want phase %d", c.at.Sub(left), got, c.want)
-		}
+// Subagents of one type are one line, counted, with the newest job; the
+// line works while one of them is out and the turn runs.
+func TestVillageGroups(t *testing.T) {
+	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	turn := usage.Turn{
+		Agents: []*usage.Agent{
+			{Type: "Explore", Description: "count the pots", Left: at, Back: at.Add(20 * time.Second)},
+			{Type: "Explore", Description: "find the brushes", Left: at.Add(5 * time.Second)},
+			{Type: "Plan", Description: "plan the fence", Left: at.Add(time.Second), Back: at.Add(9 * time.Second)},
+		},
+		Uses: []*usage.Use{
+			{Kind: usage.MCP, Name: "list_colours", Origin: "paint-shop", Time: at},
+			{Kind: usage.MCP, Name: "mix", Origin: "paint-shop", Time: at.Add(time.Second)},
+			{Kind: usage.Skill, Name: "brush-care", Time: at.Add(2 * time.Second)},
+		},
 	}
-	turn.End = back.Add(time.Second)
-	v := villageOf(turn, turn.End.Add(time.Second), false, false)
-	if v.Leader != kit.LeaderParty || v.Workers[0].Phase != kit.Done {
+	v := villageOf(turn, at.Add(30*time.Second), true, false)
+	if len(v.Workers) != 4 || v.Leader != kit.LeaderWorking || !moving(v) {
+		t.Fatalf("workers: %+v", v)
+	}
+	byTitle := map[string]kit.Worker{}
+	for _, w := range v.Workers {
+		byTitle[w.Title] = w
+	}
+	if e := byTitle["Explore"]; e.Count != 2 || e.Say != "find the brushes" || e.Phase != kit.AtWork || e.Took != "30s" {
+		t.Errorf("Explore: %+v", e)
+	}
+	if p := byTitle["Plan"]; p.Count != 1 || p.Phase != kit.Done || p.Took != "8s" {
+		t.Errorf("Plan: %+v", p)
+	}
+	if m := byTitle["paint-shop"]; m.Kind != kit.MCP || m.Count != 2 || m.Say != "list_colours, mix" || m.Phase != kit.Done {
+		t.Errorf("paint-shop: %+v", m)
+	}
+	if s := byTitle["brush-care"]; s.Kind != kit.Skill || s.Phase != kit.Done {
+		t.Errorf("brush-care: %+v", s)
+	}
+	turn.End = at.Add(40 * time.Second)
+	if v := villageOf(turn, turn.End.Add(time.Second), false, false); v.Leader != kit.LeaderParty {
 		t.Fatalf("just ended: %+v", v)
 	}
 	if v := villageOf(turn, turn.End.Add(time.Minute), false, false); v.Leader != kit.LeaderRest || moving(v) {
 		t.Fatalf("long ended: %+v", v)
 	}
-	if v := villageOf(turn, left, true, true); v.Leader != kit.LeaderAsking {
+	if v := villageOf(turn, at, true, true); v.Leader != kit.LeaderAsking {
 		t.Fatalf("asking: %+v", v)
 	}
 }
 
-// One MCP server is one worker however many of its tools were called; past
-// the eight plots the newest stay and the rest are counted.
-func TestVillageGroups(t *testing.T) {
+// A subagent of the newest prompt back since the last read of the same
+// session is a tick; the first read, another prompt or another session is
+// not.
+func TestHeardBack(t *testing.T) {
 	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
-	var turn usage.Turn
-	turn.Uses = []*usage.Use{
-		{Kind: usage.MCP, Name: "list_colours", Origin: "paint-shop", Time: at},
-		{Kind: usage.MCP, Name: "mix", Origin: "paint-shop", Time: at.Add(time.Second)},
-		{Kind: usage.Skill, Name: "brush-care", Time: at.Add(2 * time.Second)},
+	agent := &usage.Agent{Type: "Explore", Left: at.Add(time.Second)}
+	s := &usage.Session{Prompts: []usage.Prompt{{Time: at, Text: "count the pots"}}, Agents: []*usage.Agent{agent}}
+	var r report
+	r.s = s
+	if r.heardBack(false) != nil {
+		t.Fatal("the first read ticked")
 	}
-	v := villageOf(turn, at, false, false)
-	if len(v.Workers) != 2 || v.Workers[0].Title != "paint-shop" || v.Workers[0].Say != "mix" || v.Workers[1].Building != kit.Scribe {
-		t.Fatalf("grouped: %+v", v.Workers)
+	if r.heardBack(true) != nil {
+		t.Fatal("nothing came back, yet a tick")
 	}
-	for i := range 10 {
-		turn.Agents = append(turn.Agents, &usage.Agent{Type: "Plan", Left: at.Add(time.Duration(10+i) * time.Second)})
+	agent.Back = at.Add(9 * time.Second)
+	cmd := r.heardBack(true)
+	if cmd == nil {
+		t.Fatal("the agent came back without a tick")
 	}
-	if v := villageOf(turn, at, false, false); len(v.Workers) != kit.Plots || v.More != 4 {
-		t.Fatalf("crowded: %d workers, %d more", len(v.Workers), v.More)
+	if msg, ok := cmd().(kit.PlaySound); !ok || msg.Name != sound.Tick {
+		t.Fatalf("played %v", cmd())
+	}
+	if r.heardBack(true) != nil {
+		t.Fatal("the same agent ticked twice")
 	}
 }

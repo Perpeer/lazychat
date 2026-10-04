@@ -19,6 +19,8 @@ import (
 
 	"lazychat/internal/core/api"
 	"lazychat/internal/core/presence"
+	"lazychat/internal/core/sound"
+	"lazychat/internal/core/status"
 	"lazychat/internal/core/workspace"
 	"lazychat/internal/ui/chat"
 	"lazychat/internal/ui/git"
@@ -73,7 +75,11 @@ type App struct {
 	active  int
 	release func()           // lets go of the open workspace's lock
 	news    *presence.Writer // the mascot's news for the macOS menu bar; nil in tests
-	leaving chan struct{}    // closed once the workspace left has stopped; nil when none is
+	// play plays one of Lazy's sounds; nil in tests. heard is each
+	// session's state at the last tick, to hear only its changes.
+	play    func(sound.Name)
+	heard   map[string]status.State
+	leaving chan struct{} // closed once the workspace left has stopped; nil when none is
 
 	wsSel bool // the workspace box has the keys
 	exit  Exit // what to do once the program ends
@@ -147,6 +153,9 @@ func Run(core *api.Core, opts Options) (exit Exit, err error) {
 	defer in.Close()
 	if core.Registry != nil {
 		a.news = &presence.Writer{Home: core.Registry.Home()}
+	}
+	if core.Settings != nil {
+		a.play = sound.New(core.Settings.Home).Play
 	}
 	router := kit.NewInputRouter(in, func(n int) { a.Send(tabMsg(n)) })
 	router.CmdEnter = func() { a.Send(kit.CmdEnter{}) }
@@ -234,7 +243,11 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, t.Update(kit.Tick{N: a.tick}))
 		}
 		a.tellMenuBar()
+		a.hearNews()
 		return a, tea.Batch(cmds...)
+	case kit.PlaySound:
+		a.sound(msg.Name)
+		return a, nil
 	case openMsg:
 		a.open(msg.w)
 		return a, a.takePending()

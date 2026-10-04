@@ -130,6 +130,9 @@ func TestClaudeOverlay(t *testing.T) {
 				Matcher string
 				Hooks   []struct{ Type, Command string }
 			}
+			StopFailure []struct {
+				Hooks []struct{ Type, Command string }
+			}
 		}
 	}
 	if err := json.Unmarshal([]byte(e.Args[4]), &s); err != nil {
@@ -139,6 +142,9 @@ func TestClaudeOverlay(t *testing.T) {
 	if len(n) != 1 || !strings.Contains(n[0].Matcher, "permission_prompt") || strings.Contains(n[0].Matcher, "idle_prompt") ||
 		len(n[0].Hooks) != 1 || n[0].Hooks[0].Command != `cat > '/tmp/it'\''s q/1'` {
 		t.Errorf("the hook %+v", n)
+	}
+	if f := s.Hooks.StopFailure; len(f) != 1 || len(f[0].Hooks) != 1 || f[0].Hooks[0].Command != `cat > '/tmp/it'\''s q/1.fail'` {
+		t.Errorf("the failure hook %+v", f)
 	}
 	if strings.Contains(e.Args[4], "\\u003e") {
 		t.Errorf("the settings escape >: %q", e.Args[4])

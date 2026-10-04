@@ -79,11 +79,14 @@ never touched.
 Every session sits under its project with its terminal next to it. You can
 see which one works, which one waits for you and how long the last prompt
 took. `n` starts one, `r` resumes an old one, and `w` lets you draft the
-next prompt while the agent is still busy. Press `3` for the details: Lazy
-in the middle of a small village, each subagent, skill and MCP server
-walking out to its building with its job and back with the answer. Under
-it are your prompts as a table, and for the one you pick, what it cost in
-tokens and which tools and shell commands it ran.
+next prompt while the agent is still busy. Press `3` for the details. At
+the top is Lazy with a line for each subagent, skill and MCP server the
+prompt used: how many ran, the job each was given, and whether it is
+still working. Below that you see what the prompt cost in tokens and API
+price, and which tools and shell commands it ran. Your last ten prompts
+sit at the bottom as a table. Lazy also plays a sound when a session asks
+you something, finishes or fails; you can turn the sounds off in
+Settings.
 
 ```
 ┌ [1] projects ──────────┐┌ [2] session │ [3] details ───────────┐

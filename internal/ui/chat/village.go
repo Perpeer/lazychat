@@ -1,37 +1,61 @@
 package chat
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+
+	"lazychat/internal/core/sound"
 	"lazychat/internal/core/usage"
 	"lazychat/internal/ui/kit"
+	"lazychat/internal/ui/text"
 )
 
-// The village is a prompt's workers drawn round Lazy: each subagent, skill
-// and MCP server of the turn has a building, and where its worker is comes
-// from its own times. Every time and name may be missing — an older Claude
-// Code, a transcript cut short — and then the worker stays home.
+// The village is a prompt's workers listed beside Lazy: its subagents by
+// type, its skills by name, its MCP servers, each with how many ran, the
+// newest job and how it stands. Every time and name may be missing — an
+// older Claude Code, a transcript cut short — and then the line says less.
 
-const (
-	walkTime  = 1500 * time.Millisecond // a walk between Lazy and a building
-	useTime   = 2 * time.Second         // how long a skill or MCP call works
-	cheerTime = 3 * time.Second         // how long Lazy celebrates a prompt's end
-)
+// useTime is how long a skill or MCP call counts as working: no result time
+// is kept for them.
+const useTime = 2 * time.Second
 
-// job is one worker's part of a turn.
+// cheerTime is how long Lazy celebrates a prompt's end.
+const cheerTime = 3 * time.Second
+
+// job is one worker's part of a turn; to stays zero while it works.
 type job struct {
-	building kit.Building
+	kind     kit.Kind
 	title    string
 	say      string
-	from, to time.Time // to zero while it works
+	from, to time.Time
 }
 
-// jobsOf are the turn's workers, oldest first: subagents by their own
-// times, skills by name and MCP servers by server, each group one worker.
-func jobsOf(t usage.Turn) []job {
-	var out []job
+// group is the jobs of one worker line.
+type group struct {
+	kind   kit.Kind
+	title  string
+	jobs   []job
+	sortAt time.Time
+}
+
+// groupsOf are the turn's workers, oldest first: subagents by type, skills
+// by name, MCP calls by server.
+func groupsOf(t usage.Turn) []*group {
+	var out []*group
+	byKey := map[string]*group{}
+	add := func(key string, j job) {
+		g := byKey[key]
+		if g == nil {
+			g = &group{kind: j.kind, title: j.title, sortAt: j.from}
+			byKey[key] = g
+			out = append(out, g)
+		}
+		g.jobs = append(g.jobs, j)
+	}
 	for _, a := range t.Agents {
 		if a == nil {
 			continue
@@ -40,79 +64,87 @@ func jobsOf(t usage.Turn) []job {
 		if from.IsZero() {
 			from = a.First
 		}
-		j := job{building: buildingOf(a.Type), title: a.Type, from: from, to: a.Back}
+		j := job{kind: kit.Agent, title: a.Type, from: from, to: a.Back, say: a.Description}
 		if j.title == "" {
 			j.title = "agent"
 		}
-		j.say = a.Description
 		if j.say == "" {
 			j.say, _, _ = strings.Cut(strings.TrimSpace(a.Prompt), "\n")
 		}
 		if j.to.IsZero() && a.Done() {
 			j.to = a.Last
 		}
-		out = append(out, j)
+		add("agent:"+j.title, j)
 	}
-	groups := map[string]int{}
 	for _, u := range t.Uses {
 		if u == nil {
 			continue
 		}
-		key, b, title, say := "skill:"+u.Name, kit.Scribe, u.Name, ""
+		j := job{kind: kit.Skill, title: u.Name, from: u.Time, to: u.Time.Add(useTime)}
+		key := "skill:" + u.Name
 		if u.Kind == usage.MCP {
-			key, b, title, say = "mcp:"+u.Origin, kit.Market, u.Origin, u.Name
+			j = job{kind: kit.MCP, title: u.Origin, say: u.Name, from: u.Time, to: u.Time.Add(useTime)}
+			key = "mcp:" + u.Origin
 		}
-		if title == "" {
+		if j.title == "" {
 			continue
 		}
-		if i, ok := groups[key]; ok {
-			out[i].to, out[i].say = u.Time.Add(useTime), say
-			continue
+		if u.Time.IsZero() {
+			j.to = time.Time{}
 		}
-		groups[key] = len(out)
-		out = append(out, job{building: b, title: title, say: say, from: u.Time, to: u.Time.Add(useTime)})
+		add(key, j)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].from.Before(out[j].from) })
+	sort.SliceStable(out, func(i, j int) bool { return out[i].sortAt.Before(out[j].sortAt) })
 	return out
 }
 
-// buildingOf is a subagent's building by its type: the scout's tower, the
-// planner's library, the general worker's forge, anyone else's hut.
-func buildingOf(typ string) kit.Building {
-	switch typ {
-	case "Explore":
-		return kit.Tower
-	case "Plan":
-		return kit.Library
-	case "general-purpose":
-		return kit.Forge
+// workerOf is a group as a line at now; running says the turn runs.
+func workerOf(g *group, now time.Time, running bool) kit.Worker {
+	w := kit.Worker{Kind: g.kind, Title: g.title, Count: len(g.jobs)}
+	var first, last time.Time
+	open, known := false, false
+	var says []string
+	for _, j := range g.jobs {
+		if j.say != "" && !slices.Contains(says, j.say) {
+			says = append(says, j.say)
+		}
+		if j.from.IsZero() {
+			continue
+		}
+		known = true
+		if first.IsZero() || j.from.Before(first) {
+			first = j.from
+		}
+		if j.to.IsZero() || now.Before(j.to) {
+			open = true
+		} else if j.to.After(last) {
+			last = j.to
+		}
 	}
-	return kit.Hut
-}
-
-// phaseOf is where a worker is at now: out to its building, at work, back to
-// Lazy with the answer, home again, done. A turn no longer running has
-// every worker done, whatever its times say.
-func phaseOf(j job, now time.Time, running bool) (kit.Phase, float64) {
-	if !running {
-		return kit.Done, 0
+	if len(says) > 0 {
+		w.Say = says[len(says)-1]
+		if g.kind == kit.MCP {
+			w.Say = strings.Join(says, ", ")
+		}
 	}
-	if j.from.IsZero() || now.Before(j.from) {
-		return kit.Idle, 0
+	switch {
+	case !known:
+		if !running {
+			w.Phase = kit.Done
+		}
+	case open && running:
+		w.Phase = kit.AtWork
+		if g.kind == kit.Agent {
+			w.Took = text.Span(now.Sub(first))
+		}
+	default:
+		w.Phase = kit.Done
+		// A skill's or MCP call's end is not in the transcript: no time.
+		if g.kind == kit.Agent && !last.IsZero() && !open {
+			w.Took = text.Span(last.Sub(first))
+		}
 	}
-	if t := now.Sub(j.from); t < walkTime {
-		return kit.Out, float64(t) / float64(walkTime)
-	}
-	if j.to.IsZero() || now.Before(j.to) {
-		return kit.AtWork, 0
-	}
-	switch tb := now.Sub(j.to); {
-	case tb < walkTime:
-		return kit.Return, float64(tb) / float64(walkTime)
-	case tb < 2*walkTime:
-		return kit.Home, float64(tb-walkTime) / float64(walkTime)
-	}
-	return kit.Done, 0
+	return w
 }
 
 // villageOf is the turn as a village at now; running says the turn is the
@@ -127,14 +159,8 @@ func villageOf(t usage.Turn, now time.Time, running, asking bool) kit.Village {
 	case t.Ended() && now.Sub(t.End) < cheerTime:
 		v.Leader = kit.LeaderParty
 	}
-	jobs := jobsOf(t)
-	if len(jobs) > kit.Plots {
-		v.More = len(jobs) - kit.Plots
-		jobs = jobs[len(jobs)-kit.Plots:]
-	}
-	for _, j := range jobs {
-		phase, p := phaseOf(j, now, running)
-		v.Workers = append(v.Workers, kit.Worker{Building: j.building, Title: j.title, Say: j.say, Phase: phase, Progress: p})
+	for _, g := range groupsOf(t) {
+		v.Workers = append(v.Workers, workerOf(g, now, running))
 	}
 	return v
 }
@@ -145,7 +171,7 @@ func moving(v kit.Village) bool {
 		return true
 	}
 	for _, w := range v.Workers {
-		if w.Phase != kit.Done && w.Phase != kit.Idle {
+		if w.Phase == kit.AtWork {
 			return true
 		}
 	}
@@ -155,3 +181,8 @@ func moving(v kit.Village) bool {
 // Animating says the details page shows a village in motion, so the shell
 // sends the fast beat.
 func (c *Chat) Animating() bool { return c.rep.shown && c.rep.moving }
+
+// playSound asks the shell for one of Lazy's sounds.
+func playSound(n sound.Name) tea.Cmd {
+	return func() tea.Msg { return kit.PlaySound{Name: n} }
+}

@@ -6,7 +6,10 @@ import (
 	"unicode/utf8"
 
 	"lazychat/internal/core/settings"
+	"lazychat/internal/core/sound"
+	"lazychat/internal/core/status"
 	"lazychat/internal/ui/kit"
+	"time"
 )
 
 // The Settings tab is the rail's last box, at its foot, reached by a click
@@ -206,4 +209,64 @@ func TestSettingsStatusLine(t *testing.T) {
 		t.Fatal("shown again, yet not offered")
 	}
 	d.quitApp()
+}
+
+// The sounds row is the last; off, a sound asked for is not played.
+func TestSettingsSounds(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 120, 32)
+	var played []sound.Name
+	d.app.play = func(n sound.Name) { played = append(played, n) }
+	d.post(kit.PlaySound{Name: sound.Tick})
+	d.until("a sound played", func() bool { return len(played) == 1 })
+	d.tab(4)
+	for range 8 {
+		d.key("down")
+	}
+	d.expect("sounds", "Lazy's sounds", "  on")
+	d.key("enter", "down", "enter")
+	d.expect("  off", "(enter) change")
+	if !d.core.Settings.NoSounds {
+		t.Fatal("turning sounds off was not saved")
+	}
+	d.post(kit.PlaySound{Name: sound.Tick})
+	d.post(kit.PlaySound{Name: sound.Ask})
+	d.pump(50 * time.Millisecond)
+	if len(played) != 1 {
+		t.Fatalf("played with sounds off: %v", played)
+	}
+	d.quitApp()
+}
+
+// A session's change since the last tick is heard once: asking, finishing
+// whether looked at or not; the first look and what did not change are
+// silent.
+func TestNewsSounds(t *testing.T) {
+	news := func(states ...status.State) []kit.SessionNews {
+		var out []kit.SessionNews
+		for i, s := range states {
+			out = append(out, kit.SessionNews{Key: string(rune('a' + i)), State: s})
+		}
+		return out
+	}
+	got, was := newsSounds(nil, news(status.Asks, status.Done))
+	if len(got) != 0 {
+		t.Fatalf("first look: %v", got)
+	}
+	got, was = newsSounds(was, news(status.Asks, status.Done))
+	if len(got) != 0 {
+		t.Fatalf("nothing changed: %v", got)
+	}
+	got, was = newsSounds(was, news(status.Working, status.Working))
+	if len(got) != 0 {
+		t.Fatalf("to work: %v", got)
+	}
+	got, _ = newsSounds(was, news(status.Asks, status.Idle))
+	if len(got) != 2 || got[0] != sound.Ask || got[1] != sound.Done {
+		t.Fatalf("asks and finished while looked at: %v", got)
+	}
+	got, _ = newsSounds(map[string]status.State{"a": status.Working, "b": status.Working}, news(status.Done, status.Done))
+	if len(got) != 1 || got[0] != sound.Done {
+		t.Fatalf("two finished at once: %v", got)
+	}
 }

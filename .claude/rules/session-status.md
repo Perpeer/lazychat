@@ -3,6 +3,7 @@ paths:
   - "internal/core/status/**"
   - "internal/core/presence/**"
   - "internal/core/agent/**"
+  - "internal/core/sound/**"
   - "internal/ui/chat/**"
   - "internal/ui/kit/mascot*.go"
   - "internal/ui/rail.go"
@@ -56,6 +57,21 @@ it from there.
   no record (codex) keeps the board's own clock: from a prompt, held while
   a question is up, stopped when done. For a session lazychat runs, the
   page's "working" is the board's, so both count the same way.
+
+## Sounds
+
+- Lazy's sounds (internal/core/sound, embedded WAVs played by afplay,
+  macOS only) only listen: ask and done are the board's own states
+  changing between ticks (App.hearNews, newsSounds), done also when a
+  watched session goes working → idle; nothing else derives them. The
+  first look is silent: what was so at start is no news.
+- error is claude's StopFailure hook writing `<notice>.fail` (overlay.go
+  failHook), consumed once by `actions.Failed`; not tried with a real API
+  error, which cannot be caused at will.
+- tick is a subagent of the newest prompt come back between two reads of
+  the shown session (report.heardBack), so only while the details show.
+- A tab asks for a sound with kit.PlaySound; App plays it unless
+  settings.NoSounds. Tests leave App.play nil: no test makes a sound.
 
 ## The Swift mirror
 
