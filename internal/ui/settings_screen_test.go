@@ -139,9 +139,9 @@ func TestSettingsTheme(t *testing.T) {
 func TestSettingsMascotVersion(t *testing.T) {
 	e, _ := seeded(t)
 	d := start(t, e, 120, 32)
-	d.app.opts.Version = "1.0(9) 1a2b3c4"
+	d.app.opts.Version = "1.0.9 1a2b3c4"
 	d.tab(4)
-	d.expect("╭────╮", "v1.0(9)")
+	d.expect("╭────╮", "v1.0.9")
 	d.toSetting("mascot")
 	d.expect("mascot", "shown")
 	d.key("enter", "down", "enter")
@@ -152,7 +152,7 @@ func TestSettingsMascotVersion(t *testing.T) {
 	d.key("enter", "down", "enter")
 	d.key("down", "enter", "down", "enter")
 	d.expect("(enter) change")
-	d.expectNot("v1.0(9)")
+	d.expectNot("v1.0.9")
 	if !d.core.Settings.NoMascot || !d.core.Settings.NoSplash || !d.core.Settings.NoVersion {
 		t.Fatalf("saved: mascot off %v, splash off %v, version off %v", d.core.Settings.NoMascot, d.core.Settings.NoSplash, d.core.Settings.NoVersion)
 	}

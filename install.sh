@@ -127,19 +127,31 @@ preflight() {
   fi
 }
 
-preflight
-[ "$check_only" = 1 ] && exit 0
-
 version=dev
 if git rev-parse --git-dir >/dev/null 2>&1 && git rev-parse --verify -q HEAD >/dev/null; then
-  # 1.0(N): N counts the branch's commits, so each commit raises it by one.
-  version="1.0($(git rev-list --count HEAD)) $(git rev-parse --short HEAD)"
+  # The number GitHub gives this commit: the release it will be
+  # (packaging/next-version.sh, from the newest vX.Y.Z tag), or the tag
+  # it carries already — so the corner reads as the releases page does.
+  # A tag list behind GitHub's gives a lower number: git fetch --tags.
+  number="$(packaging/next-version.sh 2>/dev/null || true)"
+  if [ -z "$number" ]; then
+    number="$(git tag --points-at HEAD --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)"
+    number="${number#v}"
+  fi
+  [ -z "$number" ] && number=0.0.0
+  version="$number $(git rev-parse --short HEAD)"
   # A dirty tree gets a hash of its changes, so two builds of different
   # uncommitted work are told apart and a rebuild of the same one is not needed.
   if [ -n "$(git status --porcelain)" ]; then
     changes="$( { git diff HEAD; git ls-files --others --exclude-standard -z | xargs -0 cat 2>/dev/null; } | shasum | cut -c1-7)"
     version="$version-dirty.$changes"
   fi
+fi
+
+preflight
+if [ "$check_only" = 1 ]; then
+  [ "$version" != dev ] && echo "ok    version     $version"
+  exit 0
 fi
 
 bin="$PREFIX/lazychat"

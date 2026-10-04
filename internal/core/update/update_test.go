@@ -29,6 +29,12 @@ func TestNewer(t *testing.T) {
 	if Base("1.0.2", "") != "1.0.2" || Base("1.0(58) 1626be3", "v1.0.1") != "1.0.1" || Base("dev", "") != "" {
 		t.Error("Base")
 	}
+	// A source build is stamped with the number it becomes and its hash;
+	// it stands on the newest tag, so a release it has not become yet is
+	// no newer release.
+	if Base("1.0.3 d9f8a5b", "v1.0.2") != "1.0.2" || Base("1.0.3 d9f8a5b", "") != "" || Newer(Base("1.0.3 d9f8a5b", "v1.0.2"), "1.0.2") {
+		t.Error("Base of a source build")
+	}
 }
 
 // The answer is GitHub's newest release, kept for Every; a bad answer is an

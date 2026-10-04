@@ -85,14 +85,16 @@ quits, and it reads the keys when it starts.
 lazychat adds to a session (see How a session works) goes on that
 session's command line only.
 
-The version is `1.0(N)`, N the number of commits on the checked-out
-branch. `install.sh` stamps it into the binary with the short hash
-(`-dirty` when the tree has uncommitted changes); it shows as `v1.0(N)` at
-the screen's bottom-right corner, and `lazychat --version` prints it with
-the hash. A Homebrew build is `1.0.2`, its release's. Either says in green
-when a newer release is out (`v1.0(58)  ↑ 1.0.3`): install.sh also stamps
-the newest release the checkout is past, so a source build compares from
-there. `lazychat doctor` names the newest release too.
+The version is the release this build is or becomes, as GitHub numbers
+it: the newest `vX.Y.Z` tag's next patch, or the tag's own number on a
+tagged commit. `install.sh` stamps it into the binary with the short hash
+(`-dirty` when the tree has uncommitted changes); it shows as `v1.0.3` at
+the screen's bottom-right corner and on the splash, and `lazychat
+--version` prints it with the hash. A Homebrew build is `1.0.2`, its
+release's. Either says in green when a newer release is out
+(`v1.0.3  ↑ 1.0.4`): install.sh also stamps the newest release the
+checkout is past, so a source build compares from there and not from the
+number it will become. `lazychat doctor` names the newest release too.
 
 ### Uninstalling
 
@@ -170,7 +172,7 @@ splash turns it off; it shows once per start, in the saved theme.
           │  ‿   │   ██     ███████   ██      ███    chat
           ╰──────╯   ██████ ██   ██ ███████    █
 
-                     ──────────────────────────────────── v1.0(64)
+                     ──────────────────────────────────── v1.0.3
                      sessions · git · notes · one screen
 ```
 
@@ -235,7 +237,7 @@ Nothing lazychat does leaves a workspace half written or written over:
 ┌────┐│ AI tools                         ││                                                          │
 │set ││ ● claude  2.1.0                  ││ Opus · high · main · ctx 28%                             │
 └────┘└──────────────────────────────────┘└──────────────────────────────────────────────────────────┘
-      session: (enter) continue · (n) new · (r) resume · (e) rename · (m) move · (d) close    v1.0(52)
+      session: (enter) continue · (n) new · (r) resume · (e) rename · (m) move · (d) close    v1.0.3
       project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove
 ```
 
@@ -288,7 +290,7 @@ What goes on and what came of an action has one place, the same in every
 tab: the right end of the footer's last row, before the version — the
 mascot's line (`dev working`), the tab's status (`1 live`, `2 shell(s)`),
 a note an action left for a few seconds (`fetched`, `saved`, `copied 3
-line(s)`), the key log, then `v1.0(N)`. With no project's row, the area
+line(s)`), the key log, then `v1.0.3`. With no project's row, the area
 shares the last row of keys, or takes a row of its own when they fill it.
 When it is short of room the key log goes first, then the status; a fresh
 note takes what it needs of the row's end for the seconds it shows.
@@ -649,7 +651,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | Appearance | theme | Gruvbox | Amber (lazychat's own muted yellow on the terminal's colours), Dracula, One Dark, Monokai, Nord, Gruvbox, Solarized Dark, Tokyo Night, Catppuccin Mocha. All but Amber also set the terminal window's background and text while lazychat runs (OSC 10 and 11, given back on the way out), so the panes' programs sit on them too |
 | Appearance | mascot | shown | Lazy, the face at the rail's top |
 | Appearance | splash | shown | the two seconds before the start screen: Lazy waking up beside the wordmark; any key skips it |
-| Appearance | version | shown | the corner's `v1.0(N)` |
+| Appearance | version | shown | the corner's `v1.0.3` |
 | Appearance | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
 | Sound | sounds | on | on macOS, Lazy's sounds: a short burst of the recorded keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
 | Integrations | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |

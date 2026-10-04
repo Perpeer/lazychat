@@ -233,7 +233,7 @@ func (a *App) area(room int) string {
 	return strings.Join(parts, "   ")
 }
 
-// version is what the corner shows, v1.0(N) or v1.0.2, and in green the
+// version is what the corner shows, v1.0.3, and in green the
 // newer release when one is out; nothing for a build install.sh did not
 // stamp, or when Settings turns it off.
 func (a *App) version() string {

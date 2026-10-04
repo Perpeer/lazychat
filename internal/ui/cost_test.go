@@ -108,3 +108,54 @@ func TestDetailsCost(t *testing.T) {
 	t.Logf("details view: %s %s", view, view.MemString())
 	d.quitApp()
 }
+
+// TestDetailsOpen times the details page on a real transcript, the one
+// LAZYCHAT_BENCH_FILE names, copied into the stand-in home under an
+// invented id with its subagents: from the key to the page, then a frame.
+// Skipped without the variable; nothing of the file but its size and the
+// times is printed.
+func TestDetailsOpen(t *testing.T) {
+	src := os.Getenv("LAZYCHAT_BENCH_FILE")
+	if os.Getenv("LAZYCHAT_BENCH") == "" || src == "" {
+		t.Skip("LAZYCHAT_BENCH=1 LAZYCHAT_BENCH_FILE=<transcript> runs it")
+	}
+	e, dir := seeded(t, state.Session{Tool: "claude", Name: "long work", ID: "garden-real"})
+	e.lazyHome = t.TempDir()
+	folder := filepath.Join(e.history, history.Slug(dir))
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(folder, "garden-real.jsonl"), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	id := strings.TrimSuffix(filepath.Base(src), ".jsonl")
+	if subs, err := os.ReadDir(filepath.Join(filepath.Dir(src), id, "subagents")); err == nil {
+		to := filepath.Join(folder, "garden-real", "subagents")
+		if err := os.MkdirAll(to, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range subs {
+			b, err := os.ReadFile(filepath.Join(filepath.Dir(src), id, "subagents", f.Name()))
+			if err == nil {
+				_ = os.WriteFile(filepath.Join(to, f.Name()), b, 0o644)
+			}
+		}
+	}
+	d := start(t, e, 180, 60)
+	d.expect("long work")
+	began := time.Now()
+	d.key("3")
+	d.expect("prompts", " in all")
+	opened := time.Since(began)
+	view := testing.Benchmark(func(b *testing.B) {
+		for b.Loop() {
+			_ = d.app.View()
+		}
+	})
+	t.Logf("%d MB: key to page %v · details view: %s %s", len(body)>>20, opened, view, view.MemString())
+	d.quitApp()
+}

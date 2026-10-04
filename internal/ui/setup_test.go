@@ -162,7 +162,7 @@ func TestSplash(t *testing.T) {
 	if err := reg.Opened(a); err != nil {
 		t.Fatal(err)
 	}
-	d := setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: t.TempDir(), Name: "main", Splash: true, Version: "1.0(9) 1a2b3c4"})}
+	d := setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: t.TempDir(), Name: "main", Splash: true, Version: "1.0.9 1a2b3c4"})}
 	d.m.width, d.m.height = 120, 32
 	if d.m.Init() == nil {
 		t.Fatal("the splash starts no beat")
@@ -184,7 +184,7 @@ func TestSplash(t *testing.T) {
 	step(splashTyped - 2)
 	d.expect("chat", "^  ^")
 	step(splashFrames - splashTyped - 1)
-	d.expect("‿", "v1.0(9)", "sessions · git · notes · one screen")
+	d.expect("‿", "v1.0.9", "sessions · git · notes · one screen")
 	if strings.Contains(d.m.View(), "1a2b3c4") {
 		t.Fatalf("the commit is on the splash:\n%s", d.m.View())
 	}

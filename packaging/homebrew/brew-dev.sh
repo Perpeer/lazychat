@@ -32,7 +32,6 @@ fi
 # Only what is committed is in the archive: say so rather than test an old tree.
 [ -z "$(git status --porcelain)" ] || say note tree "uncommitted changes are not in this build: Homebrew builds from an archive of HEAD"
 
-n="$(git rev-list --count HEAD)"
 hash="$(git rev-parse --short HEAD)"
 dir="$(brew --repository)/Library/Taps/lazychat/homebrew-dev"
 if [ ! -d "$dir" ]; then
@@ -45,14 +44,18 @@ archive="$cache/lazychat-$hash.tar.gz"
 git archive --format=tar.gz --prefix="lazychat-$hash/" -o "$archive" HEAD
 sum="$(shasum -a 256 "$archive" | cut -d' ' -f1)"
 # The release formula, its url and sha256 this archive's; its version the
-# commit count, as install.sh's 1.0(N), so each commit is a newer one.
-awk -v url="file://$archive" -v ver="1.0.$n-dev" -v sum="$sum" '
+# next release's number with -dev, as install.sh stamps it, so a dev build
+# sorts after the release it is past and before the one it becomes.
+ver="$(packaging/next-version.sh 2>/dev/null || true)"
+[ -z "$ver" ] && ver="$(git tag --points-at HEAD --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)"
+ver="${ver#v}-dev"
+awk -v url="file://$archive" -v ver="$ver" -v sum="$sum" '
   /^  url / { print "  url \"" url "\""; print "  version \"" ver "\""; next }
   /^  sha256 / { print "  sha256 \"" sum "\""; next }
   /^  head / { next }
   { print }
 ' packaging/homebrew/lazychat.rb > "$dir/Formula/lazychat.rb"
-say ok formula "1.0.$n-dev ($hash), $(du -h "$archive" | cut -f1 | tr -d ' ') archive"
+say ok formula "$ver ($hash), $(du -h "$archive" | cut -f1 | tr -d ' ') archive"
 
 if brew list --formula "$formula" >/dev/null 2>&1; then
   brew reinstall --build-from-source "$formula"

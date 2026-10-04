@@ -29,9 +29,10 @@ import (
 	"lazychat/internal/core/update"
 )
 
-// version is 1.0(N) and the repo's short git hash, N its commit count,
-// stamped by install.sh with -ldflags; the installer compares it with the
-// installed binary to decide on a rebuild.
+// version is the release this build is or becomes (1.0.3, the newest tag's
+// next, as GitHub numbers it) and the repo's short git hash, stamped by
+// install.sh with -ldflags; the installer compares it with the installed
+// binary to decide on a rebuild. Homebrew stamps its release's number alone.
 var version = "dev"
 
 // releaseTag is the newest release a source build's checkout is past

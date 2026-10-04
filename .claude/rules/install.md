@@ -57,8 +57,8 @@ paths:
   order. Pushing from this Mac is the user's.
 - `./install.sh --brew` (packaging/homebrew/brew-dev.sh) tests the formula
   from this checkout through a local tap lazychat/dev, an archive of HEAD
-  (uncommitted work is not in it); Homebrew installs formulae from taps
-  only. The script's text says "push": write it with the editor, the git
+  (uncommitted work is not in it), version `<next release>-dev`; Homebrew
+  installs formulae from taps only. The script's text says "push": write it with the editor, the git
   guard hook reads a shell command's text.
 - A newer release is told, never fetched by itself: core/update asks
   GitHub's releases/latest (no identifier sent) at start and every six
@@ -68,3 +68,10 @@ paths:
   is past (install.sh stamps main.releaseTag from git describe). Tests set
   LAZYCHAT_NO_UPDATE_CHECK (testenv) so none asks GitHub; doctor's line is
   optional, never a failure.
+- The version a source build carries is the release number GitHub gives
+  the commit (packaging/next-version.sh: the newest tag's next patch, or
+  the tag on HEAD) and the short hash, `1.0.3 d9f8a5b`; the user saw
+  `v1.0(65)` beside GitHub's 1.0.2 and asked for the same three-part
+  number. `releaseTag` stays the newest tag the checkout is past, so
+  update.Base compares the newer-release note from the release, not from
+  the number the build will become. Tags are read locally, no fetch.

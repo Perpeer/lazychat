@@ -27,8 +27,15 @@ func TestPromptTableFits(t *testing.T) {
 		})
 		costs = append(costs, "123.45")
 	}
+	// One prompt is a pasted document: the table still draws the same
+	// rows, and only what three rows can show is wrapped.
+	turns[244].Text = turns[244].Text + " " + strings.Repeat("plank ", 40_000)
 	var c Chat
+	began := time.Now()
 	rows := c.promptTable(turns, 244, false, at, costs, 120)
+	if took := time.Since(began); took > 20*time.Millisecond {
+		t.Errorf("the table took %v with a 200k-character prompt", took)
+	}
 	if len(rows) != 4+3*promptRows {
 		t.Fatalf("%d rows, want %d", len(rows), 4+3*promptRows)
 	}

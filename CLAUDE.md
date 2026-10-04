@@ -110,25 +110,29 @@ follow `~/.claude/rules/comments.md`: the why, in English, never the what.
 
 ## Version
 
-This project only. The version is `1.0(N)`: N is the number of commits on
-the checked-out branch (`git rev-list --count HEAD`), so every commit
-raises it by one and two builds with the same N are the same commit.
-`./install.sh` stamps it into the binary with the short hash, `-dirty`
-when the tree has uncommitted changes; nothing holds it by hand, so a
-commit never edits a version file. It shows as `v1.0(N)` at the screen's
-bottom-right corner, with the hash in `lazychat --version`. Raise the
-`1.0` part only when the user asks. Releases are tags `vX.Y.Z`. A push to
-main that changes what users run (cmd, internal, macos, go.mod/sum, the
-formula) releases itself (`.github/workflows/release.yml`): `./check.sh` on
-a Mac, the next patch (`packaging/next-version.sh`; `[minor]` or
-`[major]` in a commit message moves those), the tag, a GitHub release with
-the commits as notes, and the tap's formula
-(github.com/Perpeer/homebrew-tap, with the `HOMEBREW_TAP_TOKEN` secret).
-Nothing is committed back to main. By hand: `./release.sh X.Y.Z` tags
-here, `./release.sh --formula X.Y.Z` writes the tap (`../homebrew-tap`);
-pushing is the user's. Homebrew's build stamps `X.Y.Z` through the same
-`-X main.version`. `./install.sh --brew` installs through Homebrew from
-this checkout (a local tap, version `1.0.N-dev`) to test the formula.
+This project only. The version is the release number GitHub gives this
+commit: the newest `vX.Y.Z` tag's next patch (`packaging/next-version.sh`;
+`[minor]` or `[major]` in a commit message since the tag moves those), or
+the tag's own number on a tagged commit. `./install.sh` stamps it into the
+binary with the short hash (`1.0.3 d9f8a5b`, `-dirty.<hash>` on the hash
+when the tree has uncommitted changes); nothing holds it by hand, so a
+commit never edits a version file. It shows as `v1.0.3` at the screen's
+bottom-right corner and on the splash, with the hash in `lazychat
+--version`. The tags are read locally: a list behind GitHub's gives a
+lower number, `git fetch --tags` fixes it. install.sh also stamps
+`releaseTag`, the newest tag the checkout is past, which the newer-release
+check compares from — so a build saying v1.0.3 while 1.0.2 is the newest
+release shows no `↑`. Releases are tags `vX.Y.Z`. A push to main that
+changes what users run (cmd, internal, macos, go.mod/sum, the formula)
+releases itself (`.github/workflows/release.yml`): `./check.sh` on a Mac,
+the next version, the tag, a GitHub release with the commits as notes, and
+the tap's formula (github.com/Perpeer/homebrew-tap, with the
+`HOMEBREW_TAP_TOKEN` secret). Nothing is committed back to main. By hand:
+`./release.sh X.Y.Z` tags here, `./release.sh --formula X.Y.Z` writes the
+tap (`../homebrew-tap`); pushing is the user's. Homebrew's build stamps
+`X.Y.Z` through the same `-X main.version`. `./install.sh --brew` installs
+through Homebrew from this checkout (a local tap, version `X.Y.Z-dev`, the
+next release's) to test the formula.
 
 ## iCloud
 

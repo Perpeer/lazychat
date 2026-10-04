@@ -133,6 +133,17 @@ func ownTokens(t usage.Turn) string {
 // space each, so a prompt written over several lines shows whole.
 func flat(s string) string { return strings.Join(strings.Fields(s), " ") }
 
+// head is the first n runes of s.
+func head(s string, n int) string {
+	for i := range s {
+		if n == 0 {
+			return s[:i]
+		}
+		n--
+	}
+	return s
+}
+
 // sideBySide is the narrowest box whose halves hold the flow and the
 // context's grid with its legend.
 const sideBySide = 100
@@ -182,6 +193,10 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 		fullText string
 	}
 	var rows []entry
+	// The text column is at most w wide and three rows tall: what lies past
+	// that is cut before it is flattened and wrapped, so a pasted document
+	// of a prompt costs the frame nothing.
+	keep := 3*w + 3
 	for i := last; i >= 0 && i > last-promptRows; i-- {
 		tn := turns[i]
 		end, _ := turnEnd(tn, i == last, working, now)
@@ -190,7 +205,7 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 			mark = "▶ "
 		}
 		state := turnState(tn, i == last, working)
-		rows = append(rows, entry{i: i, state: state, fullText: flat(tn.Text), cells: [3][]string{
+		rows = append(rows, entry{i: i, state: state, fullText: flat(head(tn.Text, keep)), cells: [3][]string{
 			{fmt.Sprintf("%s%d", mark, i+1), state, tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), "prompt " + ownTokens(tn), costs[i]},
 			{"", "", "→ " + end, "", "in " + num(tn.Tokens.In()), ""},
 			{"", "", "", "", "used " + num(tn.Tokens.Used()), ""}}})
