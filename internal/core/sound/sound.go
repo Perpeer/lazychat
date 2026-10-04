@@ -30,7 +30,8 @@ const (
 // keyVariants are how many slightly different key clicks there are.
 const keyVariants = 3
 
-// made are the sounds made in code, not shipped as files (synth.go).
+// made are the sounds made in code (synth.go), played while no recording
+// of the same name (lazy-start.wav, lazy-key-1.wav…) is shipped.
 var made = map[string]func() []byte{
 	"start": func() []byte { return wav(typing(), 0.55) },
 	"key-1": func() []byte { return wav(keyClick(1), 0.45) },
@@ -100,14 +101,14 @@ func (p *Player) Play(n Name) {
 
 // file is the sound's copy, written when it is missing or not this build's.
 func (p *Player) file(name string) (string, error) {
-	var b []byte
-	if gen, ok := made[name]; ok {
-		b = gen()
-	} else {
-		var err error
-		if b, err = wavs.ReadFile("lazy-" + name + ".wav"); err != nil {
+	// A recording shipped beside the others wins over a sound made in code.
+	b, err := wavs.ReadFile("lazy-" + name + ".wav")
+	if err != nil {
+		gen, ok := made[name]
+		if !ok {
 			return "", err
 		}
+		b = gen()
 	}
 	path := filepath.Join(p.dir, "lazy-"+name+".wav")
 	if st, err := os.Stat(path); err == nil && st.Size() == int64(len(b)) {

@@ -413,23 +413,25 @@ a diff with the commit box under it.
 ```
 │ lazychat
 │ ~/code/lazychat
-│   ├─ ● main   main folder
+│   ├─ ● main      repository · lazychat/
 │   │    ↑1 · clean
-│   └─ ⑂ feature
-│        1 changed · wt-feature · from main
+│   └─ ⑂ feature   worktree · ../wt-feature/
+│        1 changed · from main
 ```
 
 Under each project hangs the checkout it works in — its folder, where
-Chat's sessions and Terminal's shells start — marked `●` in the accent
-(`⑂` and the branch in the worktree colour when the folder is itself a
-worktree), `main folder` beside it when it is the repository's own
-folder; under
-it `↑` `↓` ahead and behind its upstream and how many files changed; or
-why there is nothing (not a git repository, git not installed). Under it hang the
-repository's other checkouts (`git worktree list`): `⑂` and the branch
-(`○` for the main checkout), the same counts, the folder when it is not
-named after the branch, `locked` or `gone` where git says so, and `from dev`
-when git noted the branch it was made from — `git worktree add -b feat
+Chat's sessions and Terminal's shells start — and under that the
+repository's other checkouts (`git worktree list`). Every checkout row
+reads the same way: its branch first (what), then `repository` when it is
+the repository's own folder or `worktree` when it was added to it, and its
+folder (where) — the repository's by name, a worktree's from the
+repository (`../wt-feature/`, `.worktrees/fence/`), one far away from
+home. When a long branch leaves no room, the role and folder open the row
+under it. The project's checkout is marked `●` in the accent (`⑂` and the
+branch in the worktree colour when it is itself a worktree), the others
+`⑂`, or `○` for the repository's own. Under each, `↑` `↓` ahead and
+behind its upstream, how many files changed, `locked` or `gone` where git
+says so, and `from dev` when git noted the branch it was made from — `git worktree add -b feat
 ../feat dev` writes "Created from dev" first in the branch's reflog; a
 branch made from `HEAD`, from a commit, or whose note expired (90 days by
 default) says nothing. The cursor stands on these rows, not on headings.
@@ -484,8 +486,8 @@ The panels, numbered as their titles show them:
 | `↑↓` `j k` `g` `G` | over the rows, the changes or the commits, the diff following; in the diff, a row cursor |
 | `v` `y`, a drag (in the diff) | `v` marks the cursor's row as one end of a selection, `y` copies the selected rows (or the cursor's) for a prompt — each file's part headed `path:28-35`, every line marked `+` added, `-` removed or a space; a drag over the diff selects and its release copies the same way; `Esc` drops the selection |
 | `Space` | stage the file or folder under the cursor (`git add -A`), or in Staged unstage it (`git restore --staged`, `git rm --cached` before the first commit); a conflict is left for you to resolve |
-| `c` | into the commit box, as `6` and `Enter`; a commit on `main` (or `master`) in the main folder is asked first — the main folder is kept for pulling and merging, work goes in a worktree |
-| `b` | the branches: a finder over the `Local` then `Remote` branches, newest commit first, each noted where it is out in the rows' words (`● this folder`, `main folder`, `⑂ <worktree>`), what it tracks and how long ago, fetching (`git fetch --prune`) behind it; typing narrows it. A worktree is a folder, never a checkout: `Enter` on a branch out in another folder takes the cursor to that folder's row. On the main folder `Enter` switches to a branch out nowhere — a remote one as a local branch tracking it; local changes in the way are stashed and brought back, asked — and a name no branch has adds `+ new branch <name> from <row's branch>`. A worktree keeps its branch: on its row nothing is switched or made (`w` makes a worktree). Deleting is `d` on a row |
+| `c` | into the commit box, as `6` and `Enter`; a commit on `main` (or `master`) in the repository itself is asked first — its folder is kept for pulling and merging, work goes in a worktree |
+| `b` | the branches: a finder over the `Local` then `Remote` branches, newest commit first, each noted where it is out in the rows' words (`● this folder`, `○ repository · <folder>/`, `⑂ <worktree>`), what it tracks and how long ago, fetching (`git fetch --prune`) behind it; typing narrows it. A worktree is a folder, never a checkout: `Enter` on a branch out in another folder takes the cursor to that folder's row. In the repository's own folder `Enter` switches to a branch out nowhere — a remote one as a local branch tracking it; local changes in the way are stashed and brought back, asked — and a name no branch has adds `+ new branch <name> from <row's branch>`. A worktree keeps its branch: on its row nothing is switched or made (`w` makes a worktree). Deleting is `d` on a row |
 | `u` (a worktree's row) | bring the worktree's branch up to date with main, asked: `git fetch`, then `git rebase --autostash <remote>/<default branch>`. A conflict stops the rebase, the files named in the status area, for you to resolve and `git rebase --continue` (or `--abort`) |
 | `w` | the worktrees: a finder over the repository's other worktrees. `Enter` takes the cursor to one's row. A new name adds `+ new worktree <name> from <row's branch>`: a worktree on a new branch in `.worktrees/<name>` inside the repository (kept out of git through `.git/info/exclude`), opened as a project `<project> · <name>` so Chat and Terminal can run in it, the cursor on its row; with nothing typed it offers another worktree of the row's branch under a free name (`<branch>-2`, `-3`…), for several sessions on one line of work: git keeps a branch in one worktree, so each gets a branch of its own. |
 | `d` | delete what the row is, asked. On a worktree's row: the worktree with its folder (`git worktree remove`, asked again when it has changes, `--force` then), its project and that project's saved sessions and shells, refused while one of its sessions runs; its branch stays. On the project's own row: the branch it is on — git deletes no branch a checkout is on, so the checkout switches to the default branch (origin's HEAD, else `main`, else `master`) first, which itself is never deleted; `git branch -d`, and commits not in the default branch are asked again, naming them, before `-D`; local changes in the way of the switch stop it; a branch that tracks a remote one then offers that one, deleted (`git push <remote> --delete`) only after a second question saying it goes for everyone who uses the remote |
@@ -527,24 +529,27 @@ into them.
 ## Settings
 
 What is set for this machine, in `~/.lazychat/settings.json`, which holds
-only what differs from the defaults. Each row on the left is a setting and
-its value; the right side says what it does and lists what it can be.
+only what differs from the defaults. The left side lists the settings
+under four headings, as editors group theirs — General, Appearance, Sound,
+Integrations — each setting with its value under it; the headings take no
+cursor. The right side says what the setting does and lists what it can
+be.
 `Enter`, `→` or `2` go to the values, `↑↓` pick one, `Enter` or a click
 saves it at once; `esc`, `1` or `ctrl+q` go back.
 
-| Row | Default | What |
-| --- | --- | --- |
-| commit messages | the first ready tool that can write one (claude, as it is listed first) | the tool behind the commit box's `Suggest`, any installed one, or `off` |
-| new session | the first ready tool | the tool a new session's form starts on; one not ready leaves the form on the default |
-| tabs | Git and Terminal shown | each ticked when it is on the rail; `Enter` flips one and stays |
-| theme | Gruvbox | Amber (lazychat's own muted yellow on the terminal's colours), Dracula, One Dark, Monokai, Nord, Gruvbox, Solarized Dark, Tokyo Night, Catppuccin Mocha. All but Amber also set the terminal window's background and text while lazychat runs (OSC 10 and 11, given back on the way out), so the panes' programs sit on them too |
-| mascot | shown | Lazy, the face at the rail's top |
-| version | shown | the corner's `v1.0(N)` |
-| menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
-| status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
-| sounds | on | on macOS, Lazy's sounds: a short burst of keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
-| syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
-| key clicks | off | each key typed into a session or the draft box clicks like an old buckling-spring keyboard (a character, Enter, Backspace; not arrows); made in code, at most one click per 30 ms; quiet with sounds off |
+| Section | Row | Default | What |
+| --- | --- | --- | --- |
+| General | new session | the first ready tool | the tool a new session's form starts on; one not ready leaves the form on the default |
+| General | commit messages | the first ready tool that can write one (claude, as it is listed first) | the tool behind the commit box's `Suggest`, any installed one, or `off` |
+| General | tabs | Git and Terminal shown | each ticked when it is on the rail; `Enter` flips one and stays |
+| Appearance | theme | Gruvbox | Amber (lazychat's own muted yellow on the terminal's colours), Dracula, One Dark, Monokai, Nord, Gruvbox, Solarized Dark, Tokyo Night, Catppuccin Mocha. All but Amber also set the terminal window's background and text while lazychat runs (OSC 10 and 11, given back on the way out), so the panes' programs sit on them too |
+| Appearance | mascot | shown | Lazy, the face at the rail's top |
+| Appearance | version | shown | the corner's `v1.0(N)` |
+| Appearance | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
+| Sound | sounds | on | on macOS, Lazy's sounds: a short burst of keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
+| Sound | key clicks | off | each key typed into a session or the draft box clicks like an old buckling-spring keyboard (a character, Enter, Backspace; not arrows); a recorded key when lazychat ships one, else one made in code; at most one click per 30 ms; quiet with sounds off |
+| Integrations | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
+| Integrations | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 
 One accent colour, the theme's, marks the focused frame, fills the selected
 entry as one band (only its text is coloured while a pane has the keys) and

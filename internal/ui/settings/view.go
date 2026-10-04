@@ -19,15 +19,29 @@ func (s *Settings) View() string {
 	h, lw := max(8, s.rect.Rows), s.leftW()
 	all := s.settings()
 	s.rows.ClampTo(len(all))
-	var rows []string
+	// Each section is a heading, as a project is, its settings hanging under
+	// it; headings take no cursor.
+	var blocks []kit.TreeBlock
 	for i, st := range all {
+		if i == 0 || all[i-1].section != st.section {
+			var lead []string
+			if i > 0 {
+				lead = []string{""}
+			}
+			blocks = append(blocks, kit.TreeBlock{Lead: lead, Rows: []string{kit.StyleBold.Render(text.Fit(" "+st.section, lw-2))}, Heading: true})
+		}
+		first, rest := " ├─ ", " │    "
+		if i+1 == len(all) || all[i+1].section != st.section {
+			first, rest = " └─ ", "      "
+		}
 		entry := []kit.TreeLine{
-			{Styled: kit.StyleBold.Render(st.name), Plain: st.name},
-			{Styled: kit.StyleDim.Render("  " + st.value()), Plain: "  " + st.value()},
+			{Prefix: first, Styled: kit.StyleBold.Render(st.name), Plain: st.name},
+			{Prefix: rest, Styled: kit.StyleDim.Render(st.value()), Plain: st.value()},
 		}
 		b := kit.DrawEntry(entry, lw-2, i == s.rows.Sel, !s.onRight)
-		rows = append(rows, kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), b, lw-2)...)
+		blocks = append(blocks, kit.TreeBlock{Rows: kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), b, lw-2), Selected: i == s.rows.Sel})
 	}
+	rows := kit.DrawTree(blocks, &s.scroll, h-2)
 	left := kit.Box(kit.PanelTitle(1, "settings"), rows, lw, h, !s.onRight, false)
 	return kit.JoinHorizontal(hits.Panel(1, left), hits.Panel(2, s.values(s.rect.Cols-lw, h)))
 }

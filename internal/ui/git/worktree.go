@@ -9,7 +9,7 @@ import (
 	"lazychat/internal/ui/kit"
 )
 
-// A worktree is a folder kept for one branch's work; the main folder is
+// A worktree is a folder kept for one branch's work; the repository's own is
 // for pulling and merging. These are the two places that difference shows
 // in what the keys do.
 
@@ -83,7 +83,7 @@ func (g *Git) updated(msg updatedMsg) tea.Cmd {
 }
 
 // onMainInMainFolder says a commit on the cursor's row would land on main
-// in the main folder, which is kept for pulling and merging.
+// in the repository's own folder, kept for pulling and merging.
 func (g *Git) onMainInMainFolder() bool {
 	p := g.cursorStatus()
 	if p == nil || g.rowIsWorktree() {

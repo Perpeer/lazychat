@@ -19,7 +19,7 @@ type (
 		name     string
 		list     []git.Branch
 		wts      []git.Worktree // the repository's checkouts but the row's own
-		all      []git.Worktree // every checkout, the main folder first
+		all      []git.Worktree // every checkout, the repository's own first
 		suggest  string         // a free name for another worktree of the row's branch
 		err      error
 		fetched  bool
@@ -68,7 +68,7 @@ type branchPopup struct {
 }
 
 // place is where a branch is checked out: in the row's own folder, the
-// main folder, or another worktree's.
+// repository's, or another worktree's.
 type place struct {
 	path       string
 	here, main bool
@@ -80,7 +80,7 @@ func (p place) label() string {
 	case p.here:
 		return "● this folder"
 	case p.main:
-		return mainFolder
+		return "○ " + repoRole + " · " + filepath.Base(p.path) + "/"
 	}
 	return "⑂ " + filepath.Base(p.path)
 }

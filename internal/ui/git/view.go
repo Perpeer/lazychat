@@ -98,9 +98,10 @@ func (g *Git) projectsBox(w, h int) string {
 			blocks[r.index] = append(blocks[r.index], kit.ChildGap())
 		}
 		last := i+1 == len(rs) || rs[i+1].index != r.index
-		entry := branchEntry(st, r.path, w-2, last)
+		repo := g.repoOf(r.index)
+		entry := branchEntry(st, r.path, repo, w-2, last)
 		if r.wt != nil {
-			entry = worktreeEntry(r, st, w-2, last)
+			entry = worktreeEntry(r, st, repo, w-2, last)
 		}
 		blocks[r.index] = append(blocks[r.index], kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), kit.DrawEntry(entry, w-2, i == g.projects.Sel, focused), w-2)...)
 	}
@@ -142,30 +143,24 @@ func (g *Git) shownStatus(key string) *project {
 // branchEntry hangs a project's branch off its heading the way Chat hangs a
 // session: the branch on the connector row, how far it is from its upstream
 // and how much changed on the row under it. It is the checkout the project
-// works in — Chat's sessions and Terminal's shells start in its folder. The
-// repository's own folder says "main folder" beside its branch; an added
-// worktree's branch takes the worktree colour, ⑂ before it — the same words
-// the branch list uses for where a branch is out. A project still loading
-// (nil) or one git can not read shows that on the connector row instead;
-// last says no worktree follows it.
-func branchEntry(p *project, path string, w int, last bool) []kit.TreeLine {
+// works in — Chat's sessions and Terminal's shells start in its folder.
+// Every checkout row reads the same way: its branch (what), then whether it
+// is the repository itself or a worktree of it and its folder (where); an
+// added worktree's branch takes the worktree colour, ⑂ before it. A project
+// still loading (nil) or one git can not read shows that on the connector
+// row instead; last says no worktree follows it.
+func branchEntry(p *project, path, repo string, w int, last bool) []kit.TreeLine {
 	if p != nil && p.linked {
-		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, "", folderNote(path, p.st.Branch))
+		return checkoutEntry(p, w, last, "⑂", kit.StyleWorktree, kit.StyleWorktree, "worktree · "+where(path, repo), "")
 	}
-	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, mainFolder, "")
+	return checkoutEntry(p, w, last, "●", kit.StyleAccent, kit.StyleBold, repoRole+" · "+where(path, repo), "")
 }
 
 // worktreeEntry is one of the repository's other checkouts under the
-// project's branch: its branch after ⑂ (○ and "main folder" for the
-// repository's own), the same counts, and its folder only where the branch
-// does not already say it.
-func worktreeEntry(r row, p *project, w int, last bool) []kit.TreeLine {
+// project's branch: its branch after ⑂ (○ for the repository itself), its
+// role and folder, the same counts, and the branch it was made from.
+func worktreeEntry(r row, p *project, repo string, w int, last bool) []kit.TreeLine {
 	var notes []string
-	if p != nil && !r.wt.Main {
-		if f := folderNote(r.path, p.st.Branch); f != "" {
-			notes = append(notes, f)
-		}
-	}
 	switch {
 	case r.wt.Prunable:
 		notes = append(notes, "gone")
@@ -175,28 +170,42 @@ func worktreeEntry(r row, p *project, w int, last bool) []kit.TreeLine {
 	if p != nil && p.from != "" {
 		notes = append(notes, "from "+p.from)
 	}
-	glyph, label := "⑂", ""
+	glyph, label := "⑂", "worktree · "+where(r.path, repo)
 	if r.wt.Main {
-		glyph, label = "○", mainFolder
+		glyph, label = "○", repoRole+" · "+where(r.path, repo)
 	}
 	return checkoutEntry(p, w, last, glyph, kit.StyleDim, kit.StyleBold, label, strings.Join(notes, " · "))
 }
 
-// folderNote is a worktree's folder when it is not named after its branch,
-// so two worktrees on look-alike branches still tell apart.
-func folderNote(path, branch string) string {
-	if f := filepath.Base(path); f != strings.ReplaceAll(branch, "/", "-") {
-		return f
+// repoRole names the repository's own checkout, beside its branch here and
+// in the branch list: worktrees are the other folders, added to it for work.
+const repoRole = "repository"
+
+// where is a checkout's folder as the rows write it: the repository's by its
+// name, a worktree's from the repository (../task2/, .worktrees/door/), one
+// far from it from home.
+func where(path, repo string) string {
+	if repo == "" {
+		return filepath.Base(path) + "/"
 	}
-	return ""
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		path = real
+	}
+	if real, err := filepath.EvalSymlinks(repo); err == nil {
+		repo = real
+	}
+	if path == repo {
+		return filepath.Base(path) + "/"
+	}
+	rel, err := filepath.Rel(repo, path)
+	if err != nil || strings.HasPrefix(rel, "../../") {
+		return text.ShortHome(path) + "/"
+	}
+	return rel + "/"
 }
 
-// mainFolder names the repository's own checkout, beside its branch here
-// and in the branch list: worktrees are the other folders, kept for work.
-const mainFolder = "main folder"
-
-// checkoutEntry is a checkout's row: glyph and branch, a label beside it
-// (the main folder's), then ↑ ahead, ↓ behind and what changed with any
+// checkoutEntry is a checkout's row: glyph and branch, its role and folder
+// beside it, then ↑ ahead, ↓ behind and what changed with any
 // note.
 func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, label, note string) []kit.TreeLine {
 	first, rest := "   └─ ", "      "
@@ -225,15 +234,20 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipglo
 	if note != "" {
 		counts = append(counts, note)
 	}
-	foot := "  " + strings.Join(counts, " · ")
 	room := w - text.Width(first) - text.Width(glyph+" ")
+	branch := text.FitMiddle(p.st.Branch, room)
+	// The branch comes first; its role and folder take the rest of the row,
+	// or open the row under it when the branch leaves too little.
 	tail, plainTail := "", ""
 	if label != "" {
-		plainTail = "   " + label
-		room -= text.Width(plainTail)
-		tail = kit.StyleDim.Render(plainTail)
+		if left := room - text.Width(branch) - 3; left >= 12 {
+			plainTail = "   " + text.Fit(label, left)
+			tail = kit.StyleDim.Render(plainTail)
+		} else {
+			counts = append([]string{label}, counts...)
+		}
 	}
-	branch := text.FitMiddle(p.st.Branch, room)
+	foot := "  " + strings.Join(counts, " · ")
 	out := []kit.TreeLine{{Prefix: first, Styled: mark.Render(glyph) + " " + name.Render(branch) + tail, Plain: glyph + " " + branch + plainTail}}
 	return append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
 }

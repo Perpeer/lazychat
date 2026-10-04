@@ -105,20 +105,24 @@ func TestFileHeadings(t *testing.T) {
 }
 
 // A branch too long for its row stays on one row, cut in its middle with
-// its last part kept beside the main folder's label, and the counts come
-// after.
+// its last part kept; the branch comes first, so its role and folder move
+// to the counts row when the branch leaves them too little room.
 func TestBranchOneRow(t *testing.T) {
 	p := &project{}
 	p.st.Branch = "garden-shed-paints/feature/blue-door"
-	rows := branchEntry(p, "", 44, true)
+	rows := branchEntry(p, "/garden/shed", "/garden/shed", 40, true)
 	if len(rows) != 2 {
 		t.Fatalf("%d rows: %+v", len(rows), rows)
 	}
-	if rows[0].Plain != "● garden-shed…/blue-door   main folder" || text.Width(rows[0].Prefix+rows[0].Plain) > 44 {
+	if rows[0].Plain != "● garden-shed-paints/fe…/blue-door" || text.Width(rows[0].Prefix+rows[0].Plain) > 40 {
 		t.Errorf("branch row %q", rows[0].Prefix+rows[0].Plain)
 	}
-	if !strings.Contains(rows[1].Plain, "clean") {
+	if !strings.Contains(rows[1].Plain, "repository · shed/ · clean") {
 		t.Errorf("the counts row %q", rows[1].Plain)
+	}
+	p.st.Branch = "main"
+	if rows := branchEntry(p, "/garden/shed", "/garden/shed", 40, true); rows[0].Plain != "● main   repository · shed/" {
+		t.Errorf("short branch row %q", rows[0].Plain)
 	}
 }
 
@@ -170,5 +174,22 @@ func TestDiffText(t *testing.T) {
 	}
 	if got, n := diffText(lines, 0, 1); got != "" || n != 0 {
 		t.Errorf("a file heading and a hunk alone copied %q (%d)", got, n)
+	}
+}
+
+// A checkout's folder is written from the repository: its own by name, a
+// worktree beside it as ../name/, one inside it by its path there, one far
+// away from home.
+func TestWhere(t *testing.T) {
+	for _, c := range []struct{ path, repo, want string }{
+		{"/garden/shed", "/garden/shed", "shed/"},
+		{"/garden/blue-door", "/garden/shed", "../blue-door/"},
+		{"/garden/shed/.worktrees/fence", "/garden/shed", ".worktrees/fence/"},
+		{"/elsewhere/deep/fence", "/garden/shed", "/elsewhere/deep/fence/"},
+		{"/garden/shed", "", "shed/"},
+	} {
+		if got := where(c.path, c.repo); got != c.want {
+			t.Errorf("where(%q, %q) = %q, want %q", c.path, c.repo, got, c.want)
+		}
 	}
 }

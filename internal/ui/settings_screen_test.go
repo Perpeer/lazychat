@@ -29,7 +29,7 @@ func TestSettingsTab(t *testing.T) {
 		t.Fatalf("Tab went to %d", d.app.active)
 	}
 	d.tab(4)
-	d.expect("[1] settings", "[2] commit messages", "  the default (claude)", "(enter) change")
+	d.expect("[1] settings", "General", "Appearance", "[2] new session", "(enter) change")
 	d.key("2") // the values, as Enter; Ctrl+Q back to the settings
 	d.expect("(enter) choose · (esc) back")
 	d.key("ctrl+q")
@@ -37,8 +37,8 @@ func TestSettingsTab(t *testing.T) {
 	// A click on a box's empty part gives it the keys.
 	sc := d.screen()
 	y := lineOf(sc, "(enter) change") - 2
-	row := strings.Split(sc, "\n")[lineOf(sc, "┌ [2] commit messages")]
-	d.click(utf8.RuneCountInString(row[:strings.Index(row, "┌ [2] commit messages")])+5, y)
+	row := strings.Split(sc, "\n")[lineOf(sc, "┌ [2] new session")]
+	d.click(utf8.RuneCountInString(row[:strings.Index(row, "┌ [2] new session")])+5, y)
 	d.expect("(enter) choose · (esc) back")
 	d.click(10, y)
 	d.expect("(enter) change")
@@ -51,7 +51,8 @@ func TestSettingsTools(t *testing.T) {
 	e, _ := seeded(t)
 	d := start(t, e, 120, 32)
 	d.tab(4)
-	d.expect("commit messages", "  the default (claude)", "new session")
+	d.expect("commit messages", "the default (claude)", "new session")
+	d.toSetting("commit messages")
 	d.key("enter")
 	d.expect("● the default (claude)", "○ claude", "○ codex", "○ off", "(enter) choose · (esc) back")
 	for range 12 {
@@ -63,7 +64,8 @@ func TestSettingsTools(t *testing.T) {
 	if got := d.core.Settings.Suggester; got != settings.Off {
 		t.Fatalf("the setting is %q, want %q", got, settings.Off)
 	}
-	d.key("down", "enter")
+	d.toSetting("new session")
+	d.key("enter")
 	d.expect("● the default", "(enter) choose · (esc) back")
 	d.key("down", "down", "enter")
 	d.expect("  codex", "(enter) change")
@@ -80,8 +82,8 @@ func TestSettingsTabs(t *testing.T) {
 	d := start(t, e, 120, 32)
 	d.tab(4)
 	d.expect("│git │", "│term│", "(enter) change")
-	d.key("down", "down")
-	d.expect("  Chat, Git, Terminal")
+	d.toSetting("tabs")
+	d.expect("Chat, Git, Terminal")
 	d.key("enter")
 	d.expect("[✓] Git", "[✓] Terminal")
 	d.expectNot("Prompt")
@@ -111,8 +113,8 @@ func TestSettingsTheme(t *testing.T) {
 		t.Fatalf("the theme with none set is %q, want Gruvbox", got)
 	}
 	d.tab(4)
-	d.key("down", "down", "down")
-	d.expect("theme", "  Gruvbox")
+	d.toSetting("theme")
+	d.expect("theme", "Gruvbox")
 	d.key("enter")
 	d.expect("○ Amber", "○ Dracula", "● Gruvbox", "○ Tokyo Night")
 	for range 5 {
@@ -140,8 +142,8 @@ func TestSettingsMascotVersion(t *testing.T) {
 	d.app.opts.Version = "1.0(9) 1a2b3c4"
 	d.tab(4)
 	d.expect("╭────╮", "v1.0(9)")
-	d.key("down", "down", "down", "down")
-	d.expect("mascot", "  shown")
+	d.toSetting("mascot")
+	d.expect("mascot", "shown")
 	d.key("enter", "down", "enter")
 	d.expect("  hidden", "(enter) change")
 	d.expectNot("╭────╮")
@@ -163,9 +165,8 @@ func TestSettingsMenuBar(t *testing.T) {
 	starts := 0
 	d.app.opts.MenuBar = func() { starts++ }
 	d.tab(4)
-	for range 6 {
-		d.key("down")
-	}
+	d.toSetting("menu bar")
+	d.expect("Integrations") // its section's heading scrolls in with it
 	d.expect("menu bar", "Lazy in the menu bar")
 	d.key("enter", "down", "enter")
 	d.expect("  hidden", "(enter) change")
@@ -195,9 +196,7 @@ func TestSettingsStatusLine(t *testing.T) {
 		t.Fatal("no status line offered by default")
 	}
 	d.tab(4)
-	for range 7 {
-		d.key("down")
-	}
+	d.toSetting("status line")
 	d.expect("status line", "lazychat's status line in claude sessions")
 	d.key("enter", "down", "enter")
 	d.expect("  hidden", "(enter) change")
@@ -221,9 +220,7 @@ func TestSettingsSounds(t *testing.T) {
 	d.post(kit.PlaySound{Name: sound.Tick})
 	d.until("a sound played", func() bool { return len(played) == 1 })
 	d.tab(4)
-	for range 8 {
-		d.key("down")
-	}
+	d.toSetting("sounds")
 	d.expect("sounds", "Lazy's sounds", "  on")
 	d.key("enter", "down", "enter")
 	d.expect("  off", "(enter) change")
@@ -298,9 +295,7 @@ func TestKeyClicks(t *testing.T) {
 	}
 	d.leave()
 	d.tab(4)
-	for range 10 {
-		d.key("down")
-	}
+	d.toSetting("key clicks")
 	d.expect("key clicks", "buckling-spring", "  off")
 	d.key("enter", "up", "enter")
 	d.expect("  on", "(enter) change")
@@ -325,4 +320,20 @@ func TestKeyClicks(t *testing.T) {
 	}
 	d.leave()
 	d.quitApp()
+}
+
+// toSetting puts the Settings tab's cursor on the setting called name,
+// wherever its section lists it: the right box is titled with it.
+func (d *driver) toSetting(name string) {
+	d.t.Helper()
+	for range 20 {
+		d.key("up")
+	}
+	for range 20 {
+		if strings.Contains(d.screen(), "[2] "+name+" ") {
+			return
+		}
+		d.key("down")
+	}
+	d.t.Fatalf("no setting %q:\n%s", name, d.screen())
 }

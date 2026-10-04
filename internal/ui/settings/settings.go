@@ -23,7 +23,8 @@ type Settings struct {
 	rect    kit.Rect
 	rows    kit.List // the setting under the cursor
 	choice  kit.List // the value under the cursor on the right
-	onRight bool     // the keys move over the values, not the settings
+	scroll  kit.Scroller
+	onRight bool // the keys move over the values, not the settings
 }
 
 var _ kit.Tab = (*Settings)(nil)
@@ -48,6 +49,7 @@ func (s *Settings) AtBottom() bool { return true }
 // setting is one row: its name, its value now, and the values it can take.
 type setting struct {
 	name, about string
+	section     string // the heading it is listed under
 	value       func() string
 	choices     func() []choice
 	set         func(i int) error
@@ -61,7 +63,38 @@ type choice struct {
 	chosen      bool
 }
 
+// sections are the headings the settings are listed under, as editors group
+// theirs, and which settings each holds, in order.
+var sections = []struct {
+	title string
+	names []string
+}{
+	{"General", []string{"new session", "commit messages", "tabs"}},
+	{"Appearance", []string{"theme", "mascot", "version", "syntax colours"}},
+	{"Sound", []string{"sounds", "key clicks"}},
+	{"Integrations", []string{"status line", "menu bar"}},
+}
+
+// settings are every setting in its section's order, each knowing its
+// section.
 func (s *Settings) settings() []setting {
+	byName := map[string]setting{}
+	for _, st := range s.all() {
+		byName[st.name] = st
+	}
+	var out []setting
+	for _, sec := range sections {
+		for _, name := range sec.names {
+			if st, ok := byName[name]; ok {
+				st.section = sec.title
+				out = append(out, st)
+			}
+		}
+	}
+	return out
+}
+
+func (s *Settings) all() []setting {
 	st := s.core.Settings
 	return []setting{s.toolSetting("commit messages",
 		"the AI tool that writes a commit message for what is staged when Suggest (ctrl+n) is pressed in the Git tab's commit box, run once in the row's folder and gone; by default claude when it is ready, else the first tool that is",

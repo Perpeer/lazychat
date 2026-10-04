@@ -77,6 +77,23 @@ func (g *Git) rows() []row {
 	return out
 }
 
+// repoOf is the folder of the repository a project's checkouts belong to:
+// its own, or, when the project works in a worktree, the one that worktree
+// was added to; "" while its status is unread.
+func (g *Git) repoOf(index int) string {
+	p := g.core.Store.Projects[index]
+	st := g.status[p.Name]
+	if st == nil || !st.linked {
+		return p.Path
+	}
+	for _, w := range st.wts {
+		if w.Main {
+			return w.Path
+		}
+	}
+	return ""
+}
+
 // cursorRow is the row under the left cursor.
 func (g *Git) cursorRow() (row, bool) {
 	rs := g.rows()
@@ -130,7 +147,7 @@ type Git struct {
 
 	branches *branchPopup // the branch finder while it is open
 	wantPath string       // a folder whose row takes the cursor once it is listed
-	// mainCommitOK is a yes to committing on main in the main folder, for
+	// mainCommitOK is a yes to committing on main in the repository itself, for
 	// the commit it was asked for.
 	mainCommitOK bool
 

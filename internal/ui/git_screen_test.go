@@ -196,7 +196,7 @@ func TestGitTab(t *testing.T) {
 	d.key("enter")
 	d.typ("One is two now.")
 	d.key("ctrl+s")
-	d.expect("Commit on main in the main") // the main folder: asked first
+	d.expect("Commit on main in the repository itself") // the repository's own folder: asked first
 	d.key("y")
 	d.expect("committed", "[2] Unstaged · 1", "┌ [3] Staged · 0", "Commit subject")
 	if msg := gitOut(t, dir, "log", "-1", "--format=%B"); msg != "Change the app\n\nOne is two now." {
@@ -434,7 +434,7 @@ func TestGitWorktrees(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main   main folder", "  clean", "⑂ feature", "1 changed · wt-feature")
+	d.expect("● main   repository ·", "  clean", "⑂ feature   worktree ·", "1 changed")
 	d.key("j") // the worktree's row
 	d.expect("vs main", "wt.txt", "loose.txt")
 	d.key("3") // the lower box: what the branch changed
@@ -507,7 +507,7 @@ func TestCommitSuggest(t *testing.T) {
 	d.key("n")
 	d.expect("Change notes.txt now")
 	d.key("ctrl+s")
-	d.expect("Commit on main in the main")
+	d.expect("Commit on main in the repository itself")
 	d.key("y")
 	d.expect("committed")
 	if msg := gitOut(t, dir, "log", "-1", "--format=%B"); msg != "Change notes.txt now\n\nWritten by the fake from the staged diff." {
@@ -543,7 +543,7 @@ func TestGitCommits(t *testing.T) {
 	d.tab(2)
 	d.expect("● main", "┌ [4] commits", "main work", "first", "┌ [5] diff", "┌ [6] commit")
 	d.key("j") // the worktree, made from dev: compared with dev, not main
-	d.expect("⑂ feat", "wt-feat · from dev", "vs dev", "feature work")
+	d.expect("⑂ feat   worktree ·", "from dev", "vs dev", "feature work")
 	d.expectNot("vs main")
 	d.expectNot("main work")
 	d.key("4")
@@ -565,7 +565,7 @@ func TestGitCommits(t *testing.T) {
 }
 
 // A project registered on a worktree's folder works in that worktree: its
-// own row says so with ⑂, and the main folder hangs under it with
+// own row says so with ⑂, and the repository itself hangs under it with
 // the other worktrees.
 func TestGitHereInWorktree(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
@@ -588,7 +588,7 @@ func TestGitHereInWorktree(t *testing.T) {
 	}
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("⑂ feature", "clean · wt-feature", "○ main   main folder")
+	d.expect("⑂ feature   worktree ·", "clean", "○ main   repository ·")
 	if here, other := lineOf(d.screen(), "⑂ feature"), lineOf(d.screen(), "○ main"); here > other {
 		t.Errorf("the worktree it works in is not first:\n%s", d.screen())
 	}
@@ -878,7 +878,7 @@ func TestGitDelete(t *testing.T) {
 
 // Where a session works is never a guess: a worktree project's heading
 // names the worktree beside its branch, a session in it carries ⑂ on its
-// row, and Git names the main folder and each worktree, with
+// row, and Git names the repository and each worktree, with
 // the counts under every checkout and no session names. No line over the
 // pane repeats it.
 func TestWhereYouWork(t *testing.T) {
@@ -913,8 +913,7 @@ func TestWhereYouWork(t *testing.T) {
 	d.expect("· ⑂ blue-door") // on the session's own row
 
 	d.tab(2)
-	d.expect("● main   main folder", "⑂ blue-door", "○ main   main folder")
-	d.expectNot("repository ")
+	d.expect("● main   repository ·", "⑂ blue-door", "○ main   repository ·")
 	d.expectNot("main checkout")
 	d.expectNot("◐ session") // the rows name no sessions
 	d.quitApp()
@@ -971,7 +970,7 @@ func TestDiffCopy(t *testing.T) {
 // branch is out in the same words; a branch out in another worktree is
 // reached by going to its row, never by a checkout; a worktree keeps its
 // branch; u brings one up to date with main; and a commit on main in the
-// main folder is asked first.
+// repository itself is asked first.
 func TestWorktreeModel(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
@@ -991,16 +990,16 @@ func TestWorktreeModel(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main   main folder", "⑂ door")
+	d.expect("● main   repository ·", "⑂ door")
 	d.expectNot("current")
 
-	d.key("b") // from the main folder
+	d.key("b") // from the repository itself
 	d.expect("branches · demo2", "● this folder", "⑂ door", "garden")
 	d.typ("door")
 	d.key("enter") // out in a worktree: its row, no checkout
 	d.expect("door is out in ⑂ door: its row")
 	d.key("b")
-	d.expect("branches · demo2 · door", "● this folder", "main folder")
+	d.expect("branches · demo2 · door", "● this folder", "○ repository ·")
 	d.typ("garden")
 	d.key("enter")
 	d.expect("a worktree keeps its branch: w makes a worktree for garden")
@@ -1016,8 +1015,8 @@ func TestWorktreeModel(t *testing.T) {
 	d.key("y")
 	d.expect("door is up to date with origin/main")
 
-	d.key("k") // the main folder
-	d.expect("● main   main folder")
+	d.key("k") // the repository itself
+	d.expect("● main   repository ·")
 	d.expectNot("(u) update from main")
 	write(t, filepath.Join(dir, "a.txt"), "one\ntwo\n")
 	d.key("r", "2")
@@ -1027,7 +1026,7 @@ func TestWorktreeModel(t *testing.T) {
 	d.key("c")
 	d.typ("Edit on main")
 	d.key("ctrl+s")
-	d.expect("Commit on main in the main")
+	d.expect("Commit on main in the repository itself")
 	d.key("y")
 	d.expect("committed")
 	d.quitApp()
@@ -1057,10 +1056,8 @@ func TestDiffSyntax(t *testing.T) {
 	d.expect("[2] Unstaged · 1", `+ func Paint() string { return "blue" }`)
 	d.until("func is not in the keyword colour", func() bool { return coloured.MatchString(d.app.View()) })
 	d.tab(4)
-	for range 9 {
-		d.key("down")
-	}
-	d.expect("syntax colours", "  on")
+	d.toSetting("syntax colours")
+	d.expect("syntax colours", "on")
 	d.key("enter", "down", "enter")
 	d.expect("  off", "(enter) change")
 	if !d.core.Settings.NoSyntax {
