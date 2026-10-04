@@ -18,8 +18,8 @@ func TestKeymapFooters(t *testing.T) {
 		keys []binding
 		want string
 	}{
-		{"session", sessionKeys, "enter continue · n new · r resume · e rename · w draft · m move · d close · wheel scroll · / search · ? help"},
-		{"no session", emptyRowKeys, "enter/n new · r resume · / search · ? help"},
+		{"session", sessionKeys, "enter continue · n new · r resume · e rename · w draft · s search · m move · d close · wheel scroll · ? help"},
+		{"no session", emptyRowKeys, "enter/n new · r resume · s search · ? help"},
 		{"project", projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		{"no project yet", emptyKeys, "o open · ? help"},
 		{"terminal", termKeys, "ctrl+q back to lazychat · click the tree: back there · wheel scroll · other keys go to claude"},

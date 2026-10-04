@@ -50,7 +50,7 @@ var ListKeys = struct {
 	Carry:         Key{Keys: []string{"up", "k"}, Hint: Hint{Key: "↑↓ j k", Does: "move"}, Help: "carry the picked row up or down; the order is saved at every step"},
 	PutDown:       Key{Keys: []string{"enter", "m", "M", "ctrl+q"}, Hint: Hint{Key: "enter", Does: "done"}, Help: "put the row down where it is; m, M and ctrl+q too"},
 	Back:          Key{Keys: []string{"ctrl+q"}, Quiet: true, Name: "ctrl+q", Help: "back to [1], the list on the left, from any panel"},
-	Search:        Key{Keys: []string{"/"}, Hint: Hint{Key: "/", Does: "search"}, Help: "find a session by its name, its project or its tool, in every project: a finder; typing narrows it, Enter puts the cursor on the one chosen, Esc leaves it where it is"},
+	Search:        Key{Keys: []string{"s"}, Hint: Hint{Key: "s", Does: "search"}, Help: "find a row of this list by name: a finder; typing narrows it, Enter puts the cursor on the one chosen, Esc leaves it where it is"},
 }
 
 // ChatKeys are Chat's: the tree, the session pane, the draft and the details page.
@@ -235,7 +235,7 @@ var WorkspaceKeys = struct {
 	Quit   Key
 }{
 	New:    Key{Keys: []string{"n"}, Hint: Hint{Key: "n", Does: "new"}, Help: "a new workspace: a name, kept under ~/.lazychat; it opens"},
-	Switch: Key{Keys: []string{"s"}, Hint: Hint{Key: "s", Does: "switch"}, Help: "switch to another workspace: the others, the one used before this first; lazychat starts again on it"},
+	Switch: Key{Keys: []string{"S"}, Hint: Hint{Key: "shift+s", Does: "switch"}, Help: "switch to another workspace: the others, the one used before this first; lazychat starts again on it"},
 	Edit:   Key{Keys: []string{"e"}, Hint: Hint{Key: "e", Does: "edit"}, Help: "rename the workspace"},
 	Delete: Key{Keys: []string{"d"}, Hint: Hint{Key: "d", Does: "delete"}, Help: "delete the workspace, asked: its list of projects and sessions goes to the Trash; the projects' folders stay; then the start screen"},
 	Leave:  Key{Keys: []string{"down", "j", "esc"}, Name: "↓ Esc", Help: "back to the tab's list"},

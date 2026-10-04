@@ -57,6 +57,7 @@ func init() {
 			}
 		})},
 		{Key: kit.ChatKeys.Draft, Run: act(func(c *Chat) { c.openDraft() })},
+		searchKey,
 		keyMove,
 		{Key: kit.ChatKeys.Close, Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {
@@ -64,7 +65,7 @@ func init() {
 			}
 		})},
 		{Key: kit.ChatKeys.Wheel},
-		searchKey, keyHelp, keyQuit,
+		keyHelp, keyQuit,
 	}, moves...)
 	// On the empty row Enter makes the first session, as n does.
 	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyResume, searchKey, keyHelp, keyQuit}, moves...)
@@ -102,7 +103,7 @@ func init() {
 
 // tables are the footer's two rows for where the keys are now: the row's
 // own and, under a session or a project's empty row, the project's.
-// searchKey is / on the tree: a finder over every session.
+// searchKey is s on the tree: a finder over every session.
 var searchKey = binding{Key: kit.ListKeys.Search, Run: func(c *Chat) tea.Cmd { c.searchSessions(); return nil }}
 
 func (c *Chat) tables() (top, below []binding) {

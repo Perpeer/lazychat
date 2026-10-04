@@ -22,13 +22,13 @@ func TestTerminalTab(t *testing.T) {
 		t.Fatalf("the Terminal box is not under Git's:\n%s", d.screen())
 	}
 	d.tab(3)
-	d.expect("[1] projects", "demo2 · terminals (0)", "└─ no terminals yet", "(enter/n) new · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("[1] projects", "demo2 · terminals (0)", "└─ no terminals yet", "(enter/n) new · (s) search · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("n")
 	d.expect("sh 1", "(ctrl+q) back to lazychat")
 	d.raw("pwd\r")
 	d.expect(filepath.Base(dir))
 	d.leave()
-	d.expect("(enter) continue · (n) new · (e) rename · (m) move · (d) close · (v) copy")
+	d.expect("(enter) continue · (n) new · (e) rename · (s) search · (m) move · (d) close · (v) copy")
 	d.key("n")
 	d.expect("sh 2")
 	d.leave()
@@ -95,5 +95,32 @@ func TestTerminalSelect(t *testing.T) {
 	d.expect("more")
 	d.expectNot("copied 5")
 	d.leave()
+	d.quitApp()
+}
+
+// s on the list finds a shell by name across every project; Enter puts the
+// cursor on it and the pane follows, Esc leaves the cursor where it was.
+func TestTerminalSearch(t *testing.T) {
+	e, _ := seeded(t)
+	e.vars = map[string]string{"SHELL": "/bin/sh"}
+	d := start(t, e, 120, 32)
+	d.tab(3)
+	d.expect("└─ no terminals yet", "(enter/n) new · (s) search · (?) help")
+	d.key("n")
+	d.expect("sh 1", "(ctrl+q) back to lazychat")
+	d.leave()
+	d.key("n")
+	d.expect("sh 2")
+	d.leave()
+	d.expect("(enter) continue · (n) new · (e) rename · (s) search · (m) move · (d) close · (v) copy")
+	d.key("s")
+	d.expect("shells", "sh 1", "sh 2", "demo2")
+	d.typ("sh 1")
+	d.key("enter")
+	d.expect("[2] demo2 · sh 1 ·") // the pane follows the cursor
+	d.key("s")
+	d.typ("sh 2")
+	d.key("esc")
+	d.expect("[2] demo2 · sh 1 ·") // the cursor stayed
 	d.quitApp()
 }

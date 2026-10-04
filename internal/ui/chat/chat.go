@@ -41,8 +41,7 @@ type Chat struct {
 		st    kit.MascotState
 	}
 	clocks   clocks
-	beat     int // the shell's fast beat, turning the flow's spinners
-	use      usagePool
+	beat     int         // the shell's fast beat, turning the flow's spinners
 	files    transcripts // the transcripts the report, the clocks and the sums read
 	repFocus bool
 }
@@ -68,7 +67,6 @@ func New(core *api.Core, screen kit.Screen) *Chat {
 	}
 	c.list.turn = c.turnTime
 	c.list.draft = c.hasDraft
-	c.list.usage = func(project string) string { return c.use.lines[project] }
 	c.Capture.HeldNewline = true
 	// Leaving the terminal lands on what was just in use, and on a narrow
 	// screen the lists come back with the keys.

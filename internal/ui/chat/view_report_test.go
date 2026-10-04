@@ -92,27 +92,6 @@ func TestTimelineRow(t *testing.T) {
 	}
 }
 
-// A project's line sums today's calls of its sessions, used tokens and the
-// API price where every model has one; yesterday's calls and a session with
-// no call today give no line.
-func TestTodayLine(t *testing.T) {
-	now := time.Date(2026, 3, 2, 15, 0, 0, 0, time.Local)
-	today := func(h int, used int64) usage.Call {
-		return usage.Call{Model: "claude-opus-5-5", Time: now.Add(time.Duration(h) * time.Hour), Tokens: usage.Tokens{Output: used}}
-	}
-	a := &usage.Session{Calls: []usage.Call{today(-2, 100_000), today(-1, 50_000), {Model: "claude-opus-5-5", Time: now.Add(-30 * time.Hour), Tokens: usage.Tokens{Output: 9_000_000}}}}
-	b := &usage.Session{Calls: []usage.Call{today(-3, 50_000)}}
-	if got := todayLine([]*usage.Session{a, b}, usage.Prices{}, now); got != "today 200k used · $4.00" {
-		t.Errorf("line %q", got)
-	}
-	if got := todayLine([]*usage.Session{{Calls: []usage.Call{{Model: "model-x", Time: now, Tokens: usage.Tokens{Output: 5}}}}}, usage.Prices{}, now); got != "today 5 used" {
-		t.Errorf("no price: %q", got)
-	}
-	if got := todayLine(nil, usage.Prices{}, now); got != "" {
-		t.Errorf("no session: %q", got)
-	}
-}
-
 // A prompt's state: working while it is the newest and the session works,
 // asking while a question of it is open then, done once ended, stopped
 // for an answer cut short; an older prompt picked lights no table row.

@@ -24,6 +24,7 @@ func init() {
 	keyHelp := kit.HelpKey(screen, helpText)
 	keyQuit := kit.QuitKey(kit.TerminalKeys.Quit, screen)
 	keyMove := kit.ReorderStart(func(t *Terminal) { t.tree.Moving, t.tree.Whole = true, false })
+	keySearch := binding{Key: kit.ListKeys.Search, Run: act(func(t *Terminal) { t.search() })}
 	keyBack := kit.BackKey(func(t *Terminal) { t.ToList() })
 	keyPgUp := binding{Key: kit.ListKeys.PageUp, Run: act(func(t *Terminal) { t.Pane.ScrollBy(t.PaneRect(), -kit.PageRows) })}
 	keyPgDn := binding{Key: kit.TerminalKeys.PageDown, Run: act(func(t *Terminal) { t.Pane.ScrollBy(t.PaneRect(), kit.PageRows) })}
@@ -44,6 +45,7 @@ func init() {
 				t.act.Rename(asShell(sh))
 			}
 		})},
+		keySearch,
 		keyMove,
 		{Key: kit.TerminalKeys.Close, Run: act(func(t *Terminal) {
 			if sh, ok := t.tree.Shell(); ok {
@@ -53,7 +55,7 @@ func init() {
 		{Key: kit.TerminalKeys.CopyMode, Run: act(func(t *Terminal) { _, rows := t.PaneSize(); t.Pane.StartCopy(rows) })},
 		keyHelp, keyQuit,
 	}, moves...)
-	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyHelp, keyQuit}, moves...)
+	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keySearch, keyHelp, keyQuit}, moves...)
 	projectKeys = kit.ProjectRow(func(t *Terminal) string { p, _ := t.tree.Project(); return p.Name }, func(t *Terminal) { t.tree.Moving, t.tree.Whole = true, true })
 	emptyKeys = []binding{kit.ProjectOpen[*Terminal](), keyHelp, keyQuit}
 	moveKeys = kit.ReorderKeys(func(t *Terminal, d int) { t.carry(d) }, func(t *Terminal) { t.tree.Moving = false })

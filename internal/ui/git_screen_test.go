@@ -127,7 +127,7 @@ func TestGitTab(t *testing.T) {
 	d.key("left") // not a way back any more: the diff keeps the keys
 	d.expect("(esc) projects · (v) select · (y) copy")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("3", "6") // 6 only chooses the box: digits and keys stay lazychat's
 	d.expect("(enter) write · (esc) projects")
 	d.key("esc")
@@ -135,22 +135,22 @@ func TestGitTab(t *testing.T) {
 	d.key("3", "6", "enter")
 	d.expect("(ctrl+s) commit · (ctrl+n) suggest · (Tab) next · (esc) projects")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("3")
 	d.expect("(space) stage / unstage")
 	d.key("6", "ctrl+q") // Ctrl+Q goes back to the projects, from the commit box too
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("5", "ctrl+q")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	// A click on a box's empty part gives it the keys; its selection stays.
 	sc := d.screen()
 	staged := lineOf(sc, "┌ [3] Staged")
 	d.click(utf8.RuneCountInString(strings.Split(sc, "\n")[staged][:strings.Index(strings.Split(sc, "\n")[staged], "┌ [3] Staged")])+5, staged+4)
 	d.expect("(space) stage / unstage", "      1 + package app")
 	d.click(10, lineOf(d.screen(), "(space) stage")-2) // the projects box, below its last project
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("1")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("2")
 	d.expect("┌ [5] all unstaged", "(space) stage / unstage")
 	d.key("1")
@@ -166,7 +166,7 @@ func TestGitTab(t *testing.T) {
 	clickOn("M app.go")
 	d.expect("      3 + func One() int { return 2 }")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll · (?) help")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll · (?) help")
 	// The first change's diff is on the right before the middle has the keys.
 	d.expect("app.go", "  3     - func One() int { return 1 }", "      3 + func One() int { return 2 }")
 
@@ -206,7 +206,7 @@ func TestGitTab(t *testing.T) {
 	d.key("c", "x")                     // typed into the box, not a key of the tab
 	d.expect("(ctrl+s) commit")
 	d.key("esc") // to the projects, as ctrl+q; what was typed stays
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "│ x")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (s) search · (wheel) scroll", "│ x")
 	d.key("3") // the empty Staged box takes the keys all the same: no diff, space does nothing
 	d.expect("┌ [5] diff", "(space) stage / unstage")
 	d.key(" ", "j")
@@ -1113,5 +1113,26 @@ func TestStageLines(t *testing.T) {
 	d.until("the lines did not leave the index", func() bool {
 		return strings.TrimSpace(gitOut(t, dir, "diff", "--cached", "--", "a.txt")) == ""
 	})
+	d.quitApp()
+}
+
+// s on the projects panel finds a checkout by its project's name, the
+// branch beside it; Enter puts the cursor on it.
+func TestGitSearch(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	e, dir := seeded(t)
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, filepath.Join(dir, "app.go"), "package app\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "first")
+	d := start(t, e, 160, 40)
+	d.tab(2)
+	d.expect("(r) refresh · (s) search · (wheel) scroll")
+	d.key("s")
+	d.expect("checkouts", "demo2", "⎇ main")
+	d.key("esc")
+	d.expect("(r) refresh · (s) search · (wheel) scroll")
 	d.quitApp()
 }

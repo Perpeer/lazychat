@@ -6,11 +6,11 @@ import (
 	"lazychat/internal/core/usage"
 )
 
-// transcripts is one Reader per transcript, shared by the report, the
-// clocks and the per-project sums: each kept its own and a transcript open
-// in all three was parsed and held three times. Every caller reads off the
-// loop in a goroutine of its own, so a reader is used under its lock and
-// the caller takes a clone it may keep.
+// transcripts is one Reader per transcript, shared by the report and the
+// clocks: each kept its own and a transcript open in both was parsed and
+// held twice. Every caller reads off the loop in a goroutine of its own,
+// so a reader is used under its lock and the caller takes a clone it may
+// keep.
 type transcripts struct {
 	mu  sync.Mutex
 	all map[string]*transcript

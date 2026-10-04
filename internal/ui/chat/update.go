@@ -44,7 +44,7 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		if msg.N%2 == 0 {
 			clock = c.readClocks()
 		}
-		return tea.Batch(c.reportTick(msg.N), clock, failed, c.usageTick(msg.N))
+		return tea.Batch(c.reportTick(msg.N), clock, failed)
 	case termMsg:
 		c.act.Live.AckAll()
 		c.act.Reap()
@@ -54,8 +54,6 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		c.draftSent(msg)
 	case reportMsg:
 		return c.reported(msg)
-	case usageMsg:
-		c.use.reading, c.use.lines = false, msg.lines
 	case clocksMsg:
 		c.clocked(msg)
 	case kit.CmdEnter:
@@ -317,7 +315,7 @@ func (c *Chat) takeKeys() {
 	}
 }
 
-// searchSessions is / on the tree: a finder over every session of every
+// searchSessions is s on the tree: a finder over every session of every
 // project, by name, with its project and tool beside it; the one chosen
 // takes the cursor, and the report follows when it shows.
 func (c *Chat) searchSessions() {

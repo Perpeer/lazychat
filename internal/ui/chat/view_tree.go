@@ -24,7 +24,6 @@ type treeView struct {
 	worktree func(path string) string                           // the worktree a project's folder is, "" for a repository's own; nil for none
 	turn     func(key string) (time.Duration, status.TurnState) // the session's turn time; nil for none
 	draft    func(r state.Session) bool                         // the session has a draft waiting; nil for none
-	usage    func(project string) string                        // what the project's sessions used today; nil or "" for no line
 	tick     int
 	scroll   kit.Scroller
 	follow   kit.Follow
@@ -44,13 +43,7 @@ func (t *treeView) projectEntry(p state.Project, n, w int) []kit.TreeLine {
 	if t.branch != nil {
 		branch = t.branch(p.Path)
 	}
-	entry := kit.ProjectHeading(p.Name, p.Path, branch, w)
-	if t.usage != nil {
-		if line := t.usage(p.Name); line != "" {
-			entry = append(entry, kit.TreeLine{Styled: kit.StyleDim.Render(" " + line), Plain: " " + line})
-		}
-	}
-	return entry
+	return kit.ProjectHeading(p.Name, p.Path, branch, w)
 }
 
 func (t *treeView) glyph(s state.Session) (styled, plain string) {

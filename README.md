@@ -92,10 +92,10 @@ never touched.
 Every session sits under its project with its terminal next to it. You can
 see which one works, which one waits for you and how long the last prompt
 took. `n` starts one, `r` resumes an old one, and `w` lets you draft the
-next prompt while the agent is still busy. `/` finds a session by name
-across every project; `i`, or a click on Lazy while several wait, opens
-the inbox: the sessions asking you something or finished, Enter opens
-one. Under each project the tree says what its sessions used today. Press `3` for the details. At
+next prompt while the agent is still busy. `s` finds a session by name
+across every project (and in every tab, `s` searches its list); `i`, or
+a click on Lazy while several wait, opens the inbox: the sessions asking
+you something or finished, Enter opens one. Press `3` for the details. At
 the top is the prompt's flow, drawn like `git log --graph`: each tool it
 called in order with the file it touched or the command it ran, a
 subagent as a branch that forks off and joins back when it returns, a

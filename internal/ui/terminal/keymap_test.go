@@ -14,8 +14,8 @@ func TestKeymap(t *testing.T) {
 		keys []binding
 		want string
 	}{
-		"terminal":    {shellKeys, "enter continue · n new · e rename · m move · d close · v copy · ? help"},
-		"no terminal": {emptyRowKeys, "enter/n new · ? help"},
+		"terminal":    {shellKeys, "enter continue · n new · e rename · s search · m move · d close · v copy · ? help"},
+		"no terminal": {emptyRowKeys, "enter/n new · s search · ? help"},
 		"project":     {projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		"none":        {emptyKeys, "o open · ? help"},
 		"shell":       {termKeys, "ctrl+q back to lazychat · click the list: back there · drag select · copy · other keys go to the shell"},

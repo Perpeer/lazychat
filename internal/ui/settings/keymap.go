@@ -30,6 +30,7 @@ func init() {
 	}, kit.PanelNames.Settings)
 	rowKeys = []binding{
 		{Key: kit.SettingsKeys.Change, Run: act(func(s *Settings) { s.toValues() })},
+		{Key: kit.ListKeys.Search, Run: act(func(s *Settings) { s.search() })},
 		{Key: kit.SettingsKeys.RowUp, Run: act(func(s *Settings) { s.rows.Move(-1, len(s.settings())) })},
 		{Key: kit.ListKeys.Down, Run: act(func(s *Settings) { s.rows.Move(1, len(s.settings())) })},
 		keyHelp, keyQuit, keyBack,

@@ -291,3 +291,16 @@ func (s *Settings) pick(i int) {
 	}
 	s.screen.Note("%s: %s", cur.name, cur.value())
 }
+
+// search is s on the rows: a finder over the settings by name, the section
+// beside each; the one chosen takes the cursor.
+func (s *Settings) search() {
+	all := s.settings()
+	names := make([]string, len(all))
+	for i, st := range all {
+		names[i] = st.name
+	}
+	f := kit.NewFinder("settings", names, func(i int) { s.rows.Sel = i })
+	f.Note = func(i int) string { return all[i].section }
+	s.screen.Push(f)
+}

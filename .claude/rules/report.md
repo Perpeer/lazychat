@@ -50,11 +50,10 @@ paths:
   <file>` makes any lazychat run write a CPU profile for `go tool pprof`.
   The in-process driver missed this one — its ticks are not a terminal's
   frames — so the pty measurement is the one to trust for "how much CPU".
-- Chat's project headings carry "today … used · $…" (chat/usage.go): the
-  project's listed sessions' transcripts, one reader each kept across
-  reads, summed every 30 s off the loop; only calls of today, local time;
-  no line without a call. One dim row, not a chart — the user dropped the
-  session-wide charts.
+- Chat's project headings carried "today … used · $…" (a usage pool
+  summing every listed session's transcript every 30 s); the user had it
+  taken out (noise under the heading), and the pool with it. Nothing on
+  the tree sums usage now.
 - The report is the tree cursor's session prompt by prompt: the picked
   prompt's flow, the context and its report on top, which scroll, and the
   newest ten prompts as a three-row table held at the box's bottom (the
@@ -134,10 +133,10 @@ paths:
   (Uses copied too). Every second while the report shows, and at once
   when the cursor moves to another session; an answer for a session no
   longer under the cursor is dropped. One Reader per transcript, shared
-  (chat/transcripts.go): the report, the clocks (a live session's last
-  prompt) and the per-project sums each read in a goroutine of their
-  own, so a reader is used under its lock and every caller takes a clone;
-  before, a transcript open in all three was parsed and held three times.
+  (chat/transcripts.go): the report and the clocks (a live session's last
+  prompt) each read in a goroutine of their own, so a reader is used under
+  its lock and every caller takes a clone; before, a transcript open in
+  both was parsed and held twice.
 - Tests use invented transcripts (the repository is public): made-up skills,
   servers and agents.
 - Token kinds keep a glyph beside their Okabe–Ito colour

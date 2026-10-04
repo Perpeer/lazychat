@@ -65,12 +65,12 @@ func TestWorkspaceBox(t *testing.T) {
 	d.key("up", "k")
 	d.expectNot("▸ test")
 	d.key("ctrl+w")
-	d.expect("▸ test", "(n) new · (s) switch · (e) edit · (d) delete · (?) help")
+	d.expect("▸ test", "(n) new · (shift+s) switch · (e) edit · (d) delete · (?) help")
 	d.key("enter") // no menu: nothing happens
 	d.expectNot("workspace · test")
 	d.expect("▸ test")
 	d.key("down")
-	d.expect("(enter/n) new · (r) resume · (/) search · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(enter/n) new · (r) resume · (s) search · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.expectNot("▸ test")
 	d.key("ctrl+w")
 	d.expect("▸ test")
@@ -110,7 +110,7 @@ func TestWorkspaceSwitch(t *testing.T) {
 	e, _ := seeded(t)
 	d := start(t, e, 120, 32)
 	withRegistry(t, d)
-	d.key("ctrl+w", "s")
+	d.key("ctrl+w", "S")
 	d.expect("no other workspace: n makes one")
 	older, err := workspace.Create(home(d), "older")
 	if err != nil {
@@ -126,7 +126,7 @@ func TestWorkspaceSwitch(t *testing.T) {
 	if box := strings.Split(d.screen(), "\n")[1]; strings.Contains(box, "other") || strings.Contains(box, "older") {
 		t.Errorf("the box names another workspace: %q", box)
 	}
-	d.key("s")
+	d.key("S")
 	d.expect("switch workspace", "other", "older")
 	if sc := d.screen(); lineOf(sc, "  other") > lineOf(sc, "  older") || strings.Contains(sc, "● test") {
 		t.Errorf("the picker is not the others, newest first:\n%s", sc)
@@ -140,7 +140,7 @@ func TestWorkspaceSwitch(t *testing.T) {
 	d.expect("other not opened: other is open in another lazychat", " test ")
 	held()
 	// Free now: the tabs move onto it in the same program.
-	d.key("ctrl+w", "s", "enter")
+	d.key("ctrl+w", "S", "enter")
 	d.expect(" other   0 project(s)", "none yet")
 	if d.quit || d.app.core.Workspace.Dir != other.Dir {
 		t.Fatalf("quit %v, open %+v", d.quit, d.app.core.Workspace)
@@ -148,7 +148,7 @@ func TestWorkspaceSwitch(t *testing.T) {
 	d.expectNot("│ demo2 ")
 	// Straight back: the workspace just left is opened once it has let go,
 	// never refused as held.
-	d.key("ctrl+w", "s", "enter")
+	d.key("ctrl+w", "S", "enter")
 	d.expect(" test   1 project(s)", "│ demo2 ")
 	d.expectNot("not opened")
 	d.quitApp()

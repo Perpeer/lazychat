@@ -287,3 +287,18 @@ func (d *driver) toSetting(name string) {
 	}
 	d.t.Fatalf("no setting %q:\n%s", name, d.screen())
 }
+
+// s finds a setting by name, its section beside it; Enter puts the cursor
+// on it.
+func TestSettingsSearch(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 120, 32)
+	d.tab(4)
+	d.expect("(s) search")
+	d.key("s")
+	d.expect("settings", "theme", "Appearance", "sounds", "Sound")
+	d.typ("menu")
+	d.key("enter")
+	d.expect("[2] menu bar ")
+	d.quitApp()
+}

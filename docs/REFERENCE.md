@@ -189,7 +189,7 @@ goes back to the tab's list. Its keys:
 | Key | Does |
 | --- | --- |
 | `n` | a new workspace — a name; it opens in place |
-| `s` | switch to another — the others, the one used before this first; with none it says `n` makes one |
+| `shift+s` | switch to another — the others, the one used before this first; with none it says `n` makes one |
 | `e` | rename it; its folder takes the new name, sessions keep running |
 | `d` | delete it, asked: once what runs is stopped, its folder goes to the Trash and the start screen follows; the projects' folders stay |
 
@@ -333,10 +333,7 @@ selection replaces it; `Tab` types two spaces.
 ## Chat
 
 The left side is one tree of the projects, each with every session
-lazychat started or resumed in it, remembered across runs. Under a
-project's name and branch, when its sessions have called a model today,
-one dim line says what they used (`today 1.2M used · $4.10`), summed from
-their transcripts every 30 seconds. Each session is a glyph
+lazychat started or resumed in it, remembered across runs. Each session is a glyph
 (spinner running, `○` saved), the name wrapped to three
 rows, and under it its tool, in its colour, and its last prompt's time in
 two units, the same the details page shows: `◷ 42s` counting while it works,
@@ -498,7 +495,7 @@ the tree too.
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
-| `/` | find a session: a finder over every session of every project by name, its project and tool beside it; `Enter` puts the cursor on it, `Esc` leaves it where it was |
+| `s` | find a session: a finder over every session of every project by name, its project and tool beside it; `Enter` puts the cursor on it, `Esc` leaves it where it was. Every tab's list has `s`: Git's checkouts (the branch beside each), Terminal's shells (the project beside each), Settings' settings (the section beside each); in the footer it stands before `move`, else before `wheel` |
 | `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
 | `d` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |

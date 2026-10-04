@@ -105,7 +105,7 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "today ", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "state", "│ working ", "duration", "API cost", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes", "files")
+	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "state", "│ working ", "duration", "API cost", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes", "files")
 	d.expectNot(" now  ")
 	d.expectNot("worked alone")
 	d.expect("(↑↓) pick prompt · (esc) back")
