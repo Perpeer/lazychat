@@ -12,6 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/perpeer/lazychat/stargazers"><img src="https://img.shields.io/github/stars/perpeer/lazychat?style=flat&logo=github&color=f9bd30" alt="GitHub stars"></a>
+  <a href="https://github.com/sponsors/Perpeer"><img src="https://img.shields.io/badge/sponsor-back%20Lazy-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor: back Lazy"></a>
   <a href="#install"><img src="https://img.shields.io/badge/homebrew-coming%20soon-fbb040?logo=homebrew&logoColor=white" alt="Homebrew: coming soon"></a>
   <img src="https://img.shields.io/badge/platform-macOS-555?logo=apple&logoColor=white" alt="Platform: macOS">
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26">
@@ -23,7 +24,8 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#features">Features</a> ·
   <a href="#reference">Reference</a> ·
-  <a href="#inspiration">Inspiration</a>
+  <a href="#inspiration">Inspiration</a> ·
+  <a href="#back-lazy">Back Lazy ♥</a>
 </p>
 
 <p align="center">
@@ -114,7 +116,7 @@ asks you something, its name pops up above Lazy — click it and you are in
 that session. It also tells you when an answer is done (with its first
 line) or failed (rate limit, overloaded…), and sends a desktop notification
 while your terminal is in the background. On macOS it lives in the menu bar
-too.
+too. Lazy works for coffee: if it saves you time, [back Lazy](#back-lazy).
 
 ### Git without leaving
 
@@ -717,7 +719,8 @@ right corner, three at most), a star running round it when one is done and
 not looked at while nothing works — and for two seconds when one finishes
 while others still work — a `?` by its top edge's right corner
 while one asks, the badges left of it and every key on its keyboard a `?`.
-Its menu's last line is "Quit Lazychat Menu Bar", which quits only the icon. It is drawn like the system's own icons, in the menu bar's
+Its menu ends with "Back Lazy ♥", which opens lazychat's GitHub Sponsors
+page, and "Quit Lazychat Menu Bar", which quits only the icon. It is drawn like the system's own icons, in the menu bar's
 colour, light or dark, and it moves on a 150 ms beat only while there is
 news. A click on it brings a lazychat's terminal window and tab to the
 front at once: the one with a question up, else one with a finished session
@@ -1058,13 +1061,34 @@ Duffield: their keyboard-driven terminal UIs showed how good a tool can feel
 when everything is one key away. lazychat brings that spirit to AI coding
 agents.
 
+## Back Lazy
+
+<p align="center">
+  <a href="https://github.com/sponsors/Perpeer"><img src="assets/thumbnail-240.png" width="96" alt="Lazy, the mascot"></a>
+</p>
+
+Lazy watches your sessions all day, tells you who is asking, and has never
+asked for anything — until now. lazychat is free and stays free under the
+AGPL; if it saves you a few minutes a day, you can keep Lazy going on
+[GitHub Sponsors](https://github.com/sponsors/Perpeer): from a $3 coffee
+that keeps it awake to a $100 holiday, monthly or once, or any amount you
+like. It pays for the hours lazychat takes — new agents, Homebrew, the
+menu bar — and every sponsor gets Lazy's thanks.
+
+<p align="center">
+  <a href="https://github.com/sponsors/Perpeer"><img src="https://img.shields.io/badge/%E2%99%A5%20Back%20Lazy-on%20GitHub%20Sponsors-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Back Lazy on GitHub Sponsors"></a>
+</p>
+
+The `?` help in every tab ends with the same link, and Lazychat's menu in
+the menu bar has a **Back Lazy ♥** item that opens it.
+
 ## Contributing
 
 Feedback, ideas and bug reports are very welcome — open an
 [issue](https://github.com/perpeer/lazychat/issues). Which agent should
 lazychat support next? Tell us there. And if lazychat helps you, a
 [⭐ star](https://github.com/perpeer/lazychat/stargazers) helps others find
-it and brings it to Homebrew.
+it and brings it to Homebrew; [backing Lazy](#back-lazy) keeps it going.
 
 ## License
 

@@ -26,6 +26,10 @@ the app Lazy.
   `~/.claude/sessions/*.json` with `entrypoint: claude-desktop`; nothing
   is written there. busy → working, waiting → asks, idle after work while
   Claude was not in front → done until Claude comes forward.
+- "Back Lazy ♥" in the menu opens the sponsors page (NSWorkspace, no
+  permission); the link is sponsorURL here and kit.SponsorURL in Go, the
+  same text. Nothing asks for it on its own: the user wanted the ask in
+  the README, the menu and the help, never on screen.
 - Permissions: Automation once per terminal app is the only one asked
   (AppleScript is the only way to pick a tab by tty). Do not add
   Accessibility, Screen Recording or notifications without the user's

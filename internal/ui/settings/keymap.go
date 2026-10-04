@@ -63,7 +63,7 @@ func helpText() string {
 	}
 	lines = append(lines, kit.HelpSection("Settings", rowKeys)...)
 	lines = append(lines, kit.HelpSection("Values", valueKeys)...)
-	return strings.Join(append(lines, kit.WorkspaceHelp...), "\n")
+	return strings.Join(append(lines, kit.HelpFoot...), "\n")
 }
 
 // toValues moves the keys to the current setting's values, the cursor on

@@ -173,6 +173,6 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("Draft", draftKeys)...)
 	lines = append(lines, kit.HelpSection("Details", pageKeys)...)
 	lines = append(lines, kit.HelpSection("Move mode", moveKeys)...)
-	lines = append(lines, kit.WorkspaceHelp...)
+	lines = append(lines, kit.HelpFoot...)
 	return strings.Join(append(lines, "Status     spinner running · ○ saved · • shown in the pane"), "\n")
 }

@@ -8,6 +8,9 @@
 // (no_menu_bar in settings.json) hides it.
 import AppKit
 
+// sponsorURL is lazychat's GitHub Sponsors page; kit.SponsorURL in the Go app.
+let sponsorURL = "https://github.com/sponsors/Perpeer"
+
 // SessionStatus and the two orders below mirror lazychat's
 // internal/core/status, which decides them for one lazychat; this app
 // applies them across every lazychat and Claude desktop, which only it sees.
@@ -193,7 +196,14 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             menu.addItem(.separator())
         }
+        // Where lazychat, and Lazy, are backed; the same link ends every
+        // tab's help in lazychat.
+        menu.addItem(withTitle: "Back Lazy ♥", action: #selector(backLazy), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Quit Lazychat Menu Bar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+    }
+
+    @objc func backLazy() {
+        if let url = URL(string: sponsorURL) { NSWorkspace.shared.open(url) }
     }
 
     @objc func open(_ sender: NSMenuItem) { focus(pid: Int32(sender.tag), key: sender.representedObject as? String) }

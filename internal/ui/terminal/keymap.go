@@ -141,7 +141,7 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("In the shell", termKeys)...)
 	lines = append(lines, kit.HelpSection("Copy mode", copyKeys)...)
 	lines = append(lines, kit.HelpSection("Move mode", moveKeys)...)
-	return strings.Join(append(lines, kit.WorkspaceHelp...), "\n")
+	return strings.Join(append(lines, kit.HelpFoot...), "\n")
 }
 
 func (t *Terminal) copyMove(n int) {

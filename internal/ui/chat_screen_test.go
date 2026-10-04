@@ -543,3 +543,21 @@ func TestStatusArea(t *testing.T) {
 	}
 	d.quitApp()
 }
+
+// Every tab's help ends with where to back Lazy, and nothing else on the
+// screen asks for it.
+func TestHelpBacksLazy(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 120, 32)
+	d.expectNot("Back Lazy")
+	for _, tab := range []int{1, 2, 3} {
+		d.tab(tab)
+		d.key("?")
+		for range 12 {
+			d.key("pgdown")
+		}
+		d.expect("Back Lazy", "https://github.com/sponsors/Perpeer")
+		d.key("esc")
+	}
+	d.quitApp()
+}
