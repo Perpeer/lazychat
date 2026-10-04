@@ -61,3 +61,17 @@ func TestVillageWorkers(t *testing.T) {
 		t.Errorf("asking:\n%s", asking)
 	}
 }
+
+// A typed key is a character, Enter or Backspace, plain or as a kitty
+// report; an arrow, a mouse report or a paste is not.
+func TestTypedKey(t *testing.T) {
+	for b, want := range map[string]bool{
+		"a": true, "ş": true, "\r": true, "\x7f": true, " ": true,
+		"\x1b[97u": true, "\x1b[13u": true, "\x1b[127;1u": true,
+		"\x1b[A": false, "\x1b[<0;3;4M": false, "paste": false, "": false, "\x03": false,
+	} {
+		if got := TypedKey([]byte(b)); got != want {
+			t.Errorf("%q: %v, want %v", b, got, want)
+		}
+	}
+}

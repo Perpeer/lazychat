@@ -234,13 +234,15 @@ func (a *App) celebrating(st kit.MascotState) bool { return st.Finished > 0 && s
 
 // sound plays one of Lazy's sounds unless they are off.
 func (a *App) sound(n sound.Name) {
-	if a.play != nil && (a.core.Settings == nil || !a.core.Settings.NoSounds) {
-		a.play(n)
+	st := a.core.Settings
+	if a.play == nil || st != nil && st.NoSounds || n == sound.Key && (st == nil || !st.KeyClicks) {
+		return
 	}
+	a.play(n)
 }
 
 // hearNews plays what changed since the last tick: a session that began to
-// ask, one that finished — looked at or not. The board decided both; this only listens.
+// ask, one that finished — looked at or not — one that started on a prompt. The board decided both; this only listens.
 func (a *App) hearNews() {
 	st, ok := a.mascotState()
 	if !ok {
@@ -265,6 +267,11 @@ func newsSounds(was map[string]status.State, now []kit.SessionNews) ([]sound.Nam
 			continue
 		}
 		switch s.State {
+		case status.Working:
+			// From asks it is the answer; only a new prompt starts the keys.
+			if w, ok := was[s.Key]; ok && w != status.Asks {
+				out = appendOnce(out, sound.Start)
+			}
 		case status.Asks:
 			out = appendOnce(out, sound.Ask)
 		case status.Done:

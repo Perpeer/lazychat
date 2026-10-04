@@ -164,8 +164,8 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 			mark = "▶ "
 		}
 		rows = append(rows, entry{i: i, fullText: tn.Text,
-			one: []string{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), num(tn.Tokens.Sum()), costs[i]},
-			two: []string{"", "→ " + end, "", "out " + num(tn.Tokens.Output), ""}})
+			one: []string{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), "in " + num(tn.Tokens.In()), costs[i]},
+			two: []string{"", "→ " + end, "", "used " + num(tn.Tokens.Used()), ""}})
 	}
 	head := []string{"#", "started", "active", "tokens", "API $"}
 	cols := make([]int, len(head))
@@ -274,7 +274,10 @@ func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, co
 	}
 	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), note),
 		" " + kit.StyleAccent.Render("❯ "+text.Fit(t.Text, max(10, w-4))),
-		" " + kinds(t.Tokens) + kit.StyleDim.Render(fmt.Sprintf("   %s · %d calls · %s", strings.Join(tokenLabels, " · "), t.Calls, costNote(cost))),
+		" " + kit.StyleBold.Render("in "+num(t.Tokens.In())) + kit.StyleDim.Render(" new to the context · ") +
+			kit.StyleBold.Render("used "+num(t.Tokens.Used())) + kit.StyleDim.Render(" with "+num(t.Tokens.Output)+" written · ") + costNote(cost),
+		kit.StyleDim.Render(fmt.Sprintf(" %s re-read from the cache over %d calls, at a tenth of the input price", num(t.Tokens.CacheRead), t.Calls)),
+		" " + kinds(t.Tokens) + kit.StyleDim.Render("   "+strings.Join(tokenLabels, " · ")),
 		"", section("workers", "who did the work: subagents, skills, MCP servers; ★ one of yours")}
 	out = append(out, workerRows(t, now, newest && working, w)...)
 	out = append(out, "", section("tools", "every call of the prompt, by tool"), " "+text.Fit(counted(t.Tools, "×"), max(10, w-2)))

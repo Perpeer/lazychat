@@ -43,6 +43,10 @@ paths:
 - The fast beat (animBeat) reaches the active tab as kit.Beat only while
   it is a kit.Animator saying so: Chat says so while a worker is at work
   or Lazy moves, so an idle page costs no redraws.
+- A prompt's tokens are `in` (input + cache write) and `used` (in +
+  output); cache reads are shown apart. The user saw a one-line prompt read
+  as 1.6M: Tokens.Sum() counts every call's re-read of the whole context.
+  Sum stays for the kinds bar; nothing labels it as what a prompt spent.
 - Costs are API list prices built in (usage/prices.go, by model id
   prefix, from Anthropic's pricing page), prices.json over them per model
   id; the user saw only "—" with no file. A cache write is priced at the

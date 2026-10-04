@@ -27,6 +27,15 @@ func (t Tokens) Context() int64 { return t.Input + t.CacheWrite + t.CacheRead }
 // Sum is every kind together, thinking being part of output.
 func (t Tokens) Sum() int64 { return t.Input + t.CacheWrite + t.CacheRead + t.Output }
 
+// In is what calls put into the context anew: the prompt, files read, tool
+// results — input and cache writes. Cache reads are not in it: every call
+// reads the whole context again, so a short prompt late in a long session
+// would count the session's size once per call.
+func (t Tokens) In() int64 { return t.Input + t.CacheWrite }
+
+// Used is what calls added: In and what the model wrote.
+func (t Tokens) Used() int64 { return t.In() + t.Output }
+
 // max keeps each kind's larger value: one model reply is written as several
 // lines, the early ones holding a placeholder output count.
 func (t Tokens) max(o Tokens) Tokens {

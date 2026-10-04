@@ -70,6 +70,16 @@ it from there.
   error, which cannot be caused at will.
 - tick is a subagent of the newest prompt come back between two reads of
   the shown session (report.heardBack), so only while the details show.
+- start is a session going to working from idle, done or rest — a new
+  prompt; from asks it is an answer and stays quiet.
+- key clicks (settings.KeyClicks, off by default) come from kit.Capture's
+  writes that are a typed key (kit.TypedKey: a character, Enter,
+  Backspace, plain or a kitty CSI u report) and the draft box's keys.
+  afplay starts a process per click, so the player drops any key click
+  within 30 ms of the last rather than queue them.
+- start and key are made in code (sound/synth.go): a buckling-spring
+  click is a bright snap, a dull bottom-out ~17 ms later and a faint
+  spring ring; three variants take turns.
 - A tab asks for a sound with kit.PlaySound; App plays it unless
   settings.NoSounds. Tests leave App.play nil: no test makes a sound.
 

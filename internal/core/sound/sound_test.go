@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"lazychat/internal/core/testenv"
 )
@@ -32,4 +33,32 @@ func TestPlay(t *testing.T) {
 	}
 	var none *Player
 	none.Play(Ask)
+}
+
+// The sounds made in code are WAV files of the right length; keys click no
+// faster than keyGap, the rest dropped, and take turns between variants.
+func TestMadeSounds(t *testing.T) {
+	for name, gen := range made {
+		b := gen()
+		if string(b[:4]) != "RIFF" || string(b[8:16]) != "WAVEfmt " || len(b) < 44+2*rate/50 {
+			t.Errorf("%s: %d bytes, header %q", name, len(b), b[:16])
+		}
+	}
+	var played []string
+	p := &Player{dir: filepath.Join(t.TempDir(), "sounds"), run: func(path string) error {
+		played = append(played, filepath.Base(path))
+		return nil
+	}}
+	for range 5 {
+		p.Play(Key)
+	}
+	if len(played) != 1 {
+		t.Fatalf("five keys at once played %v", played)
+	}
+	time.Sleep(keyGap + 10*time.Millisecond)
+	p.Play(Key)
+	p.Play(Start)
+	if len(played) != 3 || played[0] == played[1] || played[2] != "lazy-start.wav" {
+		t.Fatalf("played %v", played)
+	}
 }

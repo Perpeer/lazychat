@@ -22,7 +22,7 @@ func TestPromptTableFits(t *testing.T) {
 		turns = append(turns, usage.Turn{
 			Prompt: usage.Prompt{Time: start, Text: strings.Repeat("paint the north wall of the garden shed ", 4)},
 			End:    start.Add(20*time.Minute + 50*time.Second),
-			Tokens: usage.Tokens{CacheRead: 19_100_000, Output: 63_000},
+			Tokens: usage.Tokens{CacheWrite: 1_200_000, CacheRead: 19_100_000, Output: 63_000},
 		})
 		costs = append(costs, "123.45")
 	}
@@ -32,7 +32,7 @@ func TestPromptTableFits(t *testing.T) {
 		t.Fatalf("%d rows, want %d", len(rows), 4+2*promptRows)
 	}
 	plain := ansi.Strip(strings.Join(rows, "\n"))
-	for _, want := range []string{"▶ 245", "20m 50s", "19.2M", "out 63k", "123.45"} {
+	for _, want := range []string{"▶ 245", "20m 50s", "in 1.2M", "used 1.3M", "123.45"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("%q cut or missing:\n%s", want, plain)
 		}

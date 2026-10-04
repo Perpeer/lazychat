@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"lazychat/internal/core/sound"
 	"lazychat/internal/core/state"
 	"lazychat/internal/term"
 	"lazychat/internal/ui/kit"
@@ -126,6 +127,9 @@ func (c *Chat) draftKey(msg tea.KeyMsg) tea.Cmd {
 		return c.sendDraft()
 	}
 	c.draftEditor(r).Key(msg)
+	if msg.Type == tea.KeyRunes || msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter || msg.Type == tea.KeyBackspace || msg.Type == tea.KeyTab {
+		return playSound(sound.Key)
+	}
 	return nil
 }
 

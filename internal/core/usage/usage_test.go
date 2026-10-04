@@ -466,3 +466,19 @@ func TestCommandHeads(t *testing.T) {
 		t.Errorf("turn %+v %+v", turns[0].Tools, turns[0].Commands)
 	}
 }
+
+// A short prompt late in a long session: eight calls each read 200k back
+// from the cache, yet it put 300 tokens in and used 800.
+func TestTokensInUsed(t *testing.T) {
+	var sum Tokens
+	for i := range 8 {
+		c := Tokens{CacheRead: 200_000, Output: 500 / 8}
+		if i == 0 {
+			c.Input, c.CacheWrite, c.Output = 20, 280, 500-7*(500/8)
+		}
+		sum = sum.Add(c)
+	}
+	if sum.In() != 300 || sum.Used() != 800 || sum.CacheRead != 1_600_000 {
+		t.Fatalf("in %d used %d re-read %d", sum.In(), sum.Used(), sum.CacheRead)
+	}
+}

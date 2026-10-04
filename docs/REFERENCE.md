@@ -335,9 +335,13 @@ Under it, the picked prompt's report:
   (`AskUserQuestion`) waited for your answer, which is left out of the
   active time. A permission prompt's wait is not in the transcript and
   stays in;
-- its tokens by kind (`░` cache read, `▒` input, `▓` cache write, `█`
-  output, each with a colour-blind safe colour too), its calls, and its
-  API price;
+- its tokens: `in`, what it put into the context anew (its own text,
+  files read, tool results: input and cache writes), and `used`, that and
+  what the model wrote. What every call read back from the cache is shown
+  apart: each call re-reads the whole context, so a one-line prompt late in
+  a long session re-reads millions, at a tenth of the input price. Then
+  the kinds (`░` cache read, `▒` input, `▓` cache write, `█` output, each
+  with a colour-blind safe colour too) and its API price;
 - workers: a table of its subagents, skills and MCP servers, each with
   how long it took, its tokens and its calls. `★` marks a subagent defined
   by the user (`~/.claude/agents`), the project (`.claude/agents`) or a
@@ -355,7 +359,8 @@ At the box's bottom, held there while the rest scrolls above it, the
 prompts as a table: ten around the picked one, newest first, two rows each
 — its number (`▶` the picked one), when it started and `→` when it ended
 (where Claude Code wrote the turn's end, or `working`), its active time,
-its tokens and output, its API price, and its text over two rows. Each
+its `in` and `used` tokens (above), its API price, and its text over two
+rows. Each
 column is as wide as its longest value. `↑↓` picks one; the newest is
 followed.
 
@@ -363,10 +368,10 @@ followed.
  ┌───────┬─────────────┬─────────┬──────────┬────────┬──────────────────┐
  │ #     │ started     │ active  │ tokens   │ API $  │ prompt           │
  ├───────┼─────────────┼─────────┼──────────┼────────┼──────────────────┤
- │ ▶ 245 │ 10-04 14:02 │ 2m10s   │ 412k     │ 0.42   │ paint the garden │
- │       │ → working   │         │ out 1.2k │        │ shed blue        │
- │   244 │ 10-04 13:40 │ 20m 50s │ 19.1M    │ 11.80  │ /tidy-up the     │
- │       │ → 14:01:02  │         │ out 63k  │        │ garage           │
+ │ ▶ 245 │ 10-04 14:02 │ 2m10s   │ in 12k   │ 0.42   │ paint the garden │
+ │       │ → working   │         │ used 13k │        │ shed blue        │
+ │   244 │ 10-04 13:40 │ 20m 50s │ in 410k  │ 11.80  │ /tidy-up the     │
+ │       │ → 14:01:02  │         │ used 1M  │        │ garage           │
  └───────┴─────────────┴─────────┴──────────┴────────┴──────────────────┘
 ```
 
@@ -537,8 +542,9 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | version | shown | the corner's `v1.0(N)` |
 | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
-| sounds | on | on macOS, Lazy's sounds: a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
+| sounds | on | on macOS, Lazy's sounds: a short burst of keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
 | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
+| key clicks | off | each key typed into a session or the draft box clicks like an old buckling-spring keyboard (a character, Enter, Backspace; not arrows); made in code, at most one click per 30 ms; quiet with sounds off |
 
 One accent colour, the theme's, marks the focused frame, fills the selected
 entry as one band (only its text is coloured while a pane has the keys) and

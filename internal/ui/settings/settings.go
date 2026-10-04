@@ -81,6 +81,7 @@ func (s *Settings) settings() []setting {
 		onOff("status line", "lazychat's status line in claude sessions whose own settings name none (user, project or project local): model, branch, context, cost, limits. Claude then hides most of its footer hints (esc to interrupt, ? for shortcuts); hide it to get them back. A status line of your own always wins", &st.NoStatusLine, st.Save),
 		switched("sounds", "Lazy's sounds, on macOS: a session asks something, finishes, or ends on an API error (a rate limit, an outage); in the details, a subagent comes back with its answer", "on", "off", &st.NoSounds, st.Save),
 		switched("syntax colours", "a diff's code in its language's colours in the Git tab: keywords, strings, comments, numbers, types and functions, in the theme's own, over the added and removed rows", "on", "off", &st.NoSyntax, st.Save),
+		switchedOn("key clicks", "each key typed into a session or the draft box clicks like an old buckling-spring keyboard; off by default, and quiet with sounds off", &st.KeyClicks, st.Save),
 	}
 }
 
@@ -162,6 +163,28 @@ func (s *Settings) themeSetting() setting {
 // settings file so the default needs no line there.
 func onOff(name, about string, off *bool, save func() error) setting {
 	return switched(name, about, "shown", "hidden", off, save)
+}
+
+// switchedOn is an on/off row kept as true when on: for what is off by
+// default.
+func switchedOn(name, about string, on *bool, save func() error) setting {
+	return setting{
+		name:  name,
+		about: about,
+		value: func() string {
+			if *on {
+				return "on"
+			}
+			return "off"
+		},
+		choices: func() []choice {
+			return []choice{{name: "on", chosen: *on}, {name: "off", chosen: !*on}}
+		},
+		set: func(i int) error {
+			*on = i == 0
+			return save()
+		},
+	}
 }
 
 // switched is a row with two values, on and off, saved as off.

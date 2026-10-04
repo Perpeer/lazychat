@@ -4,6 +4,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lazychat/internal/core/keylayout"
+	"lazychat/internal/core/sound"
+	"strconv"
+	"strings"
+	"unicode/utf8"
 )
 
 // Capture is a program in a pane holding the keys: Chat's sessions and
@@ -80,7 +84,13 @@ func (c *Capture) Take() bool {
 	}
 	c.held, c.key = true, c.pane.Key
 	c.screen.Capture(
-		func(b []byte) { _ = s.Write(c.newline(b, s.Kitty())); c.screen.Send(captureTyped{c}) },
+		func(b []byte) {
+			_ = s.Write(c.newline(b, s.Kitty()))
+			c.screen.Send(captureTyped{c})
+			if TypedKey(b) {
+				c.screen.Send(PlaySound{Name: sound.Key})
+			}
+		},
 		func() { c.screen.Send(captureLeave{c}) },
 	)
 	key := c.key
@@ -154,4 +164,22 @@ func (c *Capture) rawMouse(m RawMouse) {
 	if c.Beside != nil {
 		c.Beside(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
 	}
+}
+
+// TypedKey says bytes sent to a pane are a key a person typed into text: a
+// character, Enter or Backspace, plain or as a kitty CSI u report; not an
+// arrow, a mouse report or a paste.
+func TypedKey(b []byte) bool {
+	switch {
+	case len(b) == 0:
+		return false
+	case b[0] != 0x1b:
+		return utf8.RuneCount(b) == 1 && (b[0] >= 0x20 || b[0] == '\r' || b[0] == 0x7f || b[0] == '\t')
+	case len(b) > 3 && b[1] == '[' && b[len(b)-1] == 'u':
+		code, _, _ := strings.Cut(string(b[2:len(b)-1]), ";")
+		code, _, _ = strings.Cut(code, ":")
+		n, err := strconv.Atoi(code)
+		return err == nil && (n >= 0x20 && n != 0x7f && n < 57344 || n == 13 || n == 127 || n == 9)
+	}
+	return false
 }
