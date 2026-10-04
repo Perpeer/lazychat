@@ -430,7 +430,7 @@ func project(t *testing.T, e env) string {
 			t.Fatal(err)
 		}
 	}
-	write(t, filepath.Join(hist, "aaaa1111-2222.jsonl"), `{"type":"custom-title","customTitle":"TASK-9 old session","sessionId":"aaaa1111-2222"}`+"\n")
+	write(t, filepath.Join(hist, "aaaa1111-2222.jsonl"), `{"type":"custom-title","customTitle":"blue porch session","sessionId":"aaaa1111-2222"}`+"\n")
 	return dir
 }
 

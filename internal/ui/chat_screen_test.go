@@ -125,18 +125,18 @@ func TestChatFlow(t *testing.T) {
 	d.expectSessions(1)
 
 	d.key("r")
-	d.expect("demo2 · newest first", "▸ TASK-9 old session", "old prompt 8", "3 more below")
+	d.expect("demo2 · newest first", "▸ blue porch session", "old prompt 8", "3 more below")
 	d.expectNot("which project?")
 	d.key("G")
 	d.expect("▸ old prompt 11", "above")
 	d.key("g", "enter")
-	d.expect("[1] projects", "TASK-9 old session", "args:--resume aaaa1111-2222")
+	d.expect("[1] projects", "blue porch session", "args:--resume aaaa1111-2222")
 	d.expectSessions(2)
 	d.leave()
-	d.expect("(enter) continue · (n) new", "│ demo2 ", "TASK-9 old session")
+	d.expect("(enter) continue · (n) new", "│ demo2 ", "blue porch session")
 	found := false
 	for _, s := range d.sessions() {
-		found = found || s.ID == "aaaa1111-2222" && s.Name == "TASK-9 old session"
+		found = found || s.ID == "aaaa1111-2222" && s.Name == "blue porch session"
 	}
 	if !found {
 		t.Errorf("the resumed session is not remembered: %+v", d.sessions())
@@ -151,10 +151,10 @@ func TestChatFlow(t *testing.T) {
 // Narrow, the tree fills the screen and a session is shown alone; a tool
 // that is not logged in says why, and picked anyway it is refused.
 func TestNarrow(t *testing.T) {
-	e, _ := seeded(t, state.Session{Tool: "claude", Name: "TASK-9 old session", ID: "aaaa1111-2222"})
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "blue porch session", ID: "aaaa1111-2222"})
 	e.vars = map[string]string{"FAKE_CODEX_LOGGED_OUT": "1"}
 	d := start(t, e, 70, 20)
-	d.expect("[1] projects", "TASK-9 old session")
+	d.expect("[1] projects", "blue porch session")
 	d.expectCount(1, 1)
 	d.expectNot("[3] details")
 	d.key("n", "tab", "tab", "enter")
@@ -171,23 +171,23 @@ func TestNarrow(t *testing.T) {
 // A resume claude refuses because the session is open elsewhere brings the
 // popup of ways to go on: a fork under a new record, or attaching.
 func TestBusy(t *testing.T) {
-	e, _ := seeded(t, state.Session{Tool: "claude", Name: "TASK-9 old session", ID: "aaaa1111-2222"})
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "blue porch session", ID: "aaaa1111-2222"})
 	e.vars = map[string]string{"FAKE_CLAUDE_BUSY": "aaaa1111-2222"}
 	d := start(t, e, 120, 32)
-	d.selectSession("TASK-9 old session")
+	d.selectSession("blue porch session")
 	d.key("enter")
 	d.expect("is open elsewhere", "fork — branch off a copy", "attach — open the running background session", "stop it, then resume here", "create a session in demo2", "running as a background session (aaaa1111)")
 	d.key("enter")
-	d.expect("args:--resume aaaa1111-2222 --fork-session", "TASK-9 old session (fork)")
+	d.expect("args:--resume aaaa1111-2222 --fork-session", "blue porch session (fork)")
 	names := map[string]bool{}
 	for _, s := range d.sessions() {
 		names[s.Name] = true
 	}
-	if !names["TASK-9 old session (fork)"] || !names["TASK-9 old session"] {
+	if !names["blue porch session (fork)"] || !names["blue porch session"] {
 		t.Errorf("records %v, want the fork beside the original", names)
 	}
 	d.leave()
-	d.selectSession("TASK-9 old session")
+	d.selectSession("blue porch session")
 	d.key("enter")
 	d.expect("is open elsewhere")
 	d.key("j", "enter")
@@ -354,7 +354,7 @@ func TestWheelScrollsTheList(t *testing.T) {
 func TestOpenWithoutConversation(t *testing.T) {
 	e, _ := seeded(t,
 		state.Session{Tool: "claude", Name: "ghost", ID: "8ac2835a-dead-0000"},
-		state.Session{Tool: "claude", Name: "TASK-9 old session", ID: "aaaa1111-2222"},
+		state.Session{Tool: "claude", Name: "blue porch session", ID: "aaaa1111-2222"},
 	)
 	d := start(t, e, 120, 32)
 	d.selectSession("ghost")
@@ -362,7 +362,7 @@ func TestOpenWithoutConversation(t *testing.T) {
 	d.expect("FAKE CLAUDE READY", "args:-n ghost", "(ctrl+q) back to lazychat")
 	d.expectNot("--resume 8ac2835a")
 	d.leave()
-	d.selectSession("TASK-9 old session")
+	d.selectSession("blue porch session")
 	d.key("enter")
 	d.expect("args:--resume aaaa1111-2222")
 	d.leave()
