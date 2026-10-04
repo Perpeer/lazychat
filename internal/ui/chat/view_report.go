@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"lazychat/internal/core/usage"
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/text"
@@ -98,7 +100,7 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	if s.Bad > 0 {
 		top = append(top, kit.StyleDim.Render(fmt.Sprintf(" %d line(s) were not JSON and are left out", s.Bad)))
 	}
-	turns := s.Turns()
+	turns := c.rep.page.turns
 	if len(turns) == 0 {
 		return append(top, "", kit.StyleDim.Render(" no prompt yet")), nil
 	}
@@ -108,10 +110,10 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	t := turns[picked]
 	running := picked == last && working
 	c.rep.moving = running
-	costs := c.costs(s, turns)
+	costs := c.rep.page.costs
 	// Three parts: the picked prompt's flow, the session's context, then the
 	// prompt reports — the picked one's, over the table held at the bottom.
-	top = append(top, flowAndContext(flowOf(t, now, running, costs[picked], s.Dir), c.beat, s, w)...)
+	top = append(top, flowAndContext(flowOf(t, now, running, costs[picked], s.Dir), c.beat, c.rep.page, s.Fed, w)...)
 	top = append(top, c.report(turns, picked, working, now, s.Dir, w)...)
 	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
 		c.promptTable(turns, picked, working, now, costs, w)...)
@@ -138,20 +140,20 @@ const sideBySide = 100
 // flowAndContext are the page's first two parts: the picked prompt's flow
 // on the left half and the session's context on the right, top-aligned;
 // one under the other in a box too narrow for two halves.
-func flowAndContext(nodes []kit.FlowNode, beat int, s *usage.Session, w int) []string {
+func flowAndContext(nodes []kit.FlowNode, beat int, pg page, fed map[string]int64, w int) []string {
 	if w < sideBySide {
 		out := []string{"", section("flow", "what the picked prompt did, step by step")}
 		for _, row := range kit.DrawFlow(nodes, beat, w-1) {
 			out = append(out, " "+row)
 		}
-		return append(out, contextPart(s, w)...)
+		return append(out, contextPart(pg, fed, w)...)
 	}
 	half := w / 2
 	left := []string{"", section("flow", "what the picked prompt did, step by step")}
 	for _, row := range kit.DrawFlow(nodes, beat, half-2) {
 		left = append(left, " "+row)
 	}
-	right := contextPart(s, w-half)
+	right := contextPart(pg, fed, w-half)
 	out := make([]string, max(len(left), len(right)))
 	for i := range out {
 		l, r := "", ""
@@ -166,32 +168,34 @@ func flowAndContext(nodes []kit.FlowNode, beat int, s *usage.Session, w int) []s
 	return out
 }
 
-// promptTable is promptRows prompts around the picked one, newest first,
-// three rows each, as a table: its number, when, how long, its tokens —
-// its own, in, used — its cost, and its text over three rows. Each column is as wide as its longest
-// value; the text takes the rest.
+// promptTable is the newest promptRows prompts, newest first, three rows
+// each, as a table: its number, its state, when, how long, its tokens —
+// its own, in, used — its cost, and its text over three rows. Each column
+// is as wide as its longest value; the text takes the rest. The picked
+// prompt is lit when it is among them; an older one picked shows above.
 func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now time.Time, costs []string, w int) []string {
 	last := len(turns) - 1
-	top := min(last, max(picked+promptRows/2, promptRows-1))
 	type entry struct {
 		i        int
+		state    string
 		cells    [3][]string
 		fullText string
 	}
 	var rows []entry
-	for i := top; i >= 0 && i > top-promptRows; i-- {
+	for i := last; i >= 0 && i > last-promptRows; i-- {
 		tn := turns[i]
 		end, _ := turnEnd(tn, i == last, working, now)
 		mark := "  "
 		if i == picked {
 			mark = "▶ "
 		}
-		rows = append(rows, entry{i: i, fullText: flat(tn.Text), cells: [3][]string{
-			{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), "prompt " + ownTokens(tn), costs[i]},
-			{"", "→ " + end, "", "in " + num(tn.Tokens.In()), ""},
-			{"", "", "", "used " + num(tn.Tokens.Used()), ""}}})
+		state := turnState(tn, i == last, working)
+		rows = append(rows, entry{i: i, state: state, fullText: flat(tn.Text), cells: [3][]string{
+			{fmt.Sprintf("%s%d", mark, i+1), state, tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), "prompt " + ownTokens(tn), costs[i]},
+			{"", "", "→ " + end, "", "in " + num(tn.Tokens.In()), ""},
+			{"", "", "", "", "used " + num(tn.Tokens.Used()), ""}}})
 	}
-	head := []string{"#", "started", "active", "tokens", "API $"}
+	head := []string{"#", "state", "started", "duration", "tokens", "API cost"}
 	cols := make([]int, len(head))
 	for k, h := range head {
 		cols[k] = len([]rune(h))
@@ -215,19 +219,24 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 		}
 		return kit.StyleDim.Render(" " + l + strings.Join(parts, m) + r)
 	}
-	row := func(cells []string, lit bool) string {
+	// The state's colour says it at a glance; a lit row keeps the
+	// selection's colours whole, since a coloured cell inside it clashes.
+	row := func(cells []string, lit bool, state string) string {
 		var b strings.Builder
 		b.WriteString(kit.StyleDim.Render(" │"))
 		for i, cell := range cells {
 			cell = " " + text.Pad(text.Fit(cell, cols[i]-2), cols[i]-2) + " "
-			if lit {
+			switch {
+			case lit:
 				cell = kit.StyleSel.Render(cell)
+			case i == 1 && cell != "":
+				cell = stateStyle(state).Render(cell)
 			}
 			b.WriteString(cell + kit.StyleDim.Render("│"))
 		}
 		return b.String()
 	}
-	out := []string{line("┌", "┬", "┐"), row(append(head, "prompt"), false), line("├", "┼", "┤")}
+	out := []string{line("┌", "┬", "┐"), row(append(head, "prompt"), false, ""), line("├", "┼", "┤")}
 	for _, r := range rows {
 		words := text.Wrap(r.fullText, textW, "")
 		var lines [3]string
@@ -241,15 +250,46 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 		}
 		lit := r.i == picked
 		for k, cs := range r.cells {
-			out = append(out, row(append(cs, lines[k]), lit))
+			out = append(out, row(append(cs, lines[k]), lit, r.state))
 		}
 	}
 	return append(out, line("└", "┴", "┘"))
 }
 
-// costs are every turn's API price, "—" where a model has none: the
+// turnState is a prompt's state as the table names it: working while it
+// is the newest and the session works, asking while one of its questions
+// waits for the user then, done once Claude Code said it ended, stopped
+// for an answer cut short.
+func turnState(t usage.Turn, newest, working bool) string {
+	switch {
+	case newest && working:
+		for _, w := range t.Waits {
+			if w.To.IsZero() {
+				return "asking"
+			}
+		}
+		return "working"
+	case t.Ended():
+		return "done"
+	}
+	return "stopped"
+}
+
+// stateStyle colours a state: the running colour for working and asking,
+// dim for stopped, plain for done.
+func stateStyle(state string) lipgloss.Style {
+	switch state {
+	case "working", "asking":
+		return kit.StyleBusy
+	case "stopped":
+		return kit.StyleDim
+	}
+	return lipgloss.NewStyle()
+}
+
+// costsOf are every turn's API price, "—" where a model has none: the
 // session's calls are bucketed once by the prompt they follow.
-func (c *Chat) costs(s *usage.Session, turns []usage.Turn) []string {
+func costsOf(s *usage.Session, turns []usage.Turn, prices usage.Prices) []string {
 	byTurn := make([][]usage.Call, len(turns))
 	for _, cl := range s.AllCalls() {
 		i := sort.Search(len(turns), func(i int) bool { return turns[i].Time.After(cl.Time) }) - 1
@@ -260,7 +300,7 @@ func (c *Chat) costs(s *usage.Session, turns []usage.Turn) []string {
 	out := make([]string, len(turns))
 	for i, calls := range byTurn {
 		out[i] = "—"
-		if v, ok := c.rep.prices.Cost(calls); ok {
+		if v, ok := prices.Cost(calls); ok {
 			out[i] = fmt.Sprintf("%.2f", v)
 		}
 	}

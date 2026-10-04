@@ -105,7 +105,7 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "today ", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API $", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes", "files")
+	d.expect(" flow  ", "❯", "├─┬ ⌂ Explore", "find the brushes", "├   Edit", "paint/door.go", "working · ", "context", "⛁", "⛶", "base", "messages", "free", "timeline", "2 prompts", "went to", "today ", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "state", "│ working ", "duration", "API cost", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes", "files")
 	d.expectNot(" now  ")
 	d.expectNot("worked alone")
 	d.expect("(↑↓) pick prompt · (esc) back")
@@ -125,7 +125,7 @@ func TestReport(t *testing.T) {
 		t.Fatalf("the prompts table is not at the box's bottom:\n%s", d.screen())
 	}
 	d.key("down")
-	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "≡ brush-care", "▭ paint-shop", "list_colours", "├   Read", "paint/door.go", "? asked you", "├─┬ ⌂ Explore", "count the boards", "├─┘ back", "●   done · ", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
+	d.expect("│ ▶ 1 ", "│ done ", "prompt 1", "paint the garden shed", "≡ brush-care", "▭ paint-shop", "list_colours", "├   Read", "paint/door.go", "? asked you", "├─┬ ⌂ Explore", "count the boards", "├─┘ back", "●   done · ", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
 	d.expectNot("find the brushes")
 	d.expectNot("working · ")
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {
@@ -167,7 +167,7 @@ func TestReport(t *testing.T) {
 	d.leave()
 	d.key("3")
 	rowTime := regexp.MustCompile(`claude · (?:◷ |⏸ )?(\d+s)`)
-	pageTime := regexp.MustCompile(`│ (?:▶| ) 2\s+│ \d\d-\d\d \d\d:\d\d\s+│ (\d+s)`)
+	pageTime := regexp.MustCompile(`│ (?:▶| ) 2\s+│ \w+\s+│ \d\d-\d\d \d\d:\d\d\s+│ (\d+s)`)
 	d.until("the row and the page show the same time", func() bool {
 		sc := d.screen()
 		r, p := rowTime.FindStringSubmatch(sc), pageTime.FindStringSubmatch(sc)

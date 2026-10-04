@@ -33,7 +33,7 @@ func TestPromptTableFits(t *testing.T) {
 		t.Fatalf("%d rows, want %d", len(rows), 4+3*promptRows)
 	}
 	plain := ansi.Strip(strings.Join(rows, "\n"))
-	for _, want := range []string{"▶ 245", "20m 50s", "prompt 12k", "in 1.2M", "used 1.3M", "paint the north wall of the garden shed blue", "123.45"} {
+	for _, want := range []string{"▶ 245", "state", "duration", "API cost", "done", "20m 50s", "prompt 12k", "in 1.2M", "used 1.3M", "paint the north wall of the garden shed blue", "123.45"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("%q cut or missing:\n%s", want, plain)
 		}
@@ -86,5 +86,37 @@ func TestTodayLine(t *testing.T) {
 	}
 	if got := todayLine(nil, usage.Prices{}, now); got != "" {
 		t.Errorf("no session: %q", got)
+	}
+}
+
+// A prompt's state: working while it is the newest and the session works,
+// asking while a question of it is open then, done once ended, stopped
+// for an answer cut short; an older prompt picked lights no table row.
+func TestTurnState(t *testing.T) {
+	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	open := usage.Turn{Prompt: usage.Prompt{Time: at}}
+	if got := turnState(open, true, true); got != "working" {
+		t.Errorf("newest at work: %q", got)
+	}
+	asking := usage.Turn{Prompt: usage.Prompt{Time: at}, Waits: []usage.Span{{From: at.Add(time.Second)}}}
+	if got := turnState(asking, true, true); got != "asking" {
+		t.Errorf("a question open: %q", got)
+	}
+	if got := turnState(asking, false, true); got != "stopped" {
+		t.Errorf("an older prompt never ended: %q", got)
+	}
+	done := usage.Turn{Prompt: usage.Prompt{Time: at}, End: at.Add(time.Minute)}
+	if got := turnState(done, true, false); got != "done" {
+		t.Errorf("ended: %q", got)
+	}
+	var c Chat
+	turns := make([]usage.Turn, 12)
+	for i := range turns {
+		turns[i] = usage.Turn{Prompt: usage.Prompt{Time: at.Add(time.Duration(i) * time.Minute), Text: "plank"}, End: at.Add(time.Duration(i)*time.Minute + 30*time.Second)}
+	}
+	costs := make([]string, 12)
+	plain := ansi.Strip(strings.Join(c.promptTable(turns, 0, false, at, costs, 120), "\n"))
+	if strings.Contains(plain, "▶") || !strings.Contains(plain, "  12 ") || strings.Contains(plain, "│   1 ") {
+		t.Errorf("the newest ten, none lit for an older pick:\n%s", plain)
 	}
 }

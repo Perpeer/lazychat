@@ -30,7 +30,11 @@ type ContextUse struct {
 func (c ContextUse) Free() int64 { return max(0, c.Window-c.Used) }
 
 // Context is the session's context now; zero before its first call.
-func (s *Session) Context() ContextUse {
+func (s *Session) Context() ContextUse { return s.ContextOf(s.Turns()) }
+
+// ContextOf is Context with the session's turns already derived, so a
+// caller that has them pays for them once.
+func (s *Session) ContextOf(turns []Turn) ContextUse {
 	calls := append([]Call(nil), s.Calls...)
 	sort.SliceStable(calls, func(i, j int) bool { return calls[i].Time.Before(calls[j].Time) })
 	var c ContextUse
@@ -59,15 +63,17 @@ func (s *Session) Context() ContextUse {
 	c.Added = min(c.Added, c.Used-c.Base)
 	c.Messages = c.Used - c.Base - c.Added
 
-	// Each prompt's growth: its last call's context less the one before it.
-	turns := s.Turns()
-	prev := int64(-1)
+	// Each prompt's growth: its last call's context less the one before
+	// it. Turns and calls are both in time order, so one walk serves all.
+	prev, j := int64(-1), 0
 	for _, t := range turns {
+		for j < len(calls) && calls[j].Time.Before(t.Time) {
+			j++
+		}
 		var last int64 = -1
-		for _, cl := range calls {
-			if !cl.Time.Before(t.Time) && (t.End.IsZero() || !cl.Time.After(t.End)) {
-				last = cl.Tokens.Context()
-			}
+		for j < len(calls) && (t.End.IsZero() || !calls[j].Time.After(t.End)) {
+			last = calls[j].Tokens.Context()
+			j++
 		}
 		if last < 0 {
 			continue

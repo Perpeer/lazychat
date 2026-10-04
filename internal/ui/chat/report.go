@@ -36,6 +36,7 @@ type report struct {
 	read      bool
 	shownFor  target // what the last read was for
 	s         *usage.Session
+	page      page // what the page draws, derived from s by the read
 	path      string
 	prices    usage.Prices
 	err       error
@@ -49,10 +50,28 @@ type report struct {
 	backN   int
 }
 
+// page is what the details page draws from a session: derived once, in
+// the read goroutine, so a frame costs nothing proportional to the
+// session's size. A long session once took 27 ms a frame deriving it in
+// View, which Bubble Tea calls on every message.
+type page struct {
+	turns  []usage.Turn
+	ctx    usage.ContextUse
+	events []usage.Event
+	costs  []string // each turn's API price as the table writes it
+}
+
+// derive is the page's data for a session.
+func derive(s *usage.Session, prices usage.Prices) page {
+	turns := s.Turns()
+	return page{turns: turns, ctx: s.ContextOf(turns), events: s.Timeline(), costs: costsOf(s, turns, prices)}
+}
+
 // reportMsg is a read's result.
 type reportMsg struct {
 	shownFor target
 	s        *usage.Session
+	page     page
 	path     string
 	prices   usage.Prices
 	err      error
@@ -129,6 +148,7 @@ func (c *Chat) readReport() tea.Cmd {
 			}
 			s, _ := rd.Update() // a file gone since the listing keeps what was read
 			msg.s, msg.path = s.Clone(), f.Path()
+			msg.page = derive(msg.s, msg.prices)
 			break
 		}
 		return msg
@@ -145,7 +165,7 @@ func (c *Chat) reported(msg reportMsg) tea.Cmd {
 	}
 	same := r.read && r.shownFor == msg.shownFor
 	r.read, r.shownFor = true, msg.shownFor
-	r.s, r.path, r.prices, r.err = msg.s, msg.path, msg.prices, msg.err
+	r.s, r.page, r.path, r.prices, r.err = msg.s, msg.page, msg.path, msg.prices, msg.err
 	return r.heardBack(same)
 }
 
@@ -155,7 +175,7 @@ func (r *report) heardBack(same bool) tea.Cmd {
 	if r.s == nil {
 		return nil
 	}
-	turns := r.s.Turns()
+	turns := r.page.turns
 	if len(turns) == 0 {
 		return nil
 	}

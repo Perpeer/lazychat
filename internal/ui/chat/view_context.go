@@ -13,8 +13,8 @@ import (
 // contextPart is the session's context as its newest call sent it, drawn as
 // Claude Code's /context draws it, then where it went and how fast it grows.
 // Every figure is measured from the transcript.
-func contextPart(s *usage.Session, w int) []string {
-	c := s.Context()
+func contextPart(pg page, fed map[string]int64, w int) []string {
+	c := pg.ctx
 	out := []string{"", section("context", "the session's now, measured")}
 	if c.Window == 0 {
 		return append(out, kit.StyleDim.Render(" no call yet"))
@@ -27,10 +27,10 @@ func contextPart(s *usage.Session, w int) []string {
 	}}
 	out = append(out, kit.DrawContext(view, w, num)...)
 	out = append(out, wrapDim("base: what the session began with — system prompt, tools, MCP, memory, skills listed, its first prompt — or a compaction's summary", w)...)
-	if row := timelineRow(s.Timeline(), w); row != "" {
+	if row := timelineRow(pg.events, w); row != "" {
 		out = append(out, "", row)
 	}
-	if rows := fedRows(s.Fed, c.Used, w); len(rows) > 0 {
+	if rows := fedRows(fed, c.Used, w); len(rows) > 0 {
 		out = append(append(out, ""), rows...)
 	}
 	if line := growthLine(c); line != "" {

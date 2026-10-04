@@ -14,14 +14,14 @@ import (
 // transcript writes invented transcript lines; the shapes are Claude Code's,
 // the content made up.
 type transcript struct {
-	t     *testing.T
+	t     testing.TB
 	path  string
 	lines []string
 	n     int
 	at    time.Time
 }
 
-func newTranscript(t *testing.T, path string) *transcript {
+func newTranscript(t testing.TB, path string) *transcript {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)

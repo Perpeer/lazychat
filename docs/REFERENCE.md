@@ -435,26 +435,28 @@ time and tokens are its row in the table under it:
   lines its subagents say they changed.
 
 At the box's bottom, held there while the rest scrolls above it, the
-prompts as a table: ten around the picked one, newest first, two rows each
-— its number (`▶` the picked one), when it started and `→` when it ended
-(where Claude Code wrote the turn's end, or `working`), its active time,
-its tokens — `prompt` (its own), `in` and `used` (above) — its API price,
-and its text over three rows, written over several lines or not: line
-breaks show as spaces. Each
+newest ten prompts as a table, three rows each — its number (`▶` the
+picked one), its state (`working` and `asking` in the running colour,
+`done`, `stopped` for an answer cut short), when it started and `→` when
+it ended (where Claude Code wrote the turn's end, or `working`), its
+duration without the questions' waits, its tokens — `prompt` (its own),
+`in` and `used` (above) — its API cost, and its text over three rows,
+written over several lines or not: line breaks show as spaces. Each
 column is as wide as its longest value. `↑↓` picks one; the newest is
-followed.
+followed, and an older prompt than the ten shows above while the table
+lights none.
 
 ```
- ┌───────┬─────────────┬─────────┬──────────┬────────┬──────────────────┐
- │ #     │ started     │ active  │ tokens   │ API $  │ prompt           │
- ├───────┼─────────────┼─────────┼──────────┼────────┼──────────────────┤
- │ ▶ 245 │ 10-04 14:02 │ 2m10s   │ prompt 2k│ 0.42   │ paint the garden │
- │       │ → working   │         │ in 12k   │        │ shed blue, then  │
- │       │             │         │ used 13k │        │ the door         │
- │   244 │ 10-04 13:40 │ 20m 50s │ prompt 9k│ 11.80  │ /tidy-up the     │
- │       │ → 14:01:02  │         │ in 410k  │        │ garage           │
- │       │             │         │ used 1M  │        │                  │
- └───────┴─────────────┴─────────┴──────────┴────────┴──────────────────┘
+ ┌───────┬─────────┬─────────────┬──────────┬──────────┬──────────┬──────────────────┐
+ │ #     │ state   │ started     │ duration │ tokens   │ API cost │ prompt           │
+ ├───────┼─────────┼─────────────┼──────────┼──────────┼──────────┼──────────────────┤
+ │ ▶ 245 │ working │ 10-04 14:02 │ 2m10s    │ prompt 2k│ 0.42     │ paint the garden │
+ │       │         │ → working   │          │ in 12k   │          │ shed blue, then  │
+ │       │         │             │          │ used 13k │          │ the door         │
+ │   244 │ done    │ 10-04 13:40 │ 20m 50s  │ prompt 9k│ 11.80    │ /tidy-up the     │
+ │       │         │ → 14:01:02  │          │ in 410k  │          │ garage           │
+ │       │         │             │          │ used 1M  │          │                  │
+ └───────┴─────────┴─────────────┴──────────┴──────────┴──────────┴──────────────────┘
 ```
 
 The API price is what the same calls cost on Anthropic's API at its list

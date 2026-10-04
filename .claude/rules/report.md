@@ -43,12 +43,26 @@ paths:
   no line without a call. One dim row, not a chart — the user dropped the
   session-wide charts.
 - The report is the tree cursor's session prompt by prompt: the picked
-  prompt's flow, the context and its report on top, which scroll, and the prompts as a
-  two-row table of ten held at the box's bottom (the user's "en altta 10
-  tane sabit"); a box too short for both scrolls the whole page. Table
-  columns are as wide as their longest value: fixed widths cut "245" and
-  "20m 50s". ↑↓ pick; the newest is followed. On a project, its newest
-  session.
+  prompt's flow, the context and its report on top, which scroll, and the
+  newest ten prompts as a three-row table held at the box's bottom (the
+  user's "en altta 10 tane sabit", then "son on taneyi"); a box too short
+  for both scrolls the whole page. Table columns are as wide as their
+  longest value: fixed widths cut "245" and "20m 50s". Columns: #, state
+  (turnState: working / asking in StyleBusy, done, stopped dim; a lit row
+  keeps the selection's colours), started, duration (the active time, the
+  user's word for it), tokens, API cost. ↑↓ pick; the newest is followed;
+  an older prompt than the ten shows above, the table lighting none. On a
+  project, its newest session.
+- The page's data — turns, context, timeline, costs — is derived once per
+  read, in the read goroutine (chat/report.go derive → page), and View
+  only draws it. Deriving in View froze the app on a long session: Turns
+  and Context cost 27 ms a frame at 300 prompts / 4k calls, and Bubble
+  Tea redraws on every message while a session streams. Turns finds a
+  moment's prompt by binary search, ContextOf walks the sorted calls once
+  with the turns it is given; `go test ./internal/core/usage -bench
+  BenchmarkDerive` and `LAZYCHAT_BENCH=1 go test ./internal/ui -run
+  TestDetailsCost -v` are the numbers (a frame went from 20 ms to 3 ms).
+  Nothing in chat/view*.go may call Turns, Context, Timeline or AllCalls.
 - The flow (chat/flow.go flowOf → kit.DrawFlow) is the prompt's steps as
   git log draws branches, the user's choice over a roster of workers and a
   ring of building plots before it: Turn.Steps (every ToolUse, the

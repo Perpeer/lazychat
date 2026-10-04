@@ -117,7 +117,7 @@ func TestHeardBack(t *testing.T) {
 	agent := &usage.Agent{Type: "Explore", Left: at.Add(time.Second)}
 	s := &usage.Session{Prompts: []usage.Prompt{{Time: at, Text: "count the pots"}}, Agents: []*usage.Agent{agent}}
 	var r report
-	r.s = s
+	r.s, r.page = s, derive(s, nil)
 	if r.heardBack(false) != nil {
 		t.Fatal("the first read ticked")
 	}
@@ -125,6 +125,7 @@ func TestHeardBack(t *testing.T) {
 		t.Fatal("nothing came back, yet a tick")
 	}
 	agent.Back = at.Add(9 * time.Second)
+	r.page = derive(s, nil) // as the next read would
 	cmd := r.heardBack(true)
 	if cmd == nil {
 		t.Fatal("the agent came back without a tick")

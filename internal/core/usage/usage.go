@@ -6,6 +6,7 @@
 package usage
 
 import (
+	"slices"
 	"sort"
 	"time"
 )
@@ -242,7 +243,14 @@ func (s *Session) Turns() []Turn {
 	for i, p := range s.Prompts {
 		out[i].Prompt = p
 	}
+	// The prompt a moment belongs to is the last one before it. Prompts are
+	// read in time order, so a binary search finds it; a transcript that
+	// has them out of order (a fork's copied history) takes the scan.
+	ordered := slices.IsSortedFunc(s.Prompts, func(a, b Prompt) int { return a.Time.Compare(b.Time) })
 	at := func(t time.Time) int {
+		if ordered {
+			return sort.Search(len(s.Prompts), func(j int) bool { return s.Prompts[j].Time.After(t) }) - 1
+		}
 		i := -1
 		for j, p := range s.Prompts {
 			if !t.Before(p.Time) {

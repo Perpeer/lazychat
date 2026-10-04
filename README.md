@@ -103,7 +103,7 @@ question to you, and what each step added to the context. Beside it is the sessi
 Code's `/context`: how full the window is, what fills it, which tool's
 results took the most, and how many more prompts fit at this pace. At the
 bottom are your prompt reports: what the picked prompt ran, and your last
-ten prompts as a table with their tokens and API price. Lazy also plays a sound when a session starts
+ten prompts as a table with their state, duration, tokens and API cost. Lazy also plays a sound when a session starts
 on a prompt, asks you something, finishes or fails; you can turn the
 sounds off in Settings.
 
