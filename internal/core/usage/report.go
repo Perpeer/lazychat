@@ -26,6 +26,8 @@ func (s *Session) Clone() *Session {
 		c.Uses[i] = &uc
 	}
 	c.Tools = maps.Clone(s.Tools)
+	c.Fed = maps.Clone(s.Fed)
+	c.Compacts = append([]time.Time(nil), s.Compacts...)
 	c.Agents = make([]*Agent, len(s.Agents))
 	for i, a := range s.Agents {
 		ac := *a

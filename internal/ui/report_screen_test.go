@@ -87,12 +87,13 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 }
 
 // Chat's right side has two tabs, the chat and the report; 3 opens the
-// report on the tree cursor's session alone, prompt by prompt: the newest
-// picked and followed, its village listing the agent at work, its report
-// with an API price, and the prompts as a table held at the box's bottom;
-// ↓ picks the one before, its workers done — a subagent, a skill, an MCP
-// server — its tools in the report, its question's wait left out; a click
-// on the session's row in the tree brings its chat back.
+// report on the tree cursor's session alone, in three parts top to bottom:
+// Lazy, unnamed, with what runs now — the agent at work; the session's
+// context as a grid with its parts and where it went; the picked prompt's
+// report over the prompts' table held at the box's bottom, nothing of a
+// prompt above the context. ↓ picks the one before, its workers done — a
+// subagent, a skill, an MCP server — and its tools; a click on the
+// session's row in the tree brings its chat back.
 func TestReport(t *testing.T) {
 	e, dir := seeded(t, state.Session{Tool: "claude", Name: "shed work", ID: "garden-1"})
 	e.lazyHome = t.TempDir()
@@ -100,15 +101,23 @@ func TestReport(t *testing.T) {
 	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect("Lazy", "⌂ Explore", "find the brushes", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API price $", "API $", "│ prompt ", "│ in ", "│ used ", "its own text", "new to the context", "re-read from the cache", "workers", "Explore · find the brushes")
+	d.expect("⌂ Explore", "find the brushes", "context", "⛁", "⛶", "base", "messages", "free", "went to", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "API $", "│ prompt ", "│ in ", "│ used ", "workers", "Explore · find the brushes")
 	d.expect("(↑↓) pick prompt · (esc) back")
+	sc := d.screen()
+	if strings.Contains(sc, " Lazy ") {
+		t.Errorf("Lazy is named on the page:\n%s", sc)
+	}
+	village, ctx, report, table := lineOf(sc, "⌂ Explore"), lineOf(sc, " context  "), lineOf(sc, "prompt 2  what it ran"), lineOf(sc, "│ ▶ 2 ")
+	if !(village < ctx && ctx < report && report < table) {
+		t.Errorf("parts out of order: village %d, context %d, report %d, table %d\n%s", village, ctx, report, table, sc)
+	}
 	rows := strings.Split(d.screen(), "\n")
 	bottom := lineOf(d.screen(), "┴")
 	if bottom < 0 || bottom+2 >= len(rows) || !strings.Contains(rows[bottom+2], "(↑↓) pick prompt") {
 		t.Fatalf("the prompts table is not at the box's bottom:\n%s", d.screen())
 	}
 	d.key("down")
-	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "waiting for your answer, left out", "⌂ Explore", "count the boards", "≡ brush-care", "▭ paint-shop", "list_colours", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
+	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "⌂ Explore", "count the boards", "≡ brush-care", "▭ paint-shop", "list_colours", "Explore · count the boards", "★ brush-care", "Skill ×1", "Agent ×1")
 	d.expectNot("find the brushes")
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {
 		d.expectNot(gone)

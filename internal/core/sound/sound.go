@@ -4,7 +4,6 @@ package sound
 
 import (
 	"embed"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,20 +23,7 @@ const (
 	Error Name = "error"
 	Tick  Name = "tick"
 	Start Name = "start" // Lazy starting on a prompt: a short burst of keys
-	// The keys of a mechanical keyboard, recorded: a character's, and the
-	// space bar's, Enter's and Backspace's own.
-	Key          Name = "key"
-	KeySpace     Name = "key-space"
-	KeyEnter     Name = "key-enter"
-	KeyBackspace Name = "key-backspace"
 )
-
-// keyVariants are how many recordings of a character key there are, played
-// by turns so fast typing does not repeat one sound.
-const keyVariants = 5
-
-// IsKey says n is a key's sound, which clicks fast and on its own gap.
-func IsKey(n Name) bool { return n == Key || n == KeySpace || n == KeyEnter || n == KeyBackspace }
 
 // made are the sounds made in code (synth.go) where no recording of the
 // same name is shipped.
@@ -49,12 +35,8 @@ var made = map[string]func() []byte{
 var wavs embed.FS
 
 // gap keeps one sound from being played twice at once: two sessions
-// finishing on one tick are one sound. A key's is short: each key clicks,
-// but faster than keyGap the clicks are dropped, never queued.
-const (
-	gap    = 400 * time.Millisecond
-	keyGap = 30 * time.Millisecond
-)
+// finishing on one tick are one sound.
+const gap = 400 * time.Millisecond
 
 // Player plays the sounds from copies under dir, written there on first use
 // since afplay plays files only. Its zero value plays nothing.
@@ -63,7 +45,6 @@ type Player struct {
 	run  func(path string) error
 	mu   sync.Mutex
 	last map[Name]time.Time
-	keys int // the key clicks played, to take turns between variants
 }
 
 // New is a player keeping its files under home; nil off macOS, where there
@@ -84,24 +65,16 @@ func (p *Player) Play(n Name) {
 	}
 	p.mu.Lock()
 	now := time.Now()
-	wait, file, slot := gap, string(n), n
-	if IsKey(n) {
-		wait, slot = keyGap, Key
-	}
-	if now.Sub(p.last[slot]) < wait {
+	if now.Sub(p.last[n]) < gap {
 		p.mu.Unlock()
 		return
-	}
-	if n == Key {
-		p.keys++
-		file = fmt.Sprintf("key-%d", p.keys%keyVariants+1)
 	}
 	if p.last == nil {
 		p.last = map[Name]time.Time{}
 	}
-	p.last[slot] = now
+	p.last[n] = now
 	p.mu.Unlock()
-	path, err := p.file(file)
+	path, err := p.file(string(n))
 	if err == nil {
 		_ = p.run(path)
 	}

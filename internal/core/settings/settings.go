@@ -44,9 +44,6 @@ type Settings struct {
 	// NoSounds keeps Lazy quiet: no sound for a question, a finished or
 	// failed answer, a worker back.
 	NoSounds bool `json:"no_sounds,omitempty"`
-	// KeyClicks clicks each key typed into a session or the draft box, as an
-	// old buckling-spring keyboard; off unless asked for, as noise is.
-	KeyClicks bool `json:"key_clicks,omitempty"`
 	// NoSyntax draws a diff's code plain, without its language's colours.
 	NoSyntax bool `json:"no_syntax,omitempty"`
 

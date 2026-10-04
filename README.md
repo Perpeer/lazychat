@@ -94,12 +94,13 @@ took. `n` starts one, `r` resumes an old one, and `w` lets you draft the
 next prompt while the agent is still busy. Press `3` for the details. At
 the top is Lazy with a line for each subagent, skill and MCP server the
 prompt used: how many ran, the job each was given, and whether it is
-still working. Below that you see how many tokens the prompt put in and
-used, its API price, and which tools and shell commands it ran. Your last ten prompts
-sit at the bottom as a table. Lazy also plays a sound when a session starts
+still working. Below that is the session's context, drawn like Claude
+Code's `/context`: how full the window is, what fills it, which tool's
+results took the most, and how many more prompts fit at this pace. At the
+bottom are your prompt reports: what the picked prompt ran, and your last
+ten prompts as a table with their tokens and API price. Lazy also plays a sound when a session starts
 on a prompt, asks you something, finishes or fails; you can turn the
-sounds off in Settings, or turn on key clicks for an old keyboard's
-sound as you type.
+sounds off in Settings.
 
 ```
 ┌ [1] projects ──────────┐┌ [2] session │ [3] details ───────────┐

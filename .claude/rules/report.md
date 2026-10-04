@@ -25,8 +25,15 @@ paths:
   skipped, bad lines counted. Subagent tokens are only in their own files;
   a background agent first writes `async_launched` with no totals, and
   its result's totalTokens is the last call's context, not a sum.
+- The page is three parts (the user's): Lazy, unnamed, with what runs now;
+  the session's context, /context-like, measured only (usage.Context: the
+  newest main call; base = the first call since the start or the last
+  compaction; skills/MCP added; Fed by tool for "went to"; growth per
+  prompt); the prompt reports. Nothing of a prompt sits above the context
+  — its time and tokens are the table's. /context's categories are not in
+  the transcript: no estimate stands in for them.
 - The report is the tree cursor's session prompt by prompt: the picked
-  prompt's village and report on top, which scroll, and the prompts as a
+  prompt's village, the context and its report on top, which scroll, and the prompts as a
   two-row table of ten held at the box's bottom (the user's "en altta 10
   tane sabit"); a box too short for both scrolls the whole page. Table
   columns are as wide as their longest value: fixed widths cut "245" and

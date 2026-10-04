@@ -235,7 +235,7 @@ func (a *App) celebrating(st kit.MascotState) bool { return st.Finished > 0 && s
 // sound plays one of Lazy's sounds unless they are off.
 func (a *App) sound(n sound.Name) {
 	st := a.core.Settings
-	if a.play == nil || st != nil && st.NoSounds || sound.IsKey(n) && (st == nil || !st.KeyClicks) {
+	if a.play == nil || st != nil && st.NoSounds {
 		return
 	}
 	a.play(n)

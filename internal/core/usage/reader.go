@@ -100,6 +100,7 @@ type stream struct {
 type result struct {
 	use  *Use
 	size int64
+	tool string // what brought it in: a tool's name, "prompt" for text
 }
 
 type tool struct {
@@ -334,6 +335,12 @@ func (r *Reader) mainLine(line []byte) {
 	switch rec.Type {
 	case "user":
 		bs, isList := blocks(rec.Message.Content)
+		// A compaction's summary starts the context over: what fed the old
+		// one is gone with it.
+		if rec.Compacted {
+			r.s.Compacts = append(r.s.Compacts, rec.Timestamp)
+			r.s.Fed = nil
+		}
 		// A compaction's summary goes on with the prompt before: no prompt.
 		if !isList && len(rec.Message.Content) > 0 && !rec.IsMeta && !rec.Compacted {
 			var text string
@@ -403,12 +410,12 @@ func (r *Reader) userBlocks(run *stream, rec *record, bs []block) {
 			if t.name == "AskUserQuestion" && run.agent == "" && t.wait < len(r.s.Waits) && r.s.Waits[t.wait].To.IsZero() {
 				r.s.Waits[t.wait].To = rec.Timestamp
 			}
-			run.waiting = append(run.waiting, result{use: t.use, size: int64(len(b.Content))})
+			run.waiting = append(run.waiting, result{use: t.use, size: int64(len(b.Content)), tool: t.name})
 		case "text":
 			first, _, _ := strings.Cut(b.Text, "\n")
 			dir, ok := strings.CutPrefix(first, skillText)
 			if !ok {
-				run.waiting = append(run.waiting, result{size: int64(len(b.Text))})
+				run.waiting = append(run.waiting, result{size: int64(len(b.Text)), tool: "prompt"})
 				continue
 			}
 			origin := skillOrigin(strings.TrimSpace(dir), r.Home)
@@ -419,7 +426,7 @@ func (r *Reader) userBlocks(run *stream, rec *record, bs []block) {
 				r.s.Uses = append(r.s.Uses, u)
 			}
 			u.Origin = origin
-			run.waiting = append(run.waiting, result{use: u, size: int64(len(b.Text))})
+			run.waiting = append(run.waiting, result{use: u, size: int64(len(b.Text)), tool: "Skill"})
 		}
 	}
 }
@@ -441,6 +448,13 @@ func (r *Reader) assistant(run *stream, rec *record, counts map[string]int) {
 			total += max(1, w.size)
 		}
 		for _, w := range run.waiting {
+			// What the session's own context took in, by what brought it.
+			if run.agent == "" && w.tool != "" {
+				if r.s.Fed == nil {
+					r.s.Fed = map[string]int64{}
+				}
+				r.s.Fed[w.tool] += grew * max(1, w.size) / total
+			}
 			if w.use == nil {
 				continue
 			}

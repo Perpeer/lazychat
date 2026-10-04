@@ -4,10 +4,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lazychat/internal/core/keylayout"
-	"lazychat/internal/core/sound"
-	"strconv"
-	"strings"
-	"unicode/utf8"
 )
 
 // Capture is a program in a pane holding the keys: Chat's sessions and
@@ -84,13 +80,7 @@ func (c *Capture) Take() bool {
 	}
 	c.held, c.key = true, c.pane.Key
 	c.screen.Capture(
-		func(b []byte) {
-			_ = s.Write(c.newline(b, s.Kitty()))
-			c.screen.Send(captureTyped{c})
-			if key := TypedKey(b); key != "" {
-				c.screen.Send(PlaySound{Name: key})
-			}
-		},
+		func(b []byte) { _ = s.Write(c.newline(b, s.Kitty())); c.screen.Send(captureTyped{c}) },
 		func() { c.screen.Send(captureLeave{c}) },
 	)
 	key := c.key
@@ -164,37 +154,4 @@ func (c *Capture) rawMouse(m RawMouse) {
 	if c.Beside != nil {
 		c.Beside(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
 	}
-}
-
-// TypedKey is the key sound for bytes sent to a pane when they are a key a
-// person typed into text — a character, the space bar, Enter, Backspace,
-// plain or as a kitty CSI u report; "" for an arrow, a mouse report or a
-// paste.
-func TypedKey(b []byte) sound.Name {
-	code := -1
-	switch {
-	case len(b) == 0:
-	case b[0] != 0x1b:
-		if utf8.RuneCount(b) == 1 {
-			r, _ := utf8.DecodeRune(b)
-			code = int(r)
-		}
-	case len(b) > 3 && b[1] == '[' && b[len(b)-1] == 'u':
-		c, _, _ := strings.Cut(string(b[2:len(b)-1]), ";")
-		c, _, _ = strings.Cut(c, ":")
-		if n, err := strconv.Atoi(c); err == nil {
-			code = n
-		}
-	}
-	switch {
-	case code == ' ':
-		return sound.KeySpace
-	case code == '\r' || code == '\n':
-		return sound.KeyEnter
-	case code == 0x7f || code == 8:
-		return sound.KeyBackspace
-	case code == '\t' || code > ' ' && code < 57344:
-		return sound.Key
-	}
-	return ""
 }

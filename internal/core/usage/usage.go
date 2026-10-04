@@ -113,6 +113,12 @@ type Session struct {
 	Uses []*Use
 	// ToolUses are every tool call, the subagents' too, in the order read.
 	ToolUses []ToolUse
+	// Fed is what grew the session's own context since its last compaction,
+	// by the tool whose results brought it in ("prompt" for text): each
+	// call's growth shared among the results before it by their size.
+	Fed map[string]int64
+	// Compacts are when the context was compacted, oldest first.
+	Compacts []time.Time
 }
 
 // ToolUse is one tool call: which tool, by whom, when, and for a shell

@@ -22,19 +22,6 @@ func (c *Chat) chatTabs(state string) string {
 	return kit.TabTitle("ctab", []string{kit.PanelTitle(2, strings.TrimSuffix("session · "+state, " · ")), kit.PanelTitle(3, "details")}, active)
 }
 
-// tokenLabels name the four kinds as the charts stack them, cheapest first.
-var tokenLabels = []string{"cache read", "input", "cache write", "output"}
-
-// kinds is a usage in one line, each kind with its glyph and colour.
-func kinds(t usage.Tokens) string {
-	values := []int64{t.CacheRead, t.Input, t.CacheWrite, t.Output}
-	var parts []string
-	for i, v := range values {
-		parts = append(parts, kit.StyleSeries[i].Render(kit.SeriesGlyphs[i])+" "+num(v))
-	}
-	return strings.Join(parts, "  ")
-}
-
 // num is a count the way the report writes it: 812, 12.4k, 1.3M.
 func num(n int64) string {
 	switch {
@@ -123,11 +110,14 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	v := villageOf(t, now, running, running && openWait(t))
 	c.rep.moving = moving(v)
 	costs := c.costs(s, turns)
+	// Three parts: Lazy with what runs now, the session's context, then the
+	// prompt reports — the picked one's, over the table held at the bottom.
 	top = append(top, "")
 	for _, row := range kit.DrawVillage(v, c.beat, w-1) {
 		top = append(top, " "+row)
 	}
-	top = append(top, c.report(turns, picked, working, now, costs[picked], w)...)
+	top = append(top, contextPart(s, w)...)
+	top = append(top, c.report(turns, picked, working, now, w)...)
 	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
 		c.promptTable(turns, picked, working, now, costs, w)...)
 	return top, table
@@ -273,46 +263,20 @@ func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 	return "—", false
 }
 
-// report is the picked prompt in full: its time and tokens, its workers as a
-// table, the tools and shell commands it ran and the files it changed.
+// report is what the picked prompt ran: its workers as a table, the tools
+// and shell commands and the files it changed.
 // What the transcript does not say is a dash.
-func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, cost string, w int) []string {
+func (c *Chat) report(turns []usage.Turn, i int, working bool, now time.Time, w int) []string {
 	t := turns[i]
 	newest := i == len(turns)-1
-	end, _ := turnEnd(t, newest, working, now)
-	var waited time.Duration
-	for _, wt := range t.Waits {
-		to := wt.To
-		if to.IsZero() {
-			to = now
-		}
-		waited += to.Sub(wt.From)
-	}
-	note := t.Time.Local().Format("15:04:05") + " → " + end + " · " + text.Span(t.Took(now, newest && working)) + " active"
-	if waited > 0 {
-		note += fmt.Sprintf(" · %s waiting for your answer, left out", text.Span(waited))
-	}
-	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), note),
-		" " + kit.StyleAccent.Render("❯ "+text.Fit(flat(t.Text), max(10, w-4))),
-		" " + kit.StyleBold.Render("prompt "+ownTokens(t)) + kit.StyleDim.Render(" its own text and what came with it · ") +
-			kit.StyleBold.Render("in "+num(t.Tokens.In())) + kit.StyleDim.Render(" new to the context · ") +
-			kit.StyleBold.Render("used "+num(t.Tokens.Used())) + kit.StyleDim.Render(" with "+num(t.Tokens.Output)+" written · ") + costNote(cost),
-		kit.StyleDim.Render(fmt.Sprintf(" %s re-read from the cache over %d calls, at a tenth of the input price", num(t.Tokens.CacheRead), t.Calls)),
-		" " + kinds(t.Tokens) + kit.StyleDim.Render("   "+strings.Join(tokenLabels, " · ")),
-		"", section("workers", "who did the work: subagents, skills, MCP servers; ★ one of yours")}
+	// Its time, text and tokens are the table's row; this is what it ran.
+	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), "what it ran; its time and tokens are in the table below"),
+		section("workers", "who did the work: subagents, skills, MCP servers; ★ one of yours")}
 	out = append(out, workerRows(t, now, newest && working, w)...)
 	out = append(out, "", section("tools", "every call of the prompt, by tool"), " "+text.Fit(counted(t.Tools, "×"), max(10, w-2)))
 	out = append(out, "", section("commands", "the shell commands run, by their first words"), " "+text.Fit(counted(t.Commands, "×"), max(10, w-2)))
 	out = append(out, "", section("files", "edits, and lines the subagents changed"), " "+text.Fit(filesLine(t), max(10, w-2)))
 	return out
-}
-
-// costNote is a turn's API price as the report says it.
-func costNote(cost string) string {
-	if cost == "—" {
-		return "no API price for its model"
-	}
-	return "API price $" + cost
 }
 
 // workerRows are the turn's workers as a table: kind, name, how long, its

@@ -83,21 +83,19 @@ const VillageLines = 6
 
 const lazyW = 8 // Lazy's column, its frames 6 wide and a gap
 
-// DrawVillage draws v w columns wide: Lazy at the left, a line per worker
-// beside it; frame moves what is moving.
+// DrawVillage draws v w columns wide: Lazy at the left, without a name, a
+// line per worker beside it; frame moves what is moving.
 func DrawVillage(v Village, frame, w int) []string {
-	lazy := append(leaderRows(v.Leader, frame), "  Lazy")
+	lazy := leaderRows(v.Leader, frame)
 	ink := leaderInk(v.Leader)
 	lines := workerLines(v, frame, w-lazyW)
 	out := make([]string, max(len(lazy), len(lines)))
+	// Lazy sits in the middle of its column beside a longer list.
+	top := (len(out) - len(lazy)) / 2
 	for i := range out {
 		left := strings.Repeat(" ", lazyW)
-		if i < len(lazy) {
-			k := ink
-			if i == len(lazy)-1 {
-				k = inkBold
-			}
-			left = k.render(text.Pad(lazy[i], lazyW))
+		if j := i - top; j >= 0 && j < len(lazy) {
+			left = ink.render(text.Pad(lazy[j], lazyW))
 		}
 		line := ""
 		if i < len(lines) {

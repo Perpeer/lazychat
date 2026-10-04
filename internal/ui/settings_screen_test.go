@@ -7,7 +7,6 @@ import (
 
 	"lazychat/internal/core/settings"
 	"lazychat/internal/core/sound"
-	"lazychat/internal/core/state"
 	"lazychat/internal/core/status"
 	"lazychat/internal/ui/kit"
 	"time"
@@ -267,59 +266,6 @@ func TestNewsSounds(t *testing.T) {
 	if len(got) != 1 || got[0] != sound.Done {
 		t.Fatalf("two finished at once: %v", got)
 	}
-}
-
-// Key clicks are off by default; on, a key typed into a session's pane
-// clicks, an arrow does not; sounds off silences them too.
-func TestKeyClicks(t *testing.T) {
-	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
-	d := start(t, e, 120, 32)
-	var played []sound.Name
-	d.app.play = func(n sound.Name) { played = append(played, n) }
-	keys := func() int {
-		n := 0
-		for _, p := range played {
-			if p == sound.Key {
-				n++
-			}
-		}
-		return n
-	}
-	d.session("oak", "")
-	d.key("enter")
-	d.expect("(ctrl+q) back to lazychat")
-	d.raw("a")
-	d.pump(50 * time.Millisecond)
-	if keys() != 0 {
-		t.Fatalf("clicks while off: %v", played)
-	}
-	d.leave()
-	d.tab(4)
-	d.toSetting("key clicks")
-	d.expect("key clicks", "buckling-spring", "  off")
-	d.key("enter", "up", "enter")
-	d.expect("  on", "(enter) change")
-	if !d.core.Settings.KeyClicks {
-		t.Fatal("key clicks on was not saved")
-	}
-	d.tab(1)
-	d.key("enter")
-	d.expect("(ctrl+q) back to lazychat")
-	d.raw("b")
-	d.until("no click for a typed key", func() bool { return keys() == 1 })
-	d.raw("\x1b[A")
-	d.pump(50 * time.Millisecond)
-	if keys() != 1 {
-		t.Fatalf("an arrow clicked: %v", played)
-	}
-	d.core.Settings.NoSounds = true
-	d.raw("c")
-	d.pump(50 * time.Millisecond)
-	if keys() != 1 {
-		t.Fatalf("clicks with sounds off: %v", played)
-	}
-	d.leave()
-	d.quitApp()
 }
 
 // toSetting puts the Settings tab's cursor on the setting called name,

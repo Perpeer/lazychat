@@ -34,14 +34,15 @@ func samples(name string) []float64 {
 	return nil
 }
 
-// typing is four recorded keys at a typing rhythm, the last the space bar.
+// typing is four recorded keys of a mechanical keyboard (lazy-start-1..4,
+// the last the space bar) at a typing rhythm.
 func typing() []float64 {
 	buf := make([]float64, rate*45/100)
 	for _, k := range []struct {
 		name string
 		ms   int
 		gain float64
-	}{{"key-2", 0, 0.85}, {"key-4", 95, 1}, {"key-1", 175, 0.8}, {"key-space", 270, 0.9}} {
+	}{{"start-1", 0, 0.85}, {"start-2", 95, 1}, {"start-3", 175, 0.8}, {"start-4", 270, 0.9}} {
 		at := rate * k.ms / 1000
 		for i, v := range samples(k.name) {
 			if at+i < len(buf) {

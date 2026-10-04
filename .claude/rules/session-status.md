@@ -72,16 +72,10 @@ it from there.
   the shown session (report.heardBack), so only while the details show.
 - start is a session going to working from idle, done or rest — a new
   prompt; from asks it is an answer and stays quiet.
-- key clicks (settings.KeyClicks, off by default) come from kit.Capture's
-  writes that are a typed key (kit.TypedKey: a character, Enter,
-  Backspace, plain or a kitty CSI u report) and the draft box's keys.
-  afplay starts a process per click, so the player drops any key click
-  within 30 ms of the last rather than queue them.
-- Keys are the user's mechanical keyboard recordings: lazy-key-1..5 for
-  characters by turns, lazy-key-space/-enter/-backspace for those keys
-  (kit.TypedKey names the sound from the bytes); all keys share one 30 ms
-  gap. start is four of them mixed at a typing rhythm (sound/synth.go). The
-  made clicks before them sounded like a terminal beep — pure sines.
+- start is four recordings of the user's mechanical keyboard
+  (lazy-start-1..4) mixed at a typing rhythm (sound/synth.go). Key clicks
+  on every typed key were tried and taken out at the user's word: no
+  sound per key, no setting for it.
 - A tab asks for a sound with kit.PlaySound; App plays it unless
   settings.NoSounds. Tests leave App.play nil: no test makes a sound.
 

@@ -338,40 +338,60 @@ and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
 second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet.
 
-At the top, the picked prompt as a small village: Lazy at the left, and
-one line beside it per worker the prompt had — its subagents by type
-(`⌂`), its skills (`≡`), its MCP servers (`▭`, its tools one line). Each
-line says how many ran (`×2`), the job given (the newest subagent's
-description, a server's tools) and how it stands: `(••) 11s` at work, `✓
-40s` back, a dim `·` while the transcript gives no time. A skill or MCP
-call has no end in the transcript, so it shows no time. The village is as
-tall as Lazy or its lines, at most six lines, the rest `+N more`; a prompt
-that called none says "worked alone". Lazy types while the prompt runs,
-asks as on the rail while a question waits for you, and cheers a moment
-when it ends. It follows the picked prompt.
+The page has three parts, top to bottom.
+
+**What runs now.** Lazy at the top left, and one line beside it per worker
+the picked prompt had — its subagents by type (`⌂`), its skills (`≡`), its
+MCP servers (`▭`, its tools one line). Each line says how many ran (`×2`),
+the job given (the newest subagent's description, a server's tools) and
+how it stands: `(••) 11s` at work, `✓ 40s` back, a dim `·` while the
+transcript gives no time. A skill or MCP call has no end in the
+transcript, so it shows no time. At most six lines, the rest `+N more`; a
+prompt that called none says "worked alone". Lazy sits in the middle of
+its column, types while the prompt runs, asks as on the rail while a
+question waits for you, and cheers a moment when it ends.
 
 ```
  ╭────╮  ⌂ Explore     ×2  find the brushes   (••) 11s
  │ ^^ │  ≡ brush-care      rinse twice        ✓
  ╰────╯  ▭ paint-shop  ×3  list_colours, mix  ✓
-   Lazy
 ```
 
-Under it, the picked prompt's report:
+**The context.** The session's, as its newest call sent it, drawn as
+Claude Code's `/context` draws it: a hundred cells, each a hundredth of
+the window, coloured by what fills them, the free ones hollow; beside
+them the model, the context in use out of its window (a million tokens
+for Opus 4.6 and later, Sonnet 4.6 and later, Fable; 200k for the rest),
+and its parts. Every figure is measured from the transcript:
 
-- its time (`14:02:10 → working · 2m10s active`) and how long questions
-  (`AskUserQuestion`) waited for your answer, which is left out of the
-  active time. A permission prompt's wait is not in the transcript and
-  stays in;
-- its tokens: `prompt`, its own — what its first call put into the
-  context before any tool ran, the text with what Claude Code attaches
-  (reminders, an @file); `in`, what it put into the context anew (its own text,
-  files read, tool results: input and cache writes), and `used`, that and
-  what the model wrote. What every call read back from the cache is shown
-  apart: each call re-reads the whole context, so a one-line prompt late in
-  a long session re-reads millions, at a tenth of the input price. Then
-  the kinds (`░` cache read, `▒` input, `▓` cache write, `█` output, each
-  with a colour-blind safe colour too) and its API price;
+- `base`, what the session began with — the system prompt, tools, MCP,
+  memory, the skills listed and its first prompt — or, after a
+  compaction, the summary it left;
+- `messages`, everything since;
+- `skills, MCP`, what skills' texts and MCP results put in;
+- `free`, what the window still holds.
+
+Under it, `went to` names what grew the context since the last compaction,
+by the tool whose results brought it in, the largest first — each call's
+growth shared among the results before it by their size — and warns when
+one tool's results pass a tenth of it, with what to do (`Bash results are
+18% of the context: pipe output through head, tail or grep`). `grows` says
+how much the last prompt added and, at the pace of the last five, about
+how many more prompts fit before the window fills.
+
+```
+ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Opus 5.5
+ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   793k / 1M tokens (79.3%)
+ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁
+ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ base          39k  3.9%
+ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ messages     748k  74.8%
+ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ skills, MCP   6k  0.6%
+ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛶   ⛶ free         207k  20.7%
+```
+
+**The prompt reports.** The picked prompt's report — what it ran; its
+time and tokens are its row in the table under it:
+
 - workers: a table of its subagents, skills and MCP servers, each with
   how long it took, its tokens and its calls. `★` marks a subagent defined
   by the user (`~/.claude/agents`), the project (`.claude/agents`) or a
@@ -580,7 +600,6 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | Appearance | version | shown | the corner's `v1.0(N)` |
 | Appearance | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
 | Sound | sounds | on | on macOS, Lazy's sounds: a short burst of the recorded keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
-| Sound | key clicks | off | each key typed into a session or the draft box clicks like an old buckling-spring keyboard (a character, Enter, Backspace; not arrows); a mechanical keyboard's recorded keys — five for characters, by turns, and the space bar's, Enter's and Backspace's own; at most one click per 30 ms; quiet with sounds off |
 | Integrations | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
 | Integrations | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 
