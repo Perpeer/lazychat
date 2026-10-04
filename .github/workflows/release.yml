@@ -1,0 +1,82 @@
+# Releases every push to main that changes what users run: ./check.sh on a
+# Mac first, then the next version (packaging/next-version.sh: the next
+# patch, or [minor] / [major] in a commit message) tagged on the pushed
+# commit, a GitHub release whose notes are the commits since the last one,
+# and the tap's formula (Perpeer/homebrew-tap) moved to it, so
+# `brew upgrade lazychat` takes it. Nothing is committed to main, so a
+# release never starts another. The tap needs the HOMEBREW_TAP_TOKEN secret
+# (a fine-grained token, Contents: Read and write on Perpeer/homebrew-tap
+# only); without it the release is made and the tap is left as it was.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "macos/**"
+      - "go.mod"
+      - "go.sum"
+      - "packaging/homebrew/lazychat.rb"
+
+permissions:
+  contents: write
+
+# One release at a time, in the order of the pushes.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Version
+        id: version
+        run: |
+          v="$(packaging/next-version.sh)"
+          if [ -z "$v" ]; then
+            echo "::notice::this commit is released already"
+          fi
+          echo "v=$v" >> "$GITHUB_OUTPUT"
+      - name: Check
+        if: steps.version.outputs.v != ''
+        run: ./check.sh
+      - name: Tag
+        if: steps.version.outputs.v != ''
+        run: |
+          v="${{ steps.version.outputs.v }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          packaging/next-version.sh --notes > "$RUNNER_TEMP/notes.md"
+          git tag -a "v$v" -m "lazychat $v"
+          git push origin "v$v"
+      - name: GitHub release
+        if: steps.version.outputs.v != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.version.outputs.v }}"
+          gh release create "v$v" --title "lazychat $v" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+      - name: Tap
+        if: steps.version.outputs.v != ''
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          v="${{ steps.version.outputs.v }}"
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set: the tap still has the last version; ./release.sh --formula $v updates it by hand"
+            exit 0
+          fi
+          git clone -q "https://x-access-token:$TAP_TOKEN@github.com/Perpeer/homebrew-tap.git" "$RUNNER_TEMP/tap"
+          git -C "$RUNNER_TEMP/tap" config user.name "github-actions[bot]"
+          git -C "$RUNNER_TEMP/tap" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          packaging/homebrew/update-tap.sh "$v" "$RUNNER_TEMP/tap"
+          git -C "$RUNNER_TEMP/tap" push origin HEAD

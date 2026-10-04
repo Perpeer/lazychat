@@ -40,9 +40,18 @@ paths:
   takes the CLI only (no .app) and only past 225 stars for a self-submitted
   project; an official cask needs Apple's signing and notarization.
 - `packaging/homebrew/lazychat.rb` is the formula's source; the tap's copy
-  is written from it (release.sh --formula, or the workflow on a v* tag
-  with HOMEBREW_TAP_TOKEN). Its sha256 is the GitHub tag archive's, known
-  only once the tag is pushed. Pushing is the user's, from the other Mac.
+  is written from it by packaging/homebrew/update-tap.sh (the release
+  workflow, homebrew.yml for a tag pushed by hand, release.sh --formula),
+  with the tag archive's url and sha256 — known only once the tag is on
+  GitHub. The source keeps v1.0.0's values: a release commits nothing to
+  main, or it would start another release.
+- release.yml releases each push to main that changes cmd, internal,
+  macos, go.mod/sum or the formula: check.sh on macos-latest, the next
+  version (next-version.sh: newest vX.Y.Z's next patch, [minor]/[major] in
+  a message of the push), tag, gh release with the commits as notes, the
+  tap with HOMEBREW_TAP_TOKEN. A tag pushed with GITHUB_TOKEN starts no
+  workflow, so all of it is one job; concurrency "release" keeps pushes in
+  order. Pushing from this Mac is the user's.
 - `./install.sh --brew` (packaging/homebrew/brew-dev.sh) tests the formula
   from this checkout through a local tap lazychat/dev, an archive of HEAD
   (uncommitted work is not in it); Homebrew installs formulae from taps
