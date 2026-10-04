@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"lazychat/internal/core/git"
+	"lazychat/internal/core/syntax"
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/text"
 )
@@ -19,14 +20,16 @@ type line struct {
 	file string // set on a file heading
 	path string // the file every row belongs to, for a copy's header
 	row  git.Row
-	w    int // the width of the numbers in this line's file
+	w    int           // the width of the numbers in this line's file
+	syn  []syntax.Span // its code's colours; nil plain
 }
 
 // flatten lays a patch's files out as screen rows; a single file needs no
-// heading, the panel's title names it.
-func flatten(files []git.File) []line {
+// heading, the panel's title names it. roles, when given, are each file's
+// code colours by row (syntaxOf).
+func flatten(files []git.File, roles ...[][]syntax.Span) []line {
 	var out []line
-	for _, f := range files {
+	for fi, f := range files {
 		w := 3
 		for _, r := range f.Rows {
 			w = max(w, len(strconv.Itoa(max(r.Old, r.New))))
@@ -38,9 +41,23 @@ func flatten(files []git.File) []line {
 			}
 			out = append(out, line{file: name, path: f.Path})
 		}
-		for _, r := range f.Rows {
-			out = append(out, line{path: f.Path, row: r, w: w})
+		for ri, r := range f.Rows {
+			l := line{path: f.Path, row: r, w: w}
+			if fi < len(roles) && ri < len(roles[fi]) {
+				l.syn = roles[fi][ri]
+			}
+			out = append(out, l)
 		}
+	}
+	return out
+}
+
+// syntaxOf is every file's code colours, read where the patch is read:
+// tokenizing a large diff takes longer than a frame.
+func syntaxOf(files []git.File) [][][]syntax.Span {
+	out := make([][][]syntax.Span, len(files))
+	for i, f := range files {
+		out[i] = syntax.File(f)
 	}
 	return out
 }
@@ -49,15 +66,20 @@ func flatten(files []git.File) []line {
 const tabWidth = 4
 
 // drawDiff draws rows from..from+h of lines, w wide: only what is on
-// screen, however long the diff is; the rows lit says are drawn selected.
-func drawDiff(lines []line, from, w, h int, lit func(i int) bool) []string {
+// screen, however long the diff is; the rows lit says are drawn selected,
+// and code is coloured only while colour says so, so the switch acts at once.
+func drawDiff(lines []line, from, w, h int, lit func(i int) bool, colour bool) []string {
 	var out []string
 	for i := from; i < len(lines) && len(out) < h; i++ {
+		l := lines[i]
+		if !colour {
+			l.syn = nil
+		}
 		if lit != nil && lit(i) {
-			out = append(out, kit.StyleSel.Render(text.Pad(ansi.Strip(drawLine(lines[i], w)), w)))
+			out = append(out, kit.StyleSel.Render(text.Pad(ansi.Strip(drawLine(l, w)), w)))
 			continue
 		}
-		out = append(out, drawLine(lines[i], w))
+		out = append(out, drawLine(l, w))
 	}
 	return out
 }
@@ -88,61 +110,75 @@ func drawLine(l line, w int) string {
 	}
 	gutter := kit.StyleDim.Render(num(r.Old)+" "+num(r.New)) + " "
 	body := mark + " "
-	return gutter + paint(body, []rune(r.Text), r.Changed, base, word, w-text.Width(gutter))
+	return gutter + paint(body, []rune(r.Text), r.Changed, l.syn, base, word, w-text.Width(gutter))
 }
 
 // paint draws a row's text after its mark in the row's colour, the changed
-// spans in the stronger one, tabs as spaces, cut and filled to w columns so
-// the colour runs to the panel's edge.
-func paint(mark string, rs []rune, spans []git.Span, base, word lipgloss.Style, w int) string {
+// spans in the stronger one, its code in the theme's syntax colours over
+// them, tabs as spaces, cut and filled to w columns so the colour runs to
+// the panel's edge.
+func paint(mark string, rs []rune, spans []git.Span, syn []syntax.Span, base, word lipgloss.Style, w int) string {
 	var b strings.Builder
 	used := 0
-	cur, run := -1, strings.Builder{}
+	type look struct {
+		strong bool
+		role   syntax.Role
+	}
+	cur, run := look{role: 255}, strings.Builder{}
 	flush := func() {
 		if run.Len() == 0 {
 			return
 		}
-		if cur == 1 {
-			b.WriteString(word.Render(run.String()))
-		} else {
-			b.WriteString(base.Render(run.String()))
+		st := base
+		if cur.strong {
+			st = word
 		}
+		if cur.role != syntax.Plain {
+			st = st.Foreground(kit.SyntaxColors[cur.role])
+		}
+		b.WriteString(st.Render(run.String()))
 		run.Reset()
 	}
-	put := func(s string, strong int) bool {
+	put := func(s string, lk look) bool {
 		sw := text.Width(s)
 		if used+sw > w {
 			return false
 		}
-		if strong != cur {
+		if lk != cur {
 			flush()
-			cur = strong
+			cur = lk
 		}
 		run.WriteString(s)
 		used += sw
 		return true
 	}
-	if !put(mark, 0) {
+	if !put(mark, look{}) {
 		flush()
 		return b.String()
 	}
 	for i, c := range rs {
-		strong := 0
+		lk := look{}
 		for _, s := range spans {
 			if i >= s.From && i < s.To {
-				strong = 1
+				lk.strong = true
+			}
+		}
+		for _, s := range syn {
+			if i >= s.From && i < s.To {
+				lk.role = s.Role
+				break
 			}
 		}
 		s := string(c)
 		if c == '\t' {
 			s = strings.Repeat(" ", tabWidth)
 		}
-		if !put(s, strong) {
+		if !put(s, lk) {
 			break
 		}
 	}
 	if used < w {
-		put(strings.Repeat(" ", w-used), 0)
+		put(strings.Repeat(" ", w-used), look{})
 	}
 	flush()
 	return b.String()

@@ -62,3 +62,12 @@ paths:
   row's status, which lags a switch. Commits not merged there are asked
   again (`ErrUnmerged`, then `-D`); a tracked branch offers its remote one,
   whose delete (`push <remote> --delete`) is always asked a second time.
+- A diff's code colours (internal/core/syntax, chroma) are read in the
+  diff's own goroutine with the patch (diffMsg.roles): a 5,000-row diff
+  takes 100–300 ms, more than a frame. Each hunk's old side (context +
+  removed) and new side (context + added) are tokenized as one text so a
+  block comment spans rows; context rows take the new side's roles. Only
+  foregrounds change: the added/removed and changed-word backgrounds, the
+  selection and the copy stay. go.mod/go.sum are kept plain (chroma takes
+  *.mod for AMPL). The Settings switch acts at draw time (drawDiff's
+  colour). Chroma grew the binary by about 3.8 MB.

@@ -454,7 +454,14 @@ The panels, numbered as their titles show them:
    right side shows what the one under the cursor changed (`git show`).
 5. **diff** — of the file, folder, all row or commit under the cursor, as
    Fork draws it: old and new line numbers, removed rows on red, added on
-   green, the words that changed inside a row stronger.
+   green, the words that changed inside a row stronger. Code is drawn in
+   its language's colours on top — keywords, strings, comments, numbers,
+   types and functions, in the theme's own (Amber takes the terminal's 16
+   colours). The language comes from the file's name; each hunk's old and
+   new sides are read whole, so a comment over several rows is coloured
+   as one. A file with no known language, a binary one, a row over 2,000
+   characters or a diff over 20,000 rows stays plain. Settings' `syntax
+   colours` turns it off.
 6. **commit** — `Commit subject`, `Description`, `Suggest` and `Commit`,
    dim until there is a subject and something staged. `Tab` walks them;
    `Enter` in the subject goes to the description; digits are text here.
@@ -531,6 +538,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
 | sounds | on | on macOS, Lazy's sounds: a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |
+| syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
 
 One accent colour, the theme's, marks the focused frame, fills the selected
 entry as one band (only its text is coloured while a pane has the keys) and

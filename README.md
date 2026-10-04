@@ -104,8 +104,9 @@ session: (enter) continue · (n) new · (r) resume · (w) draft · (?) help
 
 ### Git: stage, diff and commit without leaving
 
-Changes as a folder tree, a diff you can walk line by line, your last
-commits and the repository's worktrees. `Suggest` asks the agent for a
+Changes as a folder tree, a diff you can walk line by line with the code
+in its language's colours, your last commits and the repository's
+worktrees. `Suggest` asks the agent for a
 commit message written from what you staged.
 
 ```

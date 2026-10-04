@@ -1,6 +1,10 @@
 package kit
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+
+	"lazychat/internal/core/syntax"
+)
 
 // palette is a theme from its published colours: the window, the accent,
 // the running spinner, the two tools, a diff's rows and the four badges.
@@ -28,9 +32,23 @@ func Themes() []Theme {
 			BadgeModified: c(p.modified), BadgeAdded: c(p.newFile),
 			BadgeRemoved: c(p.deleted), BadgeRenamed: c(p.renamed),
 			Series: seriesColors(),
+			Syntax: themeSyntax[p.name],
 		})
 	}
 	return out
+}
+
+// themeSyntax are each theme's code colours — keyword, string, comment,
+// number, type, function — from its published editor theme.
+var themeSyntax = map[string][syntax.Function + 1]lipgloss.Color{
+	"Dracula":          syntaxColors("#ff79c6", "#f1fa8c", "#6272a4", "#bd93f9", "#8be9fd", "#50fa7b"),
+	"One Dark":         syntaxColors("#c678dd", "#98c379", "#5c6370", "#d19a66", "#e5c07b", "#61afef"),
+	"Monokai":          syntaxColors("#f92672", "#e6db74", "#75715e", "#ae81ff", "#66d9ef", "#a6e22e"),
+	"Nord":             syntaxColors("#81a1c1", "#a3be8c", "#616e88", "#b48ead", "#8fbcbb", "#88c0d0"),
+	"Gruvbox":          syntaxColors("#fb4934", "#b8bb26", "#928374", "#d3869b", "#fabd2f", "#8ec07c"),
+	"Solarized Dark":   syntaxColors("#859900", "#2aa198", "#586e75", "#d33682", "#b58900", "#268bd2"),
+	"Tokyo Night":      syntaxColors("#bb9af7", "#9ece6a", "#565f89", "#ff9e64", "#2ac3de", "#7aa2f7"),
+	"Catppuccin Mocha": syntaxColors("#cba6f7", "#a6e3a1", "#6c7086", "#fab387", "#f9e2af", "#89b4fa"),
 }
 
 // StartTheme is the theme of a settings file that names none.

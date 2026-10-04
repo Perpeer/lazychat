@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"lazychat/internal/core/syntax"
 )
 
 // Theme is every colour lazychat draws with, in one place, so that a
@@ -33,6 +35,9 @@ type Theme struct {
 	BadgeModified, BadgeAdded, BadgeRemoved, BadgeRenamed lipgloss.Color
 	// Series is the four token kinds' colours, in the order the report lists them.
 	Series [4]lipgloss.Color
+	// Syntax is a diff's code colours by syntax.Role (Plain unused), as the
+	// theme's own editor theme colours code.
+	Syntax [syntax.Function + 1]lipgloss.Color
 }
 
 // seriesColors is Okabe and Ito's palette, told apart with the common
@@ -67,7 +72,17 @@ func DefaultTheme() Theme {
 		BadgeRemoved:  lipgloss.Color("203"),
 		BadgeRenamed:  lipgloss.Color("75"),
 		Series:        seriesColors(),
+		// The terminal's own 16 colours, so code sits in its theme too.
+		Syntax: syntaxColors("5", "2", "8", "3", "6", "4"),
 	}
+}
+
+// syntaxColors are a theme's code colours in syntax.Role's order.
+func syntaxColors(keyword, str, comment, number, typ, function string) [syntax.Function + 1]lipgloss.Color {
+	var c [syntax.Function + 1]lipgloss.Color
+	c[syntax.Keyword], c[syntax.String], c[syntax.Comment] = lipgloss.Color(keyword), lipgloss.Color(str), lipgloss.Color(comment)
+	c[syntax.Number], c[syntax.Type], c[syntax.Function] = lipgloss.Color(number), lipgloss.Color(typ), lipgloss.Color(function)
+	return c
 }
 
 var theme Theme
@@ -100,6 +115,13 @@ func SetTheme(t Theme) {
 	for i, c := range t.Series {
 		StyleSeries[i] = lipgloss.NewStyle().Foreground(c)
 	}
+	for i, c := range t.Syntax {
+		SyntaxColors[i] = c
+	}
 }
+
+// SyntaxColors are the current theme's code colours by syntax.Role; ""
+// for Plain, the row's own.
+var SyntaxColors [syntax.Function + 1]lipgloss.Color
 
 func init() { SetTheme(DefaultTheme()) }

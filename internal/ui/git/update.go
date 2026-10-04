@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lazychat/internal/core/git"
+	"lazychat/internal/core/syntax"
 	"lazychat/internal/ui/git/model"
 	"lazychat/internal/ui/kit"
 )
@@ -26,6 +27,7 @@ type (
 		seq   int
 		key   string
 		files []git.File
+		roles [][][]syntax.Span // the files' code colours; nil when off
 		err   error
 	}
 	stagedMsg struct {
@@ -148,7 +150,7 @@ func (g *Git) Update(msg tea.Msg) tea.Cmd {
 		if msg.seq != g.seq {
 			return nil
 		}
-		next := diff{key: msg.key, title: g.diff.title, lines: flatten(msg.files), err: msg.err}
+		next := diff{key: msg.key, title: g.diff.title, lines: flatten(msg.files, msg.roles...), err: msg.err}
 		if msg.key == g.diff.key {
 			// A refresh of the same change keeps its place and selection.
 			next.top, next.cur, next.anchor, next.marked = g.diff.top, g.diff.cur, g.diff.anchor, g.diff.marked
@@ -278,6 +280,7 @@ func (g *Git) loadCursor() tea.Cmd {
 // none there the right side empties at once.
 func (g *Git) loadDiff() tea.Cmd {
 	g.seq++
+	colour := g.syntaxOn()
 	if g.onCommits() {
 		return g.loadCommit()
 	}
@@ -318,9 +321,22 @@ func (g *Git) loadDiff() tea.Cmd {
 		} else {
 			patch, err = git.DiffAll(root, entries, staged)
 		}
-		return diffMsg{seq: seq, key: key, files: git.Parse(patch), err: err}
+		return g.diffRead(seq, key, patch, err, colour)
 	})
 }
+
+// diffRead is a read patch as the diff message, its code coloured when
+// colour says so; it runs in the read's goroutine.
+func (g *Git) diffRead(seq int, key, patch string, err error, colour bool) tea.Msg {
+	msg := diffMsg{seq: seq, key: key, files: git.Parse(patch), err: err}
+	if colour {
+		msg.roles = syntaxOf(msg.files)
+	}
+	return msg
+}
+
+// syntaxOn says a diff's code is coloured: on unless turned off in Settings.
+func (g *Git) syntaxOn() bool { return g.core.Settings == nil || !g.core.Settings.NoSyntax }
 
 // moveProject steps the left cursor and reads the new project's changes.
 func (g *Git) moveProject(d int) tea.Cmd {
@@ -348,14 +364,14 @@ func (g *Git) loadCommit() tea.Cmd {
 	}
 	g.commits.ClampTo(len(p.commits))
 	c := p.commits[g.commits.Sel]
-	seq, key, root := g.seq, "commit "+c.Hash, p.st.Root
+	seq, key, root, colour := g.seq, "commit "+c.Hash, p.st.Root, g.syntaxOn()
 	if g.diff.key != key {
 		g.diff = diff{key: key}
 	}
 	g.diff.title = c.Hash + " " + c.Subject
 	return g.own(func() tea.Msg {
 		patch, err := git.Show(root, c.Hash)
-		return diffMsg{seq: seq, key: key, files: git.Parse(patch), err: err}
+		return g.diffRead(seq, key, patch, err, colour)
 	})
 }
 

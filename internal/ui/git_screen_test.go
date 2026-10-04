@@ -11,7 +11,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	"lazychat/internal/core/state"
+	"lazychat/internal/core/syntax"
+	"regexp"
 )
 
 // gitIn runs git in dir as a test's own user, failing the test on an error
@@ -1026,5 +1030,46 @@ func TestWorktreeModel(t *testing.T) {
 	d.expect("Commit on main in the main")
 	d.key("y")
 	d.expect("committed")
+	d.quitApp()
+}
+
+// A Go file's diff draws its keywords in the theme's keyword colour over the
+// added and removed rows; the Settings switch draws it plain at once.
+func TestDiffSyntax(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	defer lipgloss.SetColorProfile(termenv.Ascii)
+	e, dir := seeded(t)
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, filepath.Join(dir, "shed.go"), "package shed\n\nfunc Paint() string { return \"red\" }\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-qm", "first")
+	write(t, filepath.Join(dir, "shed.go"), "package shed\n\nfunc Paint() string { return \"blue\" }\n")
+
+	d := start(t, e, 150, 36)
+	keyword := lipgloss.NewStyle().Foreground(kit.SyntaxColors[syntax.Keyword]).Render("func")
+	sgr := keyword[:strings.Index(keyword, "func")]
+	param := strings.TrimSuffix(strings.TrimPrefix(sgr, "\x1b["), "m")
+	coloured := regexp.MustCompile(`\x1b\[[0-9;]*` + regexp.QuoteMeta(param) + `[0-9;]*mfunc`)
+	d.tab(2)
+	d.expect("[2] Unstaged · 1", `+ func Paint() string { return "blue" }`)
+	d.until("func is not in the keyword colour", func() bool { return coloured.MatchString(d.app.View()) })
+	d.tab(4)
+	for range 9 {
+		d.key("down")
+	}
+	d.expect("syntax colours", "  on")
+	d.key("enter", "down", "enter")
+	d.expect("  off", "(enter) change")
+	if !d.core.Settings.NoSyntax {
+		t.Fatal("turning syntax colours off was not saved")
+	}
+	d.tab(2)
+	d.expect(`+ func Paint() string { return "blue" }`)
+	if coloured.MatchString(d.app.View()) {
+		t.Error("func still coloured with syntax colours off")
+	}
 	d.quitApp()
 }

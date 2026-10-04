@@ -1,6 +1,10 @@
 package kit
 
-import "testing"
+import (
+	"testing"
+
+	"lazychat/internal/core/syntax"
+)
 
 // Every theme names every colour: a missing one would draw in the
 // terminal's default and vanish on some backgrounds.
@@ -19,6 +23,11 @@ func TestThemes(t *testing.T) {
 		} {
 			if c == "" {
 				t.Errorf("%s: no %s colour", th.Name, name)
+			}
+		}
+		for r := syntax.Keyword; r <= syntax.Function; r++ {
+			if th.Syntax[r] == "" {
+				t.Errorf("%s: no code colour for role %d", th.Name, r)
 			}
 		}
 		if i > 0 && (th.Background == "" || th.Foreground == "") {

@@ -430,7 +430,7 @@ func (g *Git) diffBox(w, h int) string {
 		}
 	default:
 		g.diff.top = kit.Clamp(g.diff.top, 0, max(0, len(g.diff.lines)-g.diffRows()))
-		lines = drawDiff(g.diff.lines, g.diff.top, w-2, h-2, g.diffLit)
+		lines = drawDiff(g.diff.lines, g.diff.top, w-2, h-2, g.diffLit, g.syntaxOn())
 	}
 	b := kit.Box(title, kit.ZoneBlock(hits.Pane, pad(lines, h-2), w-2), w, h, g.focus == panelDiff, false)
 	// The thumb says where in a long diff the view is and how much of it

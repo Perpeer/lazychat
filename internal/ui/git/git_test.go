@@ -56,7 +56,7 @@ func TestKeymap(t *testing.T) {
 func TestDrawLine(t *testing.T) {
 	files := coregit.Parse("diff --git a/x b/x\n@@ -9,2 +9,2 @@ func f()\n-\tb := 2\n+\tb := 3\n " + strings.Repeat("y", 200) + "\n")
 	lines := flatten(files)
-	got := drawDiff(lines, 0, 60, 10, nil)
+	got := drawDiff(lines, 0, 60, 10, nil, true)
 	if len(got) != 4 {
 		t.Fatalf("%d rows", len(got))
 	}
@@ -91,7 +91,7 @@ func TestDrawWindow(t *testing.T) {
 	if len(lines) != 20001 {
 		t.Fatalf("%d lines", len(lines))
 	}
-	if got := drawDiff(lines, 19990, 80, 30, nil); len(got) != 11 || !strings.Contains(ansi.Strip(got[10]), "20000") {
+	if got := drawDiff(lines, 19990, 80, 30, nil, true); len(got) != 11 || !strings.Contains(ansi.Strip(got[10]), "20000") {
 		t.Errorf("the window from 19990: %d rows, last %q", len(got), ansi.Strip(got[len(got)-1]))
 	}
 }

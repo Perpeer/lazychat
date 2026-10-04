@@ -44,6 +44,8 @@ type Settings struct {
 	// NoSounds keeps Lazy quiet: no sound for a question, a finished or
 	// failed answer, a worker back.
 	NoSounds bool `json:"no_sounds,omitempty"`
+	// NoSyntax draws a diff's code plain, without its language's colours.
+	NoSyntax bool `json:"no_syntax,omitempty"`
 
 	// Home is lazychat's folder of this machine, where the file lives.
 	Home string `json:"-"`
