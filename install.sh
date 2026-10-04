@@ -153,7 +153,10 @@ else
   # -trimpath keeps the builder's directory names out of the binary. The
   # output is kept back and shown only when the build fails, with a hint.
   log="$(mktemp)"
-  if ! CGO_ENABLED="$cgo" go build -trimpath -ldflags "-X 'main.version=$version'" -o "$bin" ./cmd/lazychat >"$log" 2>&1; then
+  # The newest release this checkout is past, so the build can tell when a
+  # newer one is out.
+  tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)"
+  if ! CGO_ENABLED="$cgo" go build -trimpath -ldflags "-X 'main.version=$version' -X 'main.releaseTag=$tag'" -o "$bin" ./cmd/lazychat >"$log" 2>&1; then
     tail -n 20 "$log" >&2
     if grep -qiE 'dial tcp|proxy|timeout|no such host|TLS' "$log"; then
       fail build "Go could not download what the build needs (see above)." \

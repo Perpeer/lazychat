@@ -194,24 +194,28 @@ func TestWhere(t *testing.T) {
 	}
 }
 
-// A worktree's row is its folder, then its branch, a folder named after
-// the branch left out; the branch it was made from goes beside the changes,
-// cut from its start so its end shows.
+// A worktree's row is its branch, its folder's name after it only when the
+// branch does not say it already; the branch it was made from goes beside
+// the changes, cut from its start so its end shows.
 func TestWorktreeRow(t *testing.T) {
-	wt := coregit.Worktree{Path: "/garden/task2", Branch: "worktree-task2"}
+	wt := coregit.Worktree{Path: "/garden/shed/.worktrees/task2", Branch: "worktree-task2"}
 	r := row{path: wt.Path, wt: &wt}
 	p := &project{from: "garden-shed-paints/feature/blue-door"}
 	p.st.Branch = "worktree-task2"
 	rows := worktreeEntry(r, p, "/garden/shed", 40, true)
-	if rows[0].Plain != "⑂ ../task2/ worktree-task2" {
-		t.Errorf("first row %q", rows[0].Plain)
+	if rows[0].Plain != "⑂ worktree-task2" {
+		t.Errorf("a folder the branch names: %q", rows[0].Plain)
 	}
 	if foot := rows[1].Prefix + rows[1].Plain; !strings.HasSuffix(foot, "blue-door") || !strings.Contains(foot, "clean · from …") || text.Width(foot) > 40 {
 		t.Errorf("second row %q", foot)
 	}
-	same := coregit.Worktree{Path: "/garden/blue-door", Branch: "blue-door"}
+	other := coregit.Worktree{Path: "/garden/paint", Branch: "blue-door"}
 	p.st.Branch, p.from = "blue-door", ""
-	if rows := worktreeEntry(row{path: same.Path, wt: &same}, p, "/garden/shed", 40, true); rows[0].Plain != "⑂ blue-door" {
-		t.Errorf("a folder named after its branch: %q", rows[0].Plain)
+	if rows := worktreeEntry(row{path: other.Path, wt: &other}, p, "/garden/shed", 40, true); rows[0].Plain != "⑂ blue-door · paint/" {
+		t.Errorf("a folder of its own name: %q", rows[0].Plain)
+	}
+	p.st.Branch = "garden-shed-paints/feature/a-very-long-blue-door"
+	if rows := worktreeEntry(row{path: other.Path, wt: &other}, p, "/garden/shed", 40, true); strings.Contains(rows[0].Plain, "paint/") || text.Width(rows[0].Prefix+rows[0].Plain) > 40 {
+		t.Errorf("a long branch keeps the row: %q", rows[0].Plain)
 	}
 }

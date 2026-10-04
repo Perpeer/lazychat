@@ -233,12 +233,16 @@ func (a *App) area(room int) string {
 	return strings.Join(parts, "   ")
 }
 
-// version is what the corner shows, v1.0(N); nothing for a build
-// install.sh did not stamp, or when Settings turns it off.
+// version is what the corner shows, v1.0(N) or v1.0.2, and in green the
+// newer release when one is out; nothing for a build install.sh did not
+// stamp, or when Settings turns it off.
 func (a *App) version() string {
 	v, _, _ := strings.Cut(a.opts.Version, " ")
 	if v == "" || v == "dev" || (a.core.Settings != nil && a.core.Settings.NoVersion) {
 		return ""
+	}
+	if a.latest != "" {
+		return "v" + v + "  " + kit.StyleBusy.Render("↑ "+a.latest)
 	}
 	return "v" + v
 }

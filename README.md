@@ -48,7 +48,8 @@ Homebrew builds lazychat on your Mac, along with Lazy's menu bar app, so
 macOS opens both without a warning. Then run `lazychat`; `lazychat doctor`
 says what else is ready. Lazy starts with lazychat; `brew services start
 lazychat` keeps it in the menu bar from every login. `brew upgrade
-lazychat` takes a new release.
+lazychat` takes a new release; lazychat tells you in green, beside its
+version, when one is out.
 
 lazychat comes from our own tap for now. Homebrew's own list takes it at
 225 stars, and then it is just `brew install lazychat`. If it saves you a

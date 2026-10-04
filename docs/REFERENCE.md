@@ -89,7 +89,10 @@ The version is `1.0(N)`, N the number of commits on the checked-out
 branch. `install.sh` stamps it into the binary with the short hash
 (`-dirty` when the tree has uncommitted changes); it shows as `v1.0(N)` at
 the screen's bottom-right corner, and `lazychat --version` prints it with
-the hash.
+the hash. A Homebrew build is `1.0.2`, its release's. Either says in green
+when a newer release is out (`v1.0(58)  ↑ 1.0.3`): install.sh also stamps
+the newest release the checkout is past, so a source build compares from
+there. `lazychat doctor` names the newest release too.
 
 ### Uninstalling
 
@@ -468,7 +471,7 @@ a diff with the commit box under it.
 │ ~/code/lazychat
 │   ├─ ● main      repository · lazychat/
 │   │    ↑1 · clean
-│   └─ ⑂ ../wt-feature/ feature
+│   └─ ⑂ feature · wt-feature/
 │        1 changed · from main
 ```
 
@@ -476,9 +479,10 @@ Under each project hangs the checkout it works in — its folder, where
 Chat's sessions and Terminal's shells start — and under that the
 repository's other checkouts (`git worktree list`). The repository's own
 checkout reads its branch, then `repository` and its folder by name. A
-worktree reads its folder first — from the repository (`../wt-feature/`,
-`.worktrees/fence/`), one far away from home, none when the folder is
-named after the branch — then its branch. When a long branch leaves no
+worktree reads its branch, then its folder's own name (`· wt-feature/`)
+only when the branch does not already say it: `worktree-task2` in
+`.worktrees/task2` is the branch alone. The branch keeps its room; the
+folder takes what is left, or is left out. When a long branch leaves no
 room, the repository's label opens the row under it. The project's
 checkout is marked `●` in the accent (`⑂` and the branch in the worktree
 colour when it is itself a worktree), the others `⑂`, or `○` for the
@@ -595,6 +599,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | General | new session | the first ready tool | the tool a new session's form starts on; one not ready leaves the form on the default |
 | General | commit messages | the first ready tool that can write one (claude, as it is listed first) | the tool behind the commit box's `Suggest`, any installed one, or `off` |
 | General | tabs | Git and Terminal shown | each ticked when it is on the rail; `Enter` flips one and stays |
+| General | updates | checked | asks GitHub at start and every six hours (the answer kept in `~/.lazychat/update.json`) whether a newer lazychat is out; when one is, the corner shows it in green, `v1.0.2  ↑ 1.0.3`, and a note says once how to get it (`brew upgrade lazychat`, or `git pull` and `./install.sh` for a source build). Nothing about this Mac goes with the question; offline, it says nothing |
 | Appearance | theme | Gruvbox | Amber (lazychat's own muted yellow on the terminal's colours), Dracula, One Dark, Monokai, Nord, Gruvbox, Solarized Dark, Tokyo Night, Catppuccin Mocha. All but Amber also set the terminal window's background and text while lazychat runs (OSC 10 and 11, given back on the way out), so the panes' programs sit on them too |
 | Appearance | mascot | shown | Lazy, the face at the rail's top |
 | Appearance | version | shown | the corner's `v1.0(N)` |

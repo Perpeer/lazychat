@@ -44,6 +44,8 @@ type Settings struct {
 	// NoSounds keeps Lazy quiet: no sound for a question, a finished or
 	// failed answer, a worker back.
 	NoSounds bool `json:"no_sounds,omitempty"`
+	// NoUpdateCheck keeps lazychat from asking GitHub for its newest release.
+	NoUpdateCheck bool `json:"no_update_check,omitempty"`
 	// NoSyntax draws a diff's code plain, without its language's colours.
 	NoSyntax bool `json:"no_syntax,omitempty"`
 

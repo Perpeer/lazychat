@@ -33,11 +33,12 @@ paths:
   in the branch list, never "current" (it meant two things) nor "main
   folder" (the user could not tell what it meant): every checkout row is
   the repository's own row is branch, then `repository · <folder>/`; a
-  worktree's is folder first (view.go where: from the repository, after
-  EvalSymlinks — /tmp is /private/tmp; left out when named after the
-  branch, which would say it twice), then branch; "from <branch>" sits
-  beside the changes, cut from its start (FitLeft) so its end shows — the
-  user's layout. `● this folder` in the list for the row's own branch.
+  worktree's is branch, then ` · <folder>/` by the folder's own name only
+  when the branch does not contain it (the user saw ".worktrees/task2/
+  worktree-task2" cut and said twice); the branch keeps its room, the
+  folder takes the rest or goes. "from <branch>" sits beside the changes,
+  cut from its start (FitLeft) so its end shows.
+  `● this folder` in the list for the row's own branch.
   Headings keep `⎇ <branch>` and add `⑂ <worktree>` in
   the worktree colour (`kit.HeadLabel`, `git.Head.Worktree`).
 - Going to a worktree is moving the cursor to its row, never a checkout:

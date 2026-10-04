@@ -8,6 +8,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,12 +26,17 @@ import (
 	"lazychat/internal/ui"
 
 	"lazychat/internal/core/files"
+	"lazychat/internal/core/update"
 )
 
 // version is 1.0(N) and the repo's short git hash, N its commit count,
 // stamped by install.sh with -ldflags; the installer compares it with the
 // installed binary to decide on a rebuild.
 var version = "dev"
+
+// releaseTag is the newest release a source build's checkout is past
+// (v1.0.1), stamped by install.sh; "" for Homebrew's build, whose version is one.
+var releaseTag = ""
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -137,7 +143,11 @@ func run(args []string) error {
 			defer release()
 			return subcommand(core, rest)
 		}
-		opts := ui.Options{NoteTime: noteTime, Version: version, Open: open, Release: release}
+		opts := ui.Options{NoteTime: noteTime, Version: version, Open: open, Release: release,
+			Base: update.Base(version, releaseTag)}
+		if c := update.New(filepath.Dir(registryPath)); c != nil {
+			opts.Latest, opts.Upgrade = c.Latest, upgradeHow()
+		}
 		if registryPath == workspace.DefaultRegistryPath() {
 			opts.MenuBar = startMenuBar
 		}
@@ -205,7 +215,11 @@ func subcommand(core *api.Core, rest []string) error {
 		if exe, err := os.Executable(); err == nil {
 			apps = append([]string{besideBinary(exe)}, apps...)
 		}
-		for _, c := range append(core.Doctor(), extraChecks(apps, exec.LookPath)...) {
+		checks := append(core.Doctor(), extraChecks(apps, exec.LookPath)...)
+		if core.Settings != nil && !core.Settings.NoUpdateCheck {
+			checks = append(checks, updateCheck(update.New(core.Settings.Home), update.Base(version, releaseTag)))
+		}
+		for _, c := range checks {
 			mark := "ok  "
 			switch {
 			case !c.OK && c.Optional:
@@ -223,6 +237,35 @@ func subcommand(core *api.Core, rest []string) error {
 		return projects(core, rest[1:])
 	}
 	return fmt.Errorf("unknown command %q (doctor, projects)", rest[0])
+}
+
+// updateCheck is doctor's line on the newest release: never a failure, as
+// lazychat works the same without the answer.
+func updateCheck(c *update.Checker, base string) api.Check {
+	chk := api.Check{Name: "update", Optional: true}
+	if c == nil {
+		chk.Detail = "not checked"
+		return chk
+	}
+	latest, err := c.Latest(context.Background())
+	switch {
+	case err != nil:
+		chk.Detail = "could not ask GitHub: " + err.Error()
+	case update.Newer(base, latest):
+		chk.Detail = "lazychat " + latest + " is out: " + upgradeHow()
+	default:
+		chk.OK, chk.Detail = true, latest+" is the newest release"
+	}
+	return chk
+}
+
+// upgradeHow is how this build is brought up to date: Homebrew's by brew,
+// a source build by pulling and installing again.
+func upgradeHow() string {
+	if releaseTag != "" {
+		return "git pull, then ./install.sh"
+	}
+	return "brew upgrade lazychat"
 }
 
 func projects(core *api.Core, args []string) error {

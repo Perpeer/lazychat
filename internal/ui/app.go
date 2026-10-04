@@ -51,6 +51,13 @@ type Options struct {
 	// MenuBar starts the macOS menu bar helper when it is installed and not
 	// running; nil where there is none.
 	MenuBar func()
+	// Base is the release this build stands on (update.Base), "" for a
+	// build that is neither a release nor past one.
+	Base string
+	// Latest asks for the newest release, off the loop; nil asks nothing
+	// (the tests). Upgrade says how to bring this build up to date.
+	Latest  func(ctx context.Context) (string, error)
+	Upgrade string
 }
 
 // focuser hands the raw input to a session and takes it back: the input
@@ -75,6 +82,10 @@ type App struct {
 	active  int
 	release func()           // lets go of the open workspace's lock
 	news    *presence.Writer // the mascot's news for the macOS menu bar; nil in tests
+	// latest is the newest release when it is newer than this build;
+	// asked is when the shell last asked for it.
+	latest string
+	asked  time.Time
 	// play plays one of Lazy's sounds; nil in tests. heard is each
 	// session's state at the last tick, to hear only its changes.
 	play    func(sound.Name)
@@ -244,7 +255,11 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		a.tellMenuBar()
 		a.hearNews()
+		cmds = append(cmds, a.askLatest(time.Now()))
 		return a, tea.Batch(cmds...)
+	case latestMsg:
+		a.gotLatest(msg)
+		return a, nil
 	case kit.PlaySound:
 		a.sound(msg.Name)
 		return a, nil

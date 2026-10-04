@@ -212,8 +212,8 @@ func where(path, repo string) string {
 }
 
 // checkoutEntry is a checkout's two rows. A worktree's first row is its
-// folder, then its branch; the repository's is its branch with its label
-// beside it. The second row is ↑ ahead, ↓ behind, what changed, a note, and
+// branch, with its folder's name after it when the branch does not say it;
+// the repository's is its branch with its label beside it. The second row is ↑ ahead, ↓ behind, what changed, a note, and
 // "from <branch>" for a worktree — that branch cut from its start to fit,
 // its end being what tells branches apart.
 func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipgloss.Style, c checkout) []kit.TreeLine {
@@ -244,20 +244,24 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipglo
 		counts = append(counts, c.note)
 	}
 	room := w - text.Width(first) - text.Width(glyph+" ")
-	head, plainHead := "", ""
-	// A folder named after its branch would say the branch twice.
-	if strings.TrimSuffix(filepath.Base(strings.TrimSuffix(c.folder, "/")), "/") == strings.ReplaceAll(p.st.Branch, "/", "-") {
-		c.folder = ""
-	}
-	if c.folder != "" {
-		f := text.FitLeft(c.folder, max(8, room/2))
-		plainHead, head = f+" ", kit.StyleDim.Render(f)+" "
-		room -= text.Width(plainHead)
+	// A worktree's folder by its own name, after the branch, and only when
+	// the branch does not already say it: worktree-task2 in .worktrees/task2
+	// is the branch alone. The branch keeps its room; the folder takes what
+	// is left or is left out.
+	folder := strings.TrimSuffix(filepath.Base(strings.TrimSuffix(c.folder, "/")), "/")
+	if c.folder == "" || strings.Contains(strings.ReplaceAll(p.st.Branch, "/", "-"), folder) {
+		folder = ""
 	}
 	branch := text.FitMiddle(p.st.Branch, room)
-	// The branch comes first; the repository's label takes the rest of the
-	// row, or opens the row under it when the branch leaves too little.
 	tail, plainTail := "", ""
+	if folder != "" {
+		if left := room - text.Width(branch) - 3; left >= 6 {
+			plainTail = " · " + text.Fit(folder+"/", left)
+			tail = kit.StyleDim.Render(plainTail)
+		}
+	}
+	// The repository's label takes the rest of the row, or opens the row
+	// under it when the branch leaves too little.
 	if c.label != "" {
 		if left := room - text.Width(branch) - 3; left >= 12 {
 			plainTail = "   " + text.Fit(c.label, left)
@@ -271,7 +275,7 @@ func checkoutEntry(p *project, w int, last bool, glyph string, mark, name lipglo
 		left := w - text.Width(rest) - text.Width(foot) - len(" · from ")
 		foot += " · from " + text.FitLeft(c.from, max(6, left))
 	}
-	out := []kit.TreeLine{{Prefix: first, Styled: mark.Render(glyph) + " " + head + name.Render(branch) + tail, Plain: glyph + " " + plainHead + branch + plainTail}}
+	out := []kit.TreeLine{{Prefix: first, Styled: mark.Render(glyph) + " " + name.Render(branch) + tail, Plain: glyph + " " + branch + plainTail}}
 	return append(out, kit.TreeLine{Prefix: rest, Styled: kit.StyleDim.Render(foot), Plain: foot})
 }
 

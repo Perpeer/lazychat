@@ -60,3 +60,11 @@ paths:
   (uncommitted work is not in it); Homebrew installs formulae from taps
   only. The script's text says "push": write it with the editor, the git
   guard hook reads a shell command's text.
+- A newer release is told, never fetched by itself: core/update asks
+  GitHub's releases/latest (no identifier sent) at start and every six
+  hours, the answer kept in ~/.lazychat/update.json; the corner shows
+  "↑ X.Y.Z" in green and a note says how to upgrade once. A build compares
+  from update.Base: Homebrew's own version, or the release a source build
+  is past (install.sh stamps main.releaseTag from git describe). Tests set
+  LAZYCHAT_NO_UPDATE_CHECK (testenv) so none asks GitHub; doctor's line is
+  optional, never a failure.

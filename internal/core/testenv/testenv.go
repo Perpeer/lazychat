@@ -40,6 +40,8 @@ func run(m *testing.M) int {
 		// The user's hooks, signing and aliases must not run in a test repo.
 		"GIT_CONFIG_GLOBAL":   os.DevNull,
 		"GIT_CONFIG_NOSYSTEM": "1",
+		// No test asks GitHub for the newest release.
+		"LAZYCHAT_NO_UPDATE_CHECK": "1",
 	} {
 		os.Setenv(k, v)
 	}
