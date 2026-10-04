@@ -40,7 +40,8 @@ type report struct {
 	err       error
 
 	scroll int
-	back   int // the prompt shown in full, counted back from the newest
+	back   int  // the prompt shown in full, counted back from the newest
+	moving bool // the picked prompt's village shows motion, at the last draw
 }
 
 // reportMsg is a read's result.

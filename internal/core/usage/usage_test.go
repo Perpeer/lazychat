@@ -425,3 +425,32 @@ func TestPriceFile(t *testing.T) {
 		t.Errorf("changed: %v", p)
 	}
 }
+
+// A shell line's commands are counted by their first words, a cd, an env
+// assignment and an echo left out; a turn counts its tools and commands.
+func TestCommandHeads(t *testing.T) {
+	cases := map[string][]string{
+		"go test ./...": {"go test"},
+		"cd shed && go build ./cmd/x && git status": {"go build", "git status"},
+		"FOO=1 npm run paint | tee log.txt":         {"npm run", "tee"},
+		"echo hi; ls -la":                           {"ls"},
+		"":                                          nil,
+		`grep -rn "blue door" .`:                    {"grep"},
+	}
+	for line, want := range cases {
+		if got := commandHeads(line); fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Errorf("%q: %q, want %q", line, got, want)
+		}
+	}
+	path := filepath.Join(t.TempDir(), "s-7.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "test the shed"}})
+	w.reply("b1", 10, 0, 5, use("t1", "Bash", map[string]any{"command": "go test ./... && git status"}), use("t2", "Read", map[string]any{}))
+	w.reply("b2", 10, 10, 5, use("t3", "Bash", map[string]any{"command": "go test ./shed"}))
+	w.flush()
+	s, _ := Open(path).Update()
+	turns := s.Clone().Turns()
+	if len(turns) != 1 || turns[0].Tools["Bash"] != 2 || turns[0].Tools["Read"] != 1 || turns[0].Commands["go test"] != 2 || turns[0].Commands["git status"] != 1 {
+		t.Errorf("turn %+v %+v", turns[0].Tools, turns[0].Commands)
+	}
+}

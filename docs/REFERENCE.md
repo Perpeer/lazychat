@@ -310,49 +310,76 @@ and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
 second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet.
 
+At the top, the picked prompt as a village. Lazy leads from the middle and
+up to eight buildings stand around it, one per worker: a subagent (Explore
+a tower, Plan a library, general-purpose a forge, any other a hut), a
+skill (a scribe's house) or an MCP server (a market; its tools are one
+worker). A worker walks from Lazy to its building with its job in a
+bubble, `‹title: job›`, works there with its windows lit, walks back with
+`‹title ✓›`, then goes home. A building is dim until its worker starts and
+again when the job is done, `(^^)✓` at the door. Lazy types while the
+prompt runs, asks as on the rail while a question waits for you, and
+cheers a moment when it ends. A ninth worker and later ones are counted
+under Lazy (`+2`). Positions come from the transcript's times. A worker
+with no time stays home, and an older prompt shows everyone done.
+
 ```
- shed work  ◐ working   time without the questions put to you; …
- prompts  ↑↓ picks one · newest first
-    #   started     ended     active   tokens  output  prompt
- ▶  3   10-04 14:02 working     2m10s    412k    1.2k  paint the garden shed
-    2   10-04 13:40 13:51:02    9m02s    1.2M    5.0k  /tidy-up the garage
- prompt 3  14:02:10 → working · 2m10s active · 41s waiting for your answer, left out (1 question(s))
- ❯ paint the garden shed
- ░ 400k  ▒ 6  ▓ 9k  █ 1.2k   cache read · input · cache write · output · 9 calls
- agents  out ▶, back ◀ with what they spent; ★ one of yours
- session               ★shed-painter
-   │────────────────────▶┐                      14:02:40 user · count the boards
-   │◀────────────────────┘                      ✓ 14:03:20 · 40s · 96k tokens
- skills  added: what its text put in the context · carried: read again by every later call
-    name                         from                ×    added  carried    spent
- ★ brush-care                   project             1     1.5k     4.4k     5.8k
- MCP  added: what the result put in the context · carried: read again by every later call
-    name                         server              ×    added  carried    spent
-   list_colours                 paint-shop          1     3.0k     5.9k     8.9k
+                                             ‹shed-painter: sand…›
+     ╱────╲               ╱══════╲              ╱──────╲
+    │ ▫  ▫ │              │ ≡ ≡≡ │              │ ▓▓▓▓ │
+    │  ▯▯  │ (^^)✓        │  ▯▯  │ (^^)✓        │  ▯▯  │ (◦•)
+    └──────┘              └──────┘              └──────┘
+    Explore               brush-care            shed-painter
+
+                              ╭────╮            ┬┬┬┬┬┬┬┬
+                              │ ◦• │         ‹paint-shop ✓›
+                              ╰─┬┬─╯            │ (◦•) │
+    · · · ·                   [▫▫▪▫]            └──────┘
+                                                paint-shop
+                               Lazy
 ```
 
-- the prompts, newest first: when each started and ended — where Claude
-  Code wrote its turn's end, or `working` — its active time, its tokens and
-  output, the main agent's and every subagent's calls until the next
-  prompt. A slash command is listed as typed;
-- active time leaves out the time a question (`AskUserQuestion`) waited
-  for the user's answer. A permission prompt's wait is not in the
-  transcript and stays in;
-- the picked prompt (`↑↓`; the newest is followed): its tokens by kind
-  (`░` cache read, `▒` input, `▓` cache write, `█` output, each with a
-  colour-blind safe colour too) and a cost when priced;
-- its agents as a sequence: the session's lifeline and one per subagent,
-  an arrow out when it left, one back when it returned with its time and
-  its own tokens, a dotted line while it works. `★` marks an agent defined
+Under it, the prompts as a table, newest first, two rows each: its number
+(`▶` the picked one), when it started and `→` when it ended (where Claude
+Code wrote the turn's end, or `working`), its active time, its tokens and
+output, its cost when priced, and its text over two rows. `↑↓` picks one;
+the newest is followed.
+
+```
+ ┌──────┬─────────────┬────────┬──────────┬───────┬──────────────────────┐
+ │ #    │ started     │ active │ tokens   │ cost  │ prompt               │
+ ├──────┼─────────────┼────────┼──────────┼───────┼──────────────────────┤
+ │ ▶ 3  │ 10-04 14:02 │ 2m10s  │ 412k     │ —     │ paint the garden     │
+ │      │ → working   │        │ out 1.2k │       │ shed blue            │
+ ├──────┼─────────────┼────────┼──────────┼───────┼──────────────────────┤
+ │   2  │ 10-04 13:40 │ 9m02s  │ 1.2M     │ —     │ /tidy-up the garage  │
+ │      │ → 13:51:02  │        │ out 5.0k │       │                      │
+ └──────┴─────────────┴────────┴──────────┴───────┴──────────────────────┘
+```
+
+Then the picked prompt's report:
+
+- its time (`14:02:10 → working · 2m10s active`) and how long questions
+  (`AskUserQuestion`) waited for your answer, which is left out of the
+  active time. A permission prompt's wait is not in the transcript and
+  stays in;
+- its tokens by kind (`░` cache read, `▒` input, `▓` cache write, `█`
+  output, each with a colour-blind safe colour too), its calls, its cost;
+- workers: a table of its subagents, skills and MCP servers, each with
+  how long it took, its tokens and its calls. `★` marks a subagent defined
   by the user (`~/.claude/agents`), the project (`.claude/agents`) or a
-  plugin;
-- its skills and MCP calls, the costliest first. No line says what a
-  result cost, so it is measured: *added* is how much the next call's
-  context grew, shared among the results in between by their size;
-  *carried* is the same tokens read again from the cache by every later
-  call of the prompt. A skill's origin comes from its folder — `user`,
-  `project`, `plugin`, or `built-in` when it has none — and the user's and
-  the project's are marked `★`.
+  plugin, and the user's and the project's skills. A skill's or MCP
+  server's tokens are measured, since no line says what a result cost:
+  how much the next call's context grew, shared among the results in
+  between by size, plus the same tokens read again by every later call of
+  the prompt;
+- tools: every tool call of the prompt, by tool, the most used first;
+- commands: the shell commands it ran, by their first words (`go test`,
+  `git status`), with `cd` and `echo` left out;
+- files: its edits by tool and the lines its subagents say they changed.
+
+What the transcript does not say — an older Claude Code, a transcript cut
+short — is a dash, never a guess.
 
 A reply written over several lines counts once, its largest numbers kept;
 a fork's copied history counts once. Costs show only for models priced in

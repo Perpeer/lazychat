@@ -239,6 +239,7 @@ type block struct {
 		SubagentType string `json:"subagent_type"`
 		Description  string `json:"description"`
 		Skill        string `json:"skill"`
+		Command      string `json:"command"`
 	} `json:"input"`
 	ToolUseID string          `json:"tool_use_id"`
 	Content   json.RawMessage `json:"content"`
@@ -457,6 +458,7 @@ func (r *Reader) assistant(run *stream, rec *record, counts map[string]int) {
 		}
 		r.tools[b.ID] = true
 		counts[b.Name]++
+		r.s.ToolUses = append(r.s.ToolUses, ToolUse{Name: b.Name, Agent: run.agent, Time: rec.Timestamp, Commands: commandHeads(b.Input.Command)})
 		t := tool{name: b.Name, at: rec.Timestamp}
 		switch {
 		case b.Name == "Skill":
@@ -632,4 +634,26 @@ func (r *Reader) agentLine(f *agentFile, line []byte) {
 	if a.Model == "" {
 		a.Model = rec.Message.Model
 	}
+}
+
+// commandHeads are a shell line's commands by their first words — "go
+// test", "git status", "npm" — one per command of a && or ; or | chain, a
+// cd or an env assignment before it left out: what was run, not with what.
+func commandHeads(line string) []string {
+	var out []string
+	for _, part := range strings.FieldsFunc(line, func(r rune) bool { return r == ';' || r == '|' || r == '&' || r == '\n' }) {
+		words := strings.Fields(part)
+		for len(words) > 0 && (strings.Contains(words[0], "=") || words[0] == "sudo" || words[0] == "env") {
+			words = words[1:]
+		}
+		if len(words) == 0 || words[0] == "cd" || words[0] == "echo" {
+			continue
+		}
+		head := words[0]
+		if len(words) > 1 && !strings.HasPrefix(words[1], "-") && !strings.ContainsAny(words[1], "/.\"'$") {
+			head += " " + words[1]
+		}
+		out = append(out, head)
+	}
+	return out
 }

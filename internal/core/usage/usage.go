@@ -102,6 +102,17 @@ type Session struct {
 	// Uses are the skills and MCP calls, the subagents' too, in the order
 	// they were read.
 	Uses []*Use
+	// ToolUses are every tool call, the subagents' too, in the order read.
+	ToolUses []ToolUse
+}
+
+// ToolUse is one tool call: which tool, by whom, when, and for a shell
+// call the commands it ran, by their first words.
+type ToolUse struct {
+	Name     string
+	Agent    string // the subagent that called it; "" the session
+	Time     time.Time
+	Commands []string
 }
 
 // Span is a stretch of time; To is zero while it lasts.
@@ -155,6 +166,9 @@ type Turn struct {
 	Calls  int
 	Agents []*Agent // started in the turn
 	Uses   []*Use
+	// Tools counts the turn's tool calls by tool, Commands its shell
+	// commands by their first words.
+	Tools, Commands map[string]int
 }
 
 // Ended says the turn is over: Claude Code said so, or the turn's end was
@@ -229,6 +243,19 @@ func (s *Session) Turns() []Turn {
 	for _, u := range s.Uses {
 		if i := at(u.Time); i >= 0 {
 			out[i].Uses = append(out[i].Uses, u)
+		}
+	}
+	for _, tu := range s.ToolUses {
+		i := at(tu.Time)
+		if i < 0 {
+			continue
+		}
+		if out[i].Tools == nil {
+			out[i].Tools, out[i].Commands = map[string]int{}, map[string]int{}
+		}
+		out[i].Tools[tu.Name]++
+		for _, c := range tu.Commands {
+			out[i].Commands[c]++
 		}
 	}
 	for _, w := range s.Waits {

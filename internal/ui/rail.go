@@ -216,6 +216,15 @@ func (a *App) animating() bool {
 	return st.Mood == kit.Working || a.celebrating(st) || len(st.Questions) > 0
 }
 
+// beating says the fast beat is wanted: by the mascot, or by the active tab
+// while it shows motion of its own.
+func (a *App) beating() bool {
+	if t, ok := a.tab().(kit.Animator); ok && t.Animating() {
+		return true
+	}
+	return a.animating()
+}
+
 // celebrating says a finished session waits to be looked at while nothing
 // works: the mascot parties until it is looked at, or works again. With a
 // session at work it types instead, the news a ✦ on its corner.

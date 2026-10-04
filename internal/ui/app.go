@@ -218,15 +218,15 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case animMsg:
 		a.anim++
-		if a.animating() {
-			return a, animCmd()
+		if a.beating() {
+			return a, tea.Batch(animCmd(), a.tab().Update(kit.Beat{N: a.anim}))
 		}
 		a.animOn = false
 		return a, nil
 	case tickMsg:
 		a.tick++
 		cmds := []tea.Cmd{tickCmd()}
-		if !a.animOn && a.animating() {
+		if !a.animOn && a.beating() {
 			a.animOn = true
 			cmds = append(cmds, animCmd())
 		}

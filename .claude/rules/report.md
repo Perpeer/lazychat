@@ -23,11 +23,23 @@ paths:
   skipped, bad lines counted. Subagent tokens are only in their own files;
   a background agent first writes `async_launched` with no totals, and
   its result's totalTokens is the last call's context, not a sum.
-- The report is the tree cursor's session prompt by prompt (the user
-  dropped everything else: header counts, the session-wide sequence,
-  charts, tools, transcript, export): the prompt list, newest first, and
-  the picked prompt's agents, skills and MCP calls. ↑↓ pick; the newest is
+- The report is the tree cursor's session prompt by prompt: the picked
+  prompt's village on top, the prompts as a two-row table (the user's
+  "Excel-like", prompts are long), then the picked prompt's report:
+  tokens, workers table, tools, commands, files. ↑↓ pick; the newest is
   followed. On a project, its newest session.
+- The village (kit.DrawVillage, chat/village.go) only draws what usage
+  gives: a worker's place comes from its own times (Left/First, Back, a
+  use's time plus useTime), walks are walkTime long. Every field may be
+  missing in another Claude Code version: no time stays home, no name is
+  "agent" or left out, a turn not running shows all done. MCP is one
+  worker per server, skills one per name; past 8 plots the newest stay.
+- The fast beat (animBeat) reaches the active tab as kit.Beat only while
+  it is a kit.Animator saying so: Chat says so while the picked village
+  moves, so an idle page costs no redraws.
+- Commands are the Bash tool's `command`, cut on ; | & and newlines, by
+  their first word and a second one that is no flag or path; env
+  assignments, sudo, env, cd and echo are skipped (usage.commandHeads).
 - A turn ends at the `system` line `turn_duration`; one never written (an
   interrupted answer) ends at its last call once a later prompt came.
   Active time leaves out AskUserQuestion's wait (tool_use → its result);

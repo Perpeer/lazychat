@@ -1,9 +1,7 @@
 package chat
 
 import (
-	"cmp"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -85,12 +83,11 @@ func section(title, note string) string {
 	return kit.StyleBold.Render(" "+title) + kit.StyleDim.Render("  "+note)
 }
 
-// promptRows is how many prompts the list shows around the picked one.
+// promptRows is how many prompts the table shows around the picked one.
 const promptRows = 12
 
-// pageView is the session prompt by prompt: the list, newest first, then
-// the picked prompt in full — its time, tokens, agents, skills and MCP
-// calls.
+// pageView is the session prompt by prompt: the picked prompt's village on
+// top, the prompts as a table under it, and the picked one's report.
 func (c *Chat) pageView(s *usage.Session, w int) []string {
 	now := time.Now()
 	working := c.working(s, now)
@@ -98,8 +95,7 @@ func (c *Chat) pageView(s *usage.Session, w int) []string {
 	if working {
 		state = kit.StyleBusy.Render(kit.Spinner[(c.Tick/2)%len(kit.Spinner)] + " working")
 	}
-	out := []string{" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state +
-		kit.StyleDim.Render("   time without the questions put to you; a permission prompt's wait is not written down and stays in")}
+	out := []string{" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state}
 	if s.Bad > 0 {
 		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %d line(s) were not JSON and are left out", s.Bad)))
 	}
@@ -110,27 +106,114 @@ func (c *Chat) pageView(s *usage.Session, w int) []string {
 	last := len(turns) - 1
 	c.rep.back = kit.Clamp(c.rep.back, 0, last)
 	picked := last - c.rep.back
-	out = append(out, "", section("prompts", "↑↓ picks one · newest first"),
-		kit.StyleDim.Render(fmt.Sprintf("    %-3s %-11s %-8s %7s %8s %7s  %s", "#", "started", "ended", "active", "tokens", "output", "prompt")))
+	t := turns[picked]
+	running := picked == last && working
+	v := villageOf(t, now, running, running && openWait(t))
+	c.rep.moving = moving(v)
+	out = append(out, "")
+	for _, row := range kit.DrawVillage(v, c.beat, w-1) {
+		out = append(out, " "+row)
+	}
+	out = append(out, "", section("prompts", "↑↓ picks one · newest first"))
+	out = append(out, c.promptTable(turns, picked, working, now, w)...)
+	return append(out, c.report(s, turns, picked, working, now, w)...)
+}
+
+// openWait says a question of the turn waits for the user's answer now.
+func openWait(t usage.Turn) bool {
+	for _, wt := range t.Waits {
+		if wt.To.IsZero() {
+			return true
+		}
+	}
+	return false
+}
+
+// promptTable is the prompts newest first, two rows each, as a table: its
+// number, when, how long, its tokens and cost, and its text over two rows.
+func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now time.Time, w int) []string {
+	last := len(turns) - 1
+	cols := []int{6, 13, 8, 10, 7}
+	used := 3 // the left margin, the first and the last border
+	for _, n := range cols {
+		used += n + 1
+	}
+	textW := max(10, w-used-3)
+	cols = append(cols, textW+2)
+	line := func(l, m, r string) string {
+		parts := make([]string, len(cols))
+		for i, n := range cols {
+			parts[i] = strings.Repeat("─", n)
+		}
+		return kit.StyleDim.Render(" " + l + strings.Join(parts, m) + r)
+	}
+	row := func(cells []string, lit bool) string {
+		var b strings.Builder
+		b.WriteString(kit.StyleDim.Render(" │"))
+		for i, cell := range cells {
+			cell = " " + text.Pad(text.Fit(cell, cols[i]-2), cols[i]-2) + " "
+			if lit {
+				cell = kit.StyleSel.Render(cell)
+			}
+			b.WriteString(cell + kit.StyleDim.Render("│"))
+		}
+		return b.String()
+	}
+	out := []string{line("┌", "┬", "┐"), row([]string{"#", "started", "active", "tokens", "cost", "prompt"}, false), line("├", "┼", "┤")}
 	top := min(last, max(picked+promptRows/2, promptRows-1))
 	for i := top; i >= 0 && i > top-promptRows; i-- {
 		tn := turns[i]
 		end, _ := turnEnd(tn, i == last, working, now)
+		words := text.Wrap(tn.Text, textW, "")
+		first, second := "", ""
+		if len(words) > 0 {
+			first = words[0]
+		}
+		if len(words) > 1 {
+			second = words[1]
+			if len(words) > 2 {
+				second = text.Fit(second+" "+strings.Join(words[2:], " "), textW)
+			}
+		}
 		mark := "  "
 		if i == picked {
 			mark = "▶ "
 		}
-		row := fmt.Sprintf(" %s %-3d %-11s %-8s %7s %8s %7s  %s", mark, i+1, tn.Time.Local().Format("01-02 15:04"), end, text.Span(tn.Took(now, i == last && working)), num(tn.Tokens.Sum()), num(tn.Tokens.Output), tn.Text)
-		row = text.Fit(row, w)
-		if i == picked {
-			row = kit.StyleAccent.Render(row)
+		lit := i == picked
+		out = append(out,
+			row([]string{fmt.Sprintf("%s%d", mark, i+1), tn.Time.Local().Format("01-02 15:04"), text.Span(tn.Took(now, i == last && working)), num(tn.Tokens.Sum()), c.costOf(turns, i), first}, lit),
+			row([]string{"", "→ " + end, "", "out " + num(tn.Tokens.Output), "", second}, lit))
+		if i > 0 && i > top-promptRows+1 {
+			out = append(out, line("├", "┼", "┤"))
 		}
-		out = append(out, row)
 	}
+	out = append(out, line("└", "┴", "┘"))
 	if top-promptRows >= 0 {
-		out = append(out, kit.StyleDim.Render(fmt.Sprintf("    … %d older", top-promptRows+1)))
+		out = append(out, kit.StyleDim.Render(fmt.Sprintf("   … %d older", top-promptRows+1)))
 	}
-	return append(out, c.promptView(s, turns, picked, working, now, w)...)
+	return out
+}
+
+// callsOf are the calls of the i-th turn: from its prompt to the next.
+func callsOf(s *usage.Session, turns []usage.Turn, i int) []usage.Call {
+	var out []usage.Call
+	for _, cl := range s.AllCalls() {
+		if !cl.Time.Before(turns[i].Time) && (i == len(turns)-1 || cl.Time.Before(turns[i+1].Time)) {
+			out = append(out, cl)
+		}
+	}
+	return out
+}
+
+// costOf is the i-th turn's cost when every model it called has a price.
+func (c *Chat) costOf(turns []usage.Turn, i int) string {
+	if c.rep.s == nil {
+		return "—"
+	}
+	if v, ok := c.rep.prices.Cost(callsOf(c.rep.s, turns, i)); ok {
+		return fmt.Sprintf("%.2f", v)
+	}
+	return "—"
 }
 
 // turnEnd is when a turn ended as the list writes it, and whether it is
@@ -146,14 +229,16 @@ func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 	case !t.Last.IsZero():
 		return t.Last.Local().Format("15:04:05"), false
 	}
-	return "–", false
+	return "—", false
 }
 
-// promptView is one prompt in full.
-func (c *Chat) promptView(s *usage.Session, turns []usage.Turn, i int, working bool, now time.Time, w int) []string {
+// report is the picked prompt in full: its time and tokens, its workers as a
+// table, the tools and shell commands it ran and the files it changed.
+// What the transcript does not say is a dash.
+func (c *Chat) report(s *usage.Session, turns []usage.Turn, i int, working bool, now time.Time, w int) []string {
 	t := turns[i]
 	newest := i == len(turns)-1
-	end, running := turnEnd(t, newest, working, now)
+	end, _ := turnEnd(t, newest, working, now)
 	var waited time.Duration
 	for _, wt := range t.Waits {
 		to := wt.To
@@ -164,220 +249,139 @@ func (c *Chat) promptView(s *usage.Session, turns []usage.Turn, i int, working b
 	}
 	note := t.Time.Local().Format("15:04:05") + " → " + end + " · " + text.Span(t.Took(now, newest && working)) + " active"
 	if waited > 0 {
-		note += fmt.Sprintf(" · %s waiting for your answer, left out (%d question(s))", text.Span(waited), len(t.Waits))
+		note += fmt.Sprintf(" · %s waiting for your answer, left out", text.Span(waited))
 	}
 	out := []string{"", section(fmt.Sprintf("prompt %d", i+1), note),
-		" " + kit.StyleAccent.Render("❯ "+text.Fit(t.Text, max(10, w-4)))}
-	cost := ""
-	var calls []usage.Call
-	for _, cl := range s.AllCalls() {
-		if !cl.Time.Before(t.Time) && (newest || cl.Time.Before(turns[i+1].Time)) {
-			calls = append(calls, cl)
-		}
-	}
-	if v, ok := c.rep.prices.Cost(calls); ok {
-		cost = fmt.Sprintf(" · cost %.2f", v)
-	}
-	out = append(out, " "+kinds(t.Tokens)+kit.StyleDim.Render(fmt.Sprintf("   %s · %d calls%s", strings.Join(tokenLabels, " · "), t.Calls, cost)))
-	if running {
-		out[len(out)-1] += " " + kit.StyleBusy.Render(kit.Spinner[(c.Tick/2)%len(kit.Spinner)])
-	}
-	out = append(out, "", section("agents", "out ▶, back ◀ with what they spent; ★ one of yours"))
-	out = append(out, c.sequence(t.Agents, now, w)...)
-	out = append(out, "", section("skills", "added: what its text put in the context · carried: read again by every later call of the prompt"))
-	out = append(out, useRows(t.Uses, usage.Skill, w)...)
-	out = append(out, "", section("MCP", "added: what the result put in the context · carried: read again by every later call"))
-	out = append(out, useRows(t.Uses, usage.MCP, w)...)
+		" " + kit.StyleAccent.Render("❯ "+text.Fit(t.Text, max(10, w-4))),
+		" " + kinds(t.Tokens) + kit.StyleDim.Render(fmt.Sprintf("   %s · %d calls · cost %s", strings.Join(tokenLabels, " · "), t.Calls, c.costOf(turns, i))),
+		"", section("workers", "who did the work: subagents, skills, MCP servers; ★ one of yours")}
+	out = append(out, workerRows(t, now, newest && working, w)...)
+	out = append(out, "", section("tools", "every call of the prompt, by tool"), " "+text.Fit(counted(t.Tools, "×"), max(10, w-2)))
+	out = append(out, "", section("commands", "the shell commands run, by their first words"), " "+text.Fit(counted(t.Commands, "×"), max(10, w-2)))
+	out = append(out, "", section("files", "edits, and lines the subagents changed"), " "+text.Fit(filesLine(t), max(10, w-2)))
 	return out
 }
 
-// own says an origin is the user's or a project's, not what comes with
-// Claude Code.
-func own(origin string) bool { return origin != "built-in" && origin != "" }
-
-// useRows are a prompt's skills or MCP calls grouped by name, the costliest
-// first: how often, what they added, what carrying it cost.
-func useRows(uses []*usage.Use, kind usage.UseKind, w int) []string {
-	type group struct {
-		name, origin   string
-		n              int
-		added, carried int64
-		agent          bool
-	}
-	var gs []*group
-	byKey := map[string]*group{}
-	for _, u := range uses {
-		if u.Kind != kind {
+// workerRows are the turn's workers as a table: kind, name, how long, its
+// tokens, its calls.
+func workerRows(t usage.Turn, now time.Time, running bool, w int) []string {
+	type wr struct{ kind, name, took, tokens, calls string }
+	var rows []wr
+	for _, a := range t.Agents {
+		if a == nil {
 			continue
 		}
-		key := u.Origin + "\x00" + u.Name
-		g := byKey[key]
-		if g == nil {
-			g = &group{name: u.Name, origin: u.Origin}
-			byKey[key] = g
-			gs = append(gs, g)
-		}
-		g.n++
-		g.added += u.Added
-		g.carried += u.Carried
-		g.agent = g.agent || u.Agent != ""
-	}
-	if len(gs) == 0 {
-		if kind == usage.Skill {
-			return []string{kit.StyleDim.Render(" no skill was used")}
-		}
-		return []string{kit.StyleDim.Render(" no MCP call")}
-	}
-	slices.SortStableFunc(gs, func(a, b *group) int { return cmp.Compare(b.added+b.carried, a.added+a.carried) })
-	from := "from"
-	if kind == usage.MCP {
-		from = "server"
-	}
-	out := []string{kit.StyleDim.Render(fmt.Sprintf("    %-28s %-16s %4s %8s %8s %8s", "name", from, "×", "added", "carried", "spent"))}
-	for _, g := range gs {
-		star := "  "
-		if kind == usage.Skill && own(g.origin) {
-			star = kit.StyleAccent.Render("★ ")
-		}
-		by := ""
-		if g.agent {
-			by = kit.StyleDim.Render("  in a subagent too")
-		}
-		out = append(out, " "+star+text.Fit(fmt.Sprintf("%-28s %-16s %4d %8s %8s %8s", text.Fit(g.name, 28), text.Fit(g.origin, 16), g.n, num(g.added), num(g.carried), num(g.added+g.carried)), max(10, w-4))+by)
-	}
-	return out
-}
-
-// seqLanes is how many agents' lifelines the sequence draws at most.
-const seqLanes = 12
-
-// sequence draws a prompt's agents as a sequence diagram: the session's
-// lifeline on the left, one per agent beside it, an arrow out when it
-// left and one back when it returned, in time order; a lifeline still
-// dotted is an agent at work.
-func (c *Chat) sequence(agents []*usage.Agent, now time.Time, w int) []string {
-	if len(agents) == 0 {
-		return []string{kit.StyleDim.Render(" no subagent: the session worked alone")}
-	}
-	left := func(a *usage.Agent) time.Time {
-		if !a.Left.IsZero() {
-			return a.Left
-		}
-		return a.First
-	}
-	// A background agent's result never comes as a result: it is back
-	// when its transcript has been quiet a while.
-	quiet := func(a *usage.Agent) bool {
-		return !a.Done() && a.Back.IsZero() && !a.Last.IsZero() && now.Sub(a.Last) > liveWithin
-	}
-	back := func(a *usage.Agent) time.Time {
-		switch {
-		case !a.Back.IsZero():
-			return a.Back
-		case a.Duration > 0:
-			return left(a).Add(a.Duration)
-		}
-		return a.Last
-	}
-	agents = append([]*usage.Agent(nil), agents...)
-	sort.SliceStable(agents, func(i, j int) bool { return left(agents[i]).Before(left(agents[j])) })
-	var out []string
-	if len(agents) > seqLanes {
-		out = append(out, kit.StyleDim.Render(fmt.Sprintf(" %d earlier agents are not drawn", len(agents)-seqLanes)))
-		agents = agents[len(agents)-seqLanes:]
-	}
-	// Lanes: the session at column 2, each agent laneW to the right; with
-	// too many for the width, the lanes narrow down to 6.
-	laneW := kit.Clamp((w-4)/(len(agents)+1), 6, 22)
-	xs := make([]int, len(agents)+1)
-	for i := range xs {
-		xs[i] = 2 + i*laneW
-	}
-	width := xs[len(xs)-1] + laneW
-	index := map[*usage.Agent]int{}
-	for i, a := range agents {
-		index[a] = i + 1
-	}
-	head := []rune(strings.Repeat(" ", width))
-	put := func(row []rune, x int, s string) {
-		for i, r := range []rune(s) {
-			if x+i >= 0 && x+i < len(row) {
-				row[x+i] = r
-			}
-		}
-	}
-	put(head, xs[0]-1, "session")
-	for i, a := range agents {
 		name := a.Type
 		if name == "" {
 			name = "agent"
 		}
 		if own(a.Origin) {
-			name = "★" + name
+			name = "★ " + name
 		}
-		put(head, xs[i+1]-1, text.Fit(name, laneW-1))
-	}
-	out = append(out, kit.StyleBold.Render(string(head)))
-	type event struct {
-		at   time.Time
-		a    *usage.Agent
-		back bool
-	}
-	var events []event
-	for _, a := range agents {
-		events = append(events, event{at: left(a), a: a})
-		if a.Done() || quiet(a) {
-			events = append(events, event{at: back(a), a: a, back: true})
+		if a.Description != "" {
+			name += " · " + a.Description
 		}
-	}
-	sort.SliceStable(events, func(i, j int) bool { return events[i].at.Before(events[j].at) })
-	alive := map[*usage.Agent]bool{}
-	lifelines := func() []rune {
-		row := []rune(strings.Repeat(" ", width))
-		row[xs[0]] = '│'
-		for a := range alive {
-			row[xs[index[a]]] = '┊'
+		took := "—"
+		left := a.Left
+		if left.IsZero() {
+			left = a.First
 		}
-		return row
-	}
-	for _, e := range events {
-		x := xs[index[e.a]]
-		row := lifelines()
-		label := ""
-		if e.back {
-			delete(alive, e.a)
-			for i := xs[0] + 1; i < x; i++ {
-				row[i] = '─'
-			}
-			row[xs[0]+1], row[x] = '◀', '┘'
-			mark := kit.StyleBusy.Render("✓ ")
-			if quiet(e.a) {
-				mark = kit.StyleDim.Render("quiet ")
-			}
-			label = mark + kit.StyleDim.Render(e.at.Local().Format("15:04:05")+" · "+text.Span(e.at.Sub(left(e.a)))+" · ") + num(e.a.Totals().Sum()) + kit.StyleDim.Render(" tokens")
-		} else {
-			alive[e.a] = true
-			for i := xs[0] + 1; i < x; i++ {
-				row[i] = '─'
-			}
-			row[x-1], row[x] = '▶', '┐'
-			desc := e.a.Description
-			if desc == "" {
-				desc, _, _ = strings.Cut(strings.TrimSpace(e.a.Prompt), "\n")
-			}
-			label = kit.StyleDim.Render(e.at.Local().Format("15:04:05")+" "+e.a.Origin+" · ") + desc
+		switch {
+		case !a.Back.IsZero() && !left.IsZero():
+			took = text.Span(a.Back.Sub(left))
+		case a.Duration > 0:
+			took = text.Span(a.Duration)
+		case running && !left.IsZero():
+			took = text.Span(now.Sub(left)) + " …"
 		}
-		out = append(out, " "+string(row)+" "+text.Fit(label, max(8, w-width-3)))
+		rows = append(rows, wr{"agent", name, took, num(a.Totals().Sum()), fmt.Sprint(len(a.Calls))})
 	}
-	if len(alive) > 0 {
-		row := lifelines()
-		var names []string
-		for _, a := range agents {
-			if alive[a] {
-				names = append(names, fmt.Sprintf("%s %s · %s", a.Type, text.Span(now.Sub(left(a))), num(a.Totals().Sum())))
-			}
+	type agg struct {
+		spent int64
+		n     int
+		own   bool
+	}
+	skills, servers := map[string]*agg{}, map[string]*agg{}
+	var skillOrder, serverOrder []string
+	for _, u := range t.Uses {
+		if u == nil {
+			continue
 		}
-		out = append(out, " "+string(row)+" "+kit.StyleAccent.Render(text.Fit("at work: "+strings.Join(names, ", "), max(8, w-width-3))))
+		m, order, key := skills, &skillOrder, u.Name
+		if u.Kind == usage.MCP {
+			m, order, key = servers, &serverOrder, u.Origin
+		}
+		if m[key] == nil {
+			m[key] = &agg{own: u.Kind == usage.Skill && own(u.Origin)}
+			*order = append(*order, key)
+		}
+		m[key].spent += u.Spent()
+		m[key].n++
+	}
+	for _, k := range skillOrder {
+		name := k
+		if skills[k].own {
+			name = "★ " + name
+		}
+		rows = append(rows, wr{"skill", name, "—", num(skills[k].spent), fmt.Sprint(skills[k].n)})
+	}
+	for _, k := range serverOrder {
+		rows = append(rows, wr{"mcp", k, "—", num(servers[k].spent), fmt.Sprint(servers[k].n)})
+	}
+	if len(rows) == 0 {
+		return []string{kit.StyleDim.Render(" the session worked alone: no subagent, skill or MCP call")}
+	}
+	nameW := max(10, w-40)
+	out := []string{kit.StyleDim.Render(fmt.Sprintf("  %-6s %-*s %8s %8s %6s", "kind", nameW, "name", "time", "tokens", "calls"))}
+	for _, r := range rows {
+		out = append(out, fmt.Sprintf("  %-6s %-*s %8s %8s %6s", r.kind, nameW, text.Fit(r.name, nameW), r.took, r.tokens, r.calls))
 	}
 	return out
 }
+
+// counted is a count map as "name ×n · name ×n", the largest first; "—"
+// when empty.
+func counted(m map[string]int, mark string) string {
+	if len(m) == 0 {
+		return kit.StyleDim.Render("—")
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return m[keys[i]] > m[keys[j]] || m[keys[i]] == m[keys[j]] && keys[i] < keys[j] })
+	parts := make([]string, len(keys))
+	for i, k := range keys {
+		parts[i] = k + " " + kit.StyleDim.Render(mark+fmt.Sprint(m[k]))
+	}
+	return strings.Join(parts, kit.StyleDim.Render(" · "))
+}
+
+// filesLine is the prompt's edits by tool and the lines its subagents say
+// they changed.
+func filesLine(t usage.Turn) string {
+	var parts []string
+	for _, name := range []string{"Edit", "MultiEdit", "Write", "NotebookEdit"} {
+		if n := t.Tools[name]; n > 0 {
+			parts = append(parts, fmt.Sprintf("%s ×%d", name, n))
+		}
+	}
+	added, removed := 0, 0
+	for _, a := range t.Agents {
+		if a != nil {
+			added += a.Stats.LinesAdded
+			removed += a.Stats.LinesRemoved
+		}
+	}
+	if added+removed > 0 {
+		parts = append(parts, fmt.Sprintf("subagents +%d −%d lines", added, removed))
+	}
+	if len(parts) == 0 {
+		return kit.StyleDim.Render("—")
+	}
+	return strings.Join(parts, " · ")
+}
+
+// own says an origin is the user's or a project's, not what comes with
+// Claude Code.
+func own(origin string) bool { return origin != "built-in" && origin != "" }

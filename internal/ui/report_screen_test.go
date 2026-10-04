@@ -88,21 +88,23 @@ func writeTranscript(t *testing.T, e env, dir, id string, at time.Time) {
 
 // Chat's right side has two tabs, the chat and the report; 3 opens the
 // report on the tree cursor's session alone, prompt by prompt: the newest
-// in full and followed, its agent at work; ↓ picks the one before, with
-// its skill, its MCP call and the agent that came back, its question's
-// wait left out; nothing else is on the page, and a click on the session's
-// row in the tree brings its chat back.
+// picked and followed, its village with the agent at work in its building
+// and the prompts as a table under it; ↓ picks the one before, its workers
+// home and done, its skill, its MCP server, its tools and the agent that
+// came back in the report, its question's wait left out; a click on the
+// session's row in the tree brings its chat back.
 func TestReport(t *testing.T) {
 	e, dir := seeded(t, state.Session{Tool: "claude", Name: "shed work", ID: "garden-1"})
 	e.lazyHome = t.TempDir()
 	writeTranscript(t, e, dir, "garden-1", time.Now().Add(-time.Minute).UTC())
-	d := start(t, e, 180, 52)
+	d := start(t, e, 180, 90)
 	d.expect("[2] session", "[3] details", "shed work")
 	d.key("3")
-	d.expect("prompts", "▶  2", "now the fence", "prompt 2", "working", "find the brushes", "at work: Explore", "no skill was used", "no MCP call")
+	d.expect("Lazy", "‹Explore: find the brushes›", "prompts", "│ ▶ 2 ", "now the fence", "→ working", "prompt 2", "workers", "Explore · find the brushes")
 	d.expect("(↑↓) pick prompt · (esc) back")
 	d.key("down")
-	d.expect("▶  1", "prompt 1", "paint the garden shed", "waiting for your answer, left out (1 question(s))", "count the boards", "✓", "brush-care", "★", "project", "list_colours", "paint-shop")
+	d.expect("│ ▶ 1 ", "prompt 1", "paint the garden shed", "waiting for your answer, left out", "(^^)✓", "Explore · count the boards", "★ brush-care", "paint-shop", "Skill ×1", "Agent ×1")
+	d.expectNot("‹Explore")
 	for _, gone := range []string{"context per call", "tokens per call", "transcript", "export"} {
 		d.expectNot(gone)
 	}
@@ -126,7 +128,7 @@ func TestReport(t *testing.T) {
 	y = lineOf(d.screen(), "[3] details")
 	x = strings.Index(rows[y], "[2] ")
 	d.click(len([]rune(rows[y][:x]))+1, y)
-	d.expectNot("▶  1")
+	d.expectNot("│ ▶ 1 ")
 	// Running, the session's row times its last prompt as the page does:
 	// in one frame, the row's time is the second prompt's active time.
 	d.key("1", "enter")
@@ -134,7 +136,7 @@ func TestReport(t *testing.T) {
 	d.leave()
 	d.key("3")
 	rowTime := regexp.MustCompile(`claude · (?:◷ |⏸ )?(\d+s)`)
-	pageTime := regexp.MustCompile(`\s2\s+\d\d-\d\d \d\d:\d\d\s+\S+\s+(\d+s)`)
+	pageTime := regexp.MustCompile(`│ (?:▶| ) 2\s+│ \d\d-\d\d \d\d:\d\d\s+│ (\d+s)`)
 	d.until("the row and the page show the same time", func() bool {
 		sc := d.screen()
 		r, p := rowTime.FindStringSubmatch(sc), pageTime.FindStringSubmatch(sc)

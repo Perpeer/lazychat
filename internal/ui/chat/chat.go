@@ -41,6 +41,7 @@ type Chat struct {
 		st    kit.MascotState
 	}
 	clocks   clocks
+	beat     int // the shell's fast beat, moving the village
 	repFocus bool
 }
 

@@ -18,6 +18,9 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	switch msg := msg.(type) {
+	case kit.Beat:
+		c.beat = msg.N
+		return nil
 	case kit.Tick:
 		c.Tick = msg.N
 		c.list.tick = msg.N
