@@ -128,7 +128,7 @@ type (
 )
 
 // Capability is one thing only some tools can do, by the name the screen
-// and the README use for it.
+// and CONTRIBUTING.md use for it.
 type Capability struct {
 	Name string
 	Has  func(Tool) bool
@@ -137,7 +137,7 @@ type Capability struct {
 // Has says t can do T.
 func Has[T any](t Tool) bool { _, ok := t.(T); return ok }
 
-// Capabilities is every capability, in the order the README's table lists
+// Capabilities is every capability, in the order CONTRIBUTING.md's table lists
 // them; a new one is added here and to the interfaces above.
 var Capabilities = []Capability{
 	{"resume", Has[Resumer]},
@@ -185,7 +185,7 @@ func RegistryOf(tools ...Tool) Registry { return Registry{tools: tools} }
 func (r Registry) All() []Tool { return r.tools }
 
 // Matrix is the capabilities table of the tools: a row per capability, a
-// column per tool, as the README shows it.
+// column per tool, as CONTRIBUTING.md shows it.
 func (r Registry) Matrix() string {
 	var b strings.Builder
 	b.WriteString("| Capability |")

@@ -53,11 +53,11 @@ func TestListWidth(t *testing.T) {
 // A wrapped title keeps its style on every row: the first row after the
 // connector and the glyph, the rest under the title's own start.
 func TestTitleRows(t *testing.T) {
-	rows := TitleRows("└─ ", "   ", "○ ", "○ ", "core-data-redesign/feature/TASK-7130", StyleBold, 25, 2)
+	rows := TitleRows("└─ ", "   ", "○ ", "○ ", "garden-shed-paints/feature/blue-door", StyleBold, 25, 2)
 	if len(rows) != 2 {
 		t.Fatalf("%d rows: %+v", len(rows), rows)
 	}
-	if rows[0].Plain != "○ core-data-redesign/" || rows[1].Plain != "  feature/TASK-7130" {
+	if rows[0].Plain != "○ garden-shed-paints/" || rows[1].Plain != "  feature/blue-door" {
 		t.Errorf("rows %q / %q", rows[0].Plain, rows[1].Plain)
 	}
 	if rows[1].Prefix != "   " {

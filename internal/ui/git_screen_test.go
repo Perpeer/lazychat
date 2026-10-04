@@ -278,21 +278,21 @@ func TestLongTitles(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git here")
 	}
-	e, dir := seeded(t, state.Session{Tool: "claude", Name: "TASK-7130 the core data redesign follow up"})
-	gitIn(t, dir, "init", "-q", "-b", "core-data-redesign/feature/TASK-7130")
+	e, dir := seeded(t, state.Session{Tool: "claude", Name: "blue-door the shed wall painting second go"})
+	gitIn(t, dir, "init", "-q", "-b", "garden-shed-paints/feature/blue-door")
 	write(t, filepath.Join(dir, "a.txt"), "a\n")
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-qm", "first")
 
 	d := start(t, e, 120, 36)
-	d.expect("○ TASK-7130 the core", "data redesign follow", "⎇ core-data-redes…/TASK-7130")
+	d.expect("○ blue-door the shed", "wall painting second", "⎇ garden-shed-pai…/blue-door")
 	d.tab(2)
-	d.expect("…/TASK-7130")
+	d.expect("…/blue-door")
 	for _, r := range strings.Split(d.screen(), "\n") {
-		if strings.Contains(r, "● core-data") && !strings.Contains(r, "…/TASK-7130") {
+		if strings.Contains(r, "● garden-shed") && !strings.Contains(r, "…/blue-door") {
 			t.Errorf("the branch row wrapped or lost its end: %q", r)
 		}
-		if strings.Contains(r, "feature/TASK-7130") && !strings.Contains(r, "core-data") {
+		if strings.Contains(r, "feature/blue-door") && !strings.Contains(r, "garden-shed") {
 			t.Errorf("the branch took a second row: %q", r)
 		}
 	}

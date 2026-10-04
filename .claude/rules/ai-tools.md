@@ -13,7 +13,7 @@ paths:
   ordered list; the default for a new session or a commit message is the
   first ready tool that can.
 - The UI offers an action only when the tool has the capability (`api`
-  asks with `capability[T]`). The README table between
+  asks with `capability[T]`). The CONTRIBUTING.md table between
   `<!-- capabilities -->` markers is generated; `TestCapabilitiesTable`
   fails when they part — paste what it prints.
 - What lazychat adds to a claude session goes on its command line only

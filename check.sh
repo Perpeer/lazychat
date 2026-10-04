@@ -42,7 +42,7 @@ if command -v swiftc >/dev/null 2>&1; then
   ok "swift helper"
 fi
 
-# 3. Layers: README's "## Code" list, top to bottom. A package imports only
+# 3. Layers: CONTRIBUTING.md's "## Code" list, top to bottom. A package imports only
 #    layers below its own; core's packages may use one another.
 rank() {
   case "$1" in
@@ -112,7 +112,7 @@ while read -r pkg imports; do
 done < <(go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...)
 if [ -n "$bad" ]; then
   printf '%s' "$bad" >&2
-  fail "layers: move the code or the import (README ## Code)"
+  fail "layers: move the code or the import (CONTRIBUTING.md ## Code)"
 fi
 ok "layers"
 

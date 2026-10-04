@@ -1,9 +1,10 @@
 # lazychat — working in this app
 
-A Go 1.26 + Bubble Tea v1 TUI. `README.md` here is the reference — layout,
-keys, the code map — and this file only says how to change the code
-without breaking it. Read the README's `## Code` section before a
-structural change.
+A Go 1.26 + Bubble Tea v1 TUI. `README.md` is the short tour for users;
+`docs/REFERENCE.md` is the reference — every screen, key and file — and
+`CONTRIBUTING.md` the code map, how to change it and the tests. This file
+only says how to change the code without breaking it. Read
+CONTRIBUTING.md's `## Code` section before a structural change.
 
 ## Public repository
 
@@ -93,7 +94,7 @@ are read; add a rule there, with its why, when a change settles one.
 
 ## Tests
 
-`go test ./...`, three layers (README `### Tests`): unit tests next to
+`go test ./...`, three layers (CONTRIBUTING.md `### Tests`): unit tests next to
 each package, model tests without a screen, screen tests in
 `internal/ui/*_screen_test.go` through the driver in `driver_test.go`,
 and `cmd/lazychat/pty_test.go` for what needs a real terminal. Every step

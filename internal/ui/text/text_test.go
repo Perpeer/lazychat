@@ -62,8 +62,8 @@ func TestWrapTitle(t *testing.T) {
 	}{
 		{"fits", "main", 20, 2, []string{"main"}},
 		{"spaces", "release checklist for iOS", 12, 3, []string{"release", "checklist", "for iOS"}},
-		{"a branch", "core-data-redesign/feature/TASK-7130", 20, 2, []string{"core-data-redesign/", "feature/TASK-7130"}},
-		{"after a word", "fix feature/TASK-7130-home", 16, 3, []string{"fix feature/", "TASK-7130-home"}},
+		{"a branch", "garden-shed-paints/feature/blue-door", 20, 2, []string{"garden-shed-paints/", "feature/blue-door"}},
+		{"after a word", "fix feature/blue-door-home", 16, 3, []string{"fix feature/", "blue-door-home"}},
 		{"no break mark", "abcdefghijklmnop", 6, 3, []string{"abcdef", "ghijkl", "mnop"}},
 		{"the cap", "one two three four five", 7, 2, []string{"one two", "three…"}},
 		{"wide runes", "日本語のノート題名", 8, 2, []string{"日本語の", "ノート…"}},
