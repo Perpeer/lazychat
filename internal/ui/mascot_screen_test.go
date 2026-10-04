@@ -81,7 +81,7 @@ func TestMascot(t *testing.T) {
 
 	d.session("ivy", "work")
 	d.expect("ivy waits")
-	d.until("the mascot does not party for the finished session", func() bool { return strings.Contains(d.mascot(), "✦") })
+	d.untilIn(3*waitFor, "the mascot does not party for the finished session", func() bool { return strings.Contains(d.mascot(), "✦") })
 
 	d.tab(3) // from another tab
 	d.mouse(tea.MouseMsg{X: 2, Y: wsRows + 1, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
@@ -146,7 +146,7 @@ func TestMascotAnimations(t *testing.T) {
 	}
 	d.session("ivy", "work")
 	d.until("no keyboard while ivy works", func() bool { return strings.Contains(d.mascot(), "▪") })
-	d.until("no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
+	d.untilIn(3*waitFor, "no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
 	if got := d.railRow("chat"); got != chat {
 		t.Errorf("Chat's box moved from row %d to %d", chat, got)
 	}
@@ -174,7 +174,7 @@ func TestMascotDoneFlow(t *testing.T) {
 	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
 	d := start(t, e, 120, 32)
 	d.session("ivy", "work")
-	d.until("no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
+	d.untilIn(3*waitFor, "no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
 	d.holds(2500*time.Millisecond, "the party ended with Chat open", func() bool { return strings.Contains(d.mascot(), "✦") })
 	d.until("ivy's name does not blink", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 	d.until("ivy's name does not blink back", func() bool { return !strings.Contains(d.screen(), "✓ ivy") })
@@ -243,7 +243,7 @@ func TestMascotCheer(t *testing.T) {
 	d.session("oak", "work long")
 	d.session("ivy", "work")
 	party := func() bool { m := d.mascot(); return strings.Contains(m, "^^") && !strings.Contains(m, "▪") }
-	d.until("no cheer when ivy was done with oak at work", func() bool {
+	d.untilIn(3*waitFor, "no cheer when ivy was done with oak at work", func() bool {
 		return party() && strings.HasSuffix(strings.Split(d.mascot(), "\n")[0], "●╮") && strings.Count(strings.Split(d.mascot(), "\n")[0], "●") == 1 && strings.Contains(d.screen(), "oak working")
 	})
 	d.until("the cheer did not give way to typing for oak", func() bool {
@@ -265,7 +265,7 @@ func TestMascotTwoSessions(t *testing.T) {
 	d := start(t, e, 120, 32)
 	d.session("ivy", "work")
 	d.session("oak", "work")
-	d.until("no party once both were done", func() bool { return strings.Contains(d.mascot(), "✦") && strings.Contains(d.screen(), "oak waits") })
+	d.untilIn(3*waitFor, "no party once both were done", func() bool { return strings.Contains(d.mascot(), "✦") && strings.Contains(d.screen(), "oak waits") })
 	d.until("ivy does not blink", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 
 	d.selectSession("ivy")
@@ -452,7 +452,7 @@ func TestInbox(t *testing.T) {
 	d.session("pine", "answer")
 	d.session("oak", "ask")
 	d.until("oak does not ask yet", func() bool { return strings.Contains(d.screen(), "oak asks") })
-	d.until("pine has not finished yet", func() bool {
+	d.untilIn(3*waitFor, "pine has not finished yet", func() bool {
 		st, _ := d.app.mascotState()
 		for _, s := range st.Sessions {
 			if s.Name == "pine" && s.State == status.Done {

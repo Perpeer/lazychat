@@ -29,3 +29,8 @@ paths:
   TestDetailsProfile and TestDetailsCPU on a real transcript named by
   LAZYCHAT_BENCH_FILE, copied under an invented id — only its size and
   the times are printed. A CPU profile of a real run: LAZYCHAT_CPUPROFILE.
+- A step that waits for a session to finish (work → done, a party, "waits")
+  uses untilIn(3*waitFor): a fake session's end goes through the board's
+  grace and the ticks, and on GitHub's Mac runner, with every package's
+  tests at once, TestMascotTwoSessions missed the 5 s limit and stopped a
+  release. Short waits are for what the screen draws at once.
