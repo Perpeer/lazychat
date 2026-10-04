@@ -176,11 +176,33 @@ func noWorkspace(err error) error {
 	return err
 }
 
+// extraChecks are what lazychat does without but is better with: Lazy in
+// the menu bar, and jq for the status line it gives Claude Code. Each says
+// how to get it; none fails doctor.
+func extraChecks(apps []string, lookPath func(string) (string, error)) []api.Check {
+	bar := api.Check{Name: "menu bar", Optional: true, Detail: "Lazychat.app is not installed: ./install.sh builds it (it needs the Command Line Tools: xcode-select --install)"}
+	for _, a := range apps {
+		if _, err := os.Stat(a); err == nil {
+			bar.OK, bar.Detail = true, a
+			break
+		}
+	}
+	jq := api.Check{Name: "jq", Optional: true, Detail: "missing, so Claude Code gets no status line from lazychat: brew install jq"}
+	if path, err := lookPath("jq"); err == nil {
+		jq.OK, jq.Detail = true, path
+	} else if _, err := os.Stat("/usr/bin/jq"); err == nil {
+		jq.OK, jq.Detail = true, "/usr/bin/jq"
+	}
+	return []api.Check{bar, jq}
+}
+
 func subcommand(core *api.Core, rest []string) error {
 	switch rest[0] {
 	case "doctor":
 		ok := true
-		for _, c := range core.Doctor() {
+		home := files.Home()
+		apps := []string{"/Applications/Lazychat.app", filepath.Join(home, "Applications", "Lazychat.app")}
+		for _, c := range append(core.Doctor(), extraChecks(apps, exec.LookPath)...) {
 			mark := "ok  "
 			switch {
 			case !c.OK && c.Optional:

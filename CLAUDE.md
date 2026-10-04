@@ -117,7 +117,10 @@ raises it by one and two builds with the same N are the same commit.
 when the tree has uncommitted changes; nothing holds it by hand, so a
 commit never edits a version file. It shows as `v1.0(N)` at the screen's
 bottom-right corner, with the hash in `lazychat --version`. Raise the
-`1.0` part only when the user asks.
+`1.0` part only when the user asks. A release build (the Homebrew formula
+in `packaging/homebrew/`, later the release binaries) stamps the tag's
+version, `1.0.0`, through the same `-X main.version`; tags, the formula's
+url and sha256 and the tap repository come with the first release.
 
 ## iCloud
 

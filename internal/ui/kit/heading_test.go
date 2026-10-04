@@ -36,8 +36,16 @@ func TestProjectHeading(t *testing.T) {
 	if got := HeadLabel(git.Head{Branch: "feature", Linked: true, Worktree: "wt"}, true); got != "⎇ feature  ⑂ wt" {
 		t.Errorf("a worktree's label: %q", got)
 	}
-	if got := HeadLabel(git.Head{}, false); got != "" {
+	// Outside a repository the heading says so, dimmed; a repository whose
+	// HEAD could not be read says nothing rather than deny it is one.
+	if got := HeadLabel(git.Head{}, false); got != NoGit {
 		t.Errorf("outside a repository: %q", got)
+	}
+	if got := HeadLabel(git.Head{Unread: true}, false); got != "" {
+		t.Errorf("a HEAD not read: %q", got)
+	}
+	if got := plain(ProjectHeading("notes", "/work/notes", NoGit, 30)); len(got) != 3 || got[2] != NoGit {
+		t.Errorf("without git: %q", got)
 	}
 }
 

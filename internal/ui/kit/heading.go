@@ -61,7 +61,9 @@ func ProjectHeading(name, path, branch string, w int) []TreeLine {
 	for _, d := range dirRows(text.ShortHome(path), w-2) {
 		out = append(out, TreeLine{Styled: StyleDim.Render(" " + d), Plain: " " + d})
 	}
-	if branch != "" {
+	if branch == NoGit {
+		out = append(out, TreeLine{Styled: StyleDim.Render(" " + branch), Plain: " " + branch})
+	} else if branch != "" {
 		// A worktree's name follows the branch in the worktree colour, so
 		// working in one is seen at a glance.
 		br, wt, linked := strings.Cut(branch, worktreeMark)
@@ -75,6 +77,10 @@ func ProjectHeading(name, path, branch string, w int) []TreeLine {
 	return out
 }
 
+// NoGit stands where a heading's branch goes for a folder that is not a
+// git repository, so working without git is said rather than left blank.
+const NoGit = "not a git repo"
+
 // worktreeMark parts a heading's branch from the worktree it is in.
 const worktreeMark = "  ⑂ "
 
@@ -83,8 +89,10 @@ const worktreeMark = "  ⑂ "
 // repository.
 func HeadLabel(h git.Head, ok bool) string {
 	switch {
-	case !ok:
+	case !ok && h.Unread:
 		return ""
+	case !ok:
+		return NoGit
 	case h.Linked:
 		return "⎇ " + h.Branch + worktreeMark + h.Worktree
 	}

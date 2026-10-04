@@ -34,8 +34,8 @@
 
 ## Install
 
-You need macOS and an AI coding agent you are logged in to:
-[Claude Code](https://code.claude.com/docs) or
+You need a Mac (Apple silicon or Intel, macOS 12 or newer) and an AI coding
+agent you are logged in to: [Claude Code](https://code.claude.com/docs) or
 [Codex](https://github.com/openai/codex).
 
 ```sh
@@ -44,15 +44,21 @@ cd lazychat
 ./install.sh
 ```
 
-The script builds `~/.local/bin/lazychat`, installing Go with Homebrew if
-you don't have it, and adds Lazy's menu bar app to Applications. Check that
-`~/.local/bin` is on your `PATH`, then run `lazychat`.
+The script checks your Mac first and tells you what is missing and how to
+get it; `./install.sh --check` does only that. It installs Go with Homebrew
+if you don't have it (an older Go fetches the one lazychat needs by
+itself), builds `~/.local/bin/lazychat` and adds Lazy's menu bar app to
+Applications. Then run `lazychat`; `lazychat doctor` says what else is
+ready.
 
-Homebrew is coming. It takes a project once it has 225 stars, so
-if lazychat saves you a few tabs, [star it](https://github.com/perpeer/lazychat/stargazers)
-and `brew install lazychat` gets closer.
+### Homebrew: coming soon
 
-To remove it, run `./uninstall.sh`. Your settings and workspaces stay
+`brew install perpeer/tap/lazychat` comes with the first release. Homebrew's
+own list takes lazychat at 225 stars, so if it saves you a few tabs,
+[star it](https://github.com/perpeer/lazychat/stargazers): every star gets
+`brew install lazychat` closer.
+
+To remove lazychat, run `./uninstall.sh`. Your settings and workspaces stay
 unless you add `--purge`; your projects and the agents' own files are
 never touched.
 

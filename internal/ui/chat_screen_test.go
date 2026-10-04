@@ -561,3 +561,18 @@ func TestHelpSponsorsLazy(t *testing.T) {
 	}
 	d.quitApp()
 }
+
+// A project in a folder without git says so where its branch would be, in
+// Chat and in Terminal; one in a repository names its branch.
+func TestNoGitHeading(t *testing.T) {
+	e, dir := seeded(t)
+	d := start(t, e, 120, 32)
+	d.expect("not a git repo")
+	gitIn(t, dir, "init", "-q", "-b", "blue-door")
+	d.tab(3)
+	d.until("the heading names the branch once git is there", func() bool {
+		return strings.Contains(d.screen(), "⎇ blue-door")
+	})
+	d.expectNot("not a git repo")
+	d.quitApp()
+}

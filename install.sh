@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds lazychat from this checkout into $PREFIX (default ~/.local/bin).
 #   ./install.sh               build, or report SAME when nothing changed
+#   ./install.sh --check       only check this Mac: what is there, what is missing and how to get it
 #   ./install.sh --iterm-keys  also make iTerm send ⌘1–⌘4 as lazychat's tab keys
 #   ./install.sh --uninstall   take it all back: runs ./uninstall.sh (--purge, --dry-run)
 # On macOS with swiftc it also builds Lazychat.app, Lazy in the menu bar, into /Applications.
@@ -19,22 +20,105 @@ for arg in "$@"; do
 done
 
 iterm_keys=0
+check_only=0
 for arg in "$@"; do
   case "$arg" in
     --iterm-keys) iterm_keys=1 ;;
-    -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --check) check_only=1 ;;
+    -h|--help) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "install.sh: unknown option $arg" >&2; exit 2 ;;
   esac
 done
 
-if ! command -v go >/dev/null 2>&1; then
-  if command -v brew >/dev/null 2>&1; then
-    brew install go
-  else
-    echo "install.sh: Go 1.26 or newer is needed: https://go.dev/dl" >&2
-    exit 1
+# One line per finding, in the same columns as the rest of the output.
+say() { printf '%-6s%-12s%s\n' "$1" "$2" "$3"; }
+# fail ends the install with what went wrong and what to do about it.
+fail() {
+  say "✗" "$1" "$2" >&2
+  shift 2
+  for fix in "$@"; do say "" "" "$fix" >&2; done
+  exit 1
+}
+# has says a tool is there; LAZYCHAT_HIDE names tools a test makes look missing.
+has() {
+  case " ${LAZYCHAT_HIDE:-} " in *" $1 "*) return 1 ;; esac
+  command -v "$1" >/dev/null 2>&1
+}
+
+# preflight checks this Mac before anything is built, so a missing piece is
+# named with its fix instead of failing half way through a build.
+preflight() {
+  if [ "$(uname)" != Darwin ]; then
+    fail system "lazychat runs on macOS for now; this is $(uname)." \
+      "Linux support is planned: https://github.com/perpeer/lazychat/issues"
   fi
-fi
+  os="$(sw_vers -productVersion)"
+  os_major="${os%%.*}"
+  # Go 1.26 builds for macOS 12 and later; the menu bar app needs 13.
+  if [ "$os_major" -lt 12 ]; then
+    fail macOS "macOS $os is too old: lazychat needs macOS 12 or newer." \
+      "Update macOS in System Settings › General › Software Update."
+  fi
+  say ok macOS "$os ($(uname -m))"
+  if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)" = 1 ]; then
+    say note Rosetta "this terminal runs under Rosetta, so the build is for Intel; open a native terminal for an Apple silicon build"
+  fi
+
+  if ! has go; then
+    if has brew; then
+      say note Go "not found; installing it with Homebrew"
+      brew install go || fail Go "brew install go failed (see above)." "Install Go 1.26 or newer from https://go.dev/dl, then run ./install.sh again."
+      # A fresh Homebrew is not on this shell's PATH until its shellenv runs.
+      has go || PATH="$(brew --prefix)/bin:$PATH"
+    else
+      pkg="Apple silicon (ARM64)"
+      [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = 1 ] || pkg="Intel (x86-64)"
+      fail Go "Go is not installed." \
+        "Install Go 1.26 or newer: the macOS $pkg installer at https://go.dev/dl" \
+        "or Homebrew (https://brew.sh), then: brew install go" \
+        "Then run ./install.sh again."
+    fi
+  fi
+  goversion="$(go env GOVERSION 2>/dev/null || true)"
+  minor="$(echo "$goversion" | sed -n 's/^go1\.\([0-9][0-9]*\).*/\1/p')"
+  if [ -z "$minor" ]; then
+    fail Go "could not read Go's version (go env GOVERSION said \"$goversion\")." "Reinstall Go from https://go.dev/dl, then run ./install.sh again."
+  elif [ "$minor" -lt 21 ]; then
+    fail Go "$goversion is too old: lazychat needs Go 1.26, and Go before 1.21 cannot fetch it." \
+      "Update Go: brew upgrade go, or the installer at https://go.dev/dl"
+  elif [ "$minor" -lt 26 ]; then
+    # Go 1.21 and later download the toolchain go.mod asks for, unless told not to.
+    if [ "$(go env GOTOOLCHAIN 2>/dev/null)" = local ]; then
+      fail Go "$goversion is set to build with itself only (GOTOOLCHAIN=local), and lazychat needs Go 1.26." \
+        "Run: GOTOOLCHAIN=auto ./install.sh, or update Go: brew upgrade go"
+    fi
+    say note Go "$goversion will download Go 1.26 for this build (needs the internet once)"
+  else
+    say ok Go "$goversion"
+  fi
+
+  # The Command Line Tools bring clang, which lazychat's keyboard layout
+  # reading needs, and swiftc for the menu bar app; without them lazychat
+  # still builds, without those two.
+  cgo=1
+  if ! has clang; then
+    cgo=0
+    say note "C compiler" "none, so lazychat builds without reading the keyboard layout (characters typed with Option still work); xcode-select --install adds it"
+  fi
+  menubar=1
+  if [ "$os_major" -lt 13 ]; then
+    menubar=0
+    say note "menu bar" "the menu bar app needs macOS 13 or newer; lazychat itself works without it"
+  elif ! has swiftc; then
+    menubar=0
+    say note "menu bar" "no Swift compiler, so Lazy will not be in the menu bar; xcode-select --install adds it, then run ./install.sh again"
+  else
+    say ok "menu bar" "will be built"
+  fi
+}
+
+preflight
+[ "$check_only" = 1 ] && exit 0
 
 version=dev
 if git rev-parse --git-dir >/dev/null 2>&1 && git rev-parse --verify -q HEAD >/dev/null; then
@@ -56,8 +140,20 @@ if [ "$version" != dev ] && [ "$old" = "$version" ]; then
   echo "ok    up to date  $version at $shown"
 else
   mkdir -p "$PREFIX"
-  # -trimpath keeps the builder's directory names out of the binary.
-  go build -trimpath -ldflags "-X 'main.version=$version'" -o "$bin" ./cmd/lazychat
+  # -trimpath keeps the builder's directory names out of the binary. The
+  # output is kept back and shown only when the build fails, with a hint.
+  log="$(mktemp)"
+  if ! CGO_ENABLED="$cgo" go build -trimpath -ldflags "-X 'main.version=$version'" -o "$bin" ./cmd/lazychat >"$log" 2>&1; then
+    tail -n 20 "$log" >&2
+    if grep -qiE 'dial tcp|proxy|timeout|no such host|TLS' "$log"; then
+      fail build "Go could not download what the build needs (see above)." \
+        "Check the internet connection, or a proxy: go env GOPROXY. Then run ./install.sh again."
+    fi
+    fail build "the build failed (see above)." \
+      "Run ./install.sh --check to see what this Mac lacks; if it all says ok, please open an issue with this output:" \
+      "https://github.com/perpeer/lazychat/issues"
+  fi
+  rm -f "$log"
   echo "ok    installed   $shown"
   if [ -z "$old" ]; then
     echo "      version     $version (first install)"
@@ -74,18 +170,23 @@ fi
 # be started by hand; into ~/Applications for a user who may not write
 # there. It is started again when it changed. Its bundle id stays the same,
 # so a rebuild keeps its permissions.
-if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
+# build_menubar runs in a subshell of its own: whatever step of it fails,
+# lazychat itself is already installed, so the install goes on and says why.
+build_menubar() {
+  set -e
   apps="${LAZYCHAT_APPLICATIONS:-/Applications}"
   [ -w "$apps" ] || apps="$HOME/Applications"
   bar="$apps/Lazychat.app"
-  # One copy only: a Lazychat in the other Applications folder goes.
-  for other in "/Applications/Lazychat.app" "$HOME/Applications/Lazychat.app"; do
-    [ "$other" != "$bar" ] && [ -e "$other" ] && [ -w "$(dirname "$other")" ] && rm -rf "$other"
-  done
+  # One copy only: a Lazychat in the other Applications folder goes. Not
+  # when a test points the install elsewhere: the real copies are not its.
+  if [ -z "${LAZYCHAT_APPLICATIONS:-}" ]; then
+    for other in "/Applications/Lazychat.app" "$HOME/Applications/Lazychat.app"; do
+      [ "$other" != "$bar" ] && [ -e "$other" ] && [ -w "$(dirname "$other")" ] && rm -rf "$other"
+    done
+  fi
   # Built for macOS 13 and later, against an SDK no newer than this Mac's
   # macOS: Finder marks an app built with a newer SDK (an Xcode beta's) as
   # one this Mac cannot open.
-  os_major="$(sw_vers -productVersion | cut -d. -f1)"
   sdk=""
   if [ "$(xcrun --show-sdk-version 2>/dev/null | cut -d. -f1)" -gt "$os_major" ] 2>/dev/null; then
     sdk="$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*.sdk "$(xcode-select -p 2>/dev/null)"/Platforms/MacOSX.platform/Developer/SDKs/MacOSX[0-9]*.sdk 2>/dev/null \
@@ -114,8 +215,11 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
     rm -rf "$(dirname "$iconset")"
     echo "$barsum" > "$bar/Contents/Resources/source.sum"
     codesign --force -s - "$bar" 2>/dev/null
-    pkill -x Lazychat 2>/dev/null || true
-    open -g "$bar"
+    # A test's copy is never started, nor the running one stopped for it.
+    if [ -z "${LAZYCHAT_APPLICATIONS:-}" ]; then
+      pkill -x Lazychat 2>/dev/null || true
+      open -g "$bar"
+    fi
     echo "ok    installed   Lazychat.app, Lazy in the menu bar, at ${bar/#$HOME/~}"
     echo "      note        start it from Applications; Settings › menu bar hides it; System Settings › General › Login Items starts it at login"
   fi
@@ -125,11 +229,32 @@ if [ "$(uname)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
   # and its icon at once.
   chmod -R u+rwX,go+rX "$bar"
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$bar" 2>/dev/null || true
+}
+if [ "$menubar" = 1 ]; then
+  barlog="$(mktemp)"
+  # Not under `if` or `||`: there bash ignores set -e inside the function,
+  # and a failed step would not stop it.
+  set +e
+  ( build_menubar ) 2>"$barlog"
+  barok=$?
+  set -e
+  if [ "$barok" != 0 ]; then
+    say note "menu bar" "the menu bar app was not built: $(tail -n 1 "$barlog")"
+    say "" "" "lazychat itself is installed; run ./install.sh again after fixing that, or ignore it"
+  fi
+  rm -f "$barlog"
 fi
 
+# The line that puts the folder on PATH, for the user's own shell.
 case ":$PATH:" in
   *":$PREFIX:"*) ;;
-  *) echo "add $PREFIX to PATH, e.g. in ~/.zshrc: export PATH=\"$PREFIX:\$PATH\"" ;;
+  *)
+    case "${SHELL##*/}" in
+      fish) say note PATH "$PREFIX is not on PATH; run: fish_add_path $PREFIX" ;;
+      bash) say note PATH "$PREFIX is not on PATH; add to ~/.bash_profile: export PATH=\"$PREFIX:\$PATH\"" ;;
+      *) say note PATH "$PREFIX is not on PATH; add to ~/.zshrc: export PATH=\"$PREFIX:\$PATH\"" ;;
+    esac
+    ;;
 esac
 
 if [ "$iterm_keys" = 1 ]; then

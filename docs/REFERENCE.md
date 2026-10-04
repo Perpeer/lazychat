@@ -17,11 +17,28 @@ project) and **Settings**.
 
 ## Building from source
 
-`./install.sh` builds `~/.local/bin/lazychat` from this checkout with Go
-1.26 or newer (installed with Homebrew when missing). A clean tree that is
-already installed reports `SAME`; anything else rebuilds, and the script
-says when a running lazychat is still on the previous build.
-`PREFIX=<dir>` installs elsewhere.
+`./install.sh` builds `~/.local/bin/lazychat` from this checkout. It first
+checks the Mac and names every missing piece with its fix
+(`./install.sh --check` does only that):
+
+| Finding | What happens |
+| --- | --- |
+| not macOS | stops: macOS only for now, Linux is planned |
+| macOS older than 12 | stops: update macOS |
+| no Go | Homebrew installs it; without Homebrew, stops with the installer for your Mac (Apple silicon or Intel) at go.dev/dl |
+| Go older than 1.21 | stops: `brew upgrade go`, it cannot fetch Go 1.26 |
+| Go 1.21–1.25 | builds: Go downloads 1.26 for the build (needs the internet once); with `GOTOOLCHAIN=local` it stops and says so |
+| no C compiler (Command Line Tools) | builds without reading the keyboard layout; `xcode-select --install` adds it |
+| no Swift compiler, or macOS 12 | builds lazychat without the menu bar app |
+| a terminal under Rosetta | builds for Intel, and says so |
+| the build fails | shows the end of its output and, for a network error, what to check |
+| the menu bar app fails | lazychat stays installed; the step that failed is named |
+
+A clean tree that is already installed reports `SAME`; anything else
+rebuilds, and the script says when a running lazychat is still on the
+previous build. `PREFIX=<dir>` installs elsewhere. `lazychat doctor`
+checks the AI agents, the workspace, the menu bar app and `jq` (Claude
+Code's status line from lazychat needs it).
 
 On macOS with `swiftc` (Xcode or its Command Line Tools) it also builds
 `/Applications/Lazychat.app`, which puts Lazy, the mascot, in the menu bar (see Menu
