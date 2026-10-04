@@ -196,13 +196,13 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             menu.addItem(.separator())
         }
-        // Where lazychat, and Lazy, are backed; the same link ends every
+        // Where lazychat, and Lazy, are sponsored; the same link ends every
         // tab's help in lazychat.
-        menu.addItem(withTitle: "Back Lazy ♥", action: #selector(backLazy), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Sponsor Lazy ♥", action: #selector(sponsorLazy), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Quit Lazychat Menu Bar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
-    @objc func backLazy() {
+    @objc func sponsorLazy() {
         if let url = URL(string: sponsorURL) { NSWorkspace.shared.open(url) }
     }
 

@@ -26,7 +26,7 @@ the app Lazy.
   `~/.claude/sessions/*.json` with `entrypoint: claude-desktop`; nothing
   is written there. busy → working, waiting → asks, idle after work while
   Claude was not in front → done until Claude comes forward.
-- "Back Lazy ♥" in the menu opens the sponsors page (NSWorkspace, no
+- "Sponsor Lazy ♥" in the menu opens the sponsors page (NSWorkspace, no
   permission); the link is sponsorURL here and kit.SponsorURL in Go, the
   same text. Nothing asks for it on its own: the user wanted the ask in
   the README, the menu and the help, never on screen.

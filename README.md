@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/perpeer/lazychat/stargazers"><img src="https://img.shields.io/github/stars/perpeer/lazychat?style=flat&logo=github&color=f9bd30" alt="GitHub stars"></a>
-  <a href="https://github.com/sponsors/Perpeer"><img src="https://img.shields.io/badge/sponsor-back%20Lazy-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor: back Lazy"></a>
+  <a href="https://github.com/sponsors/Perpeer"><img src="https://img.shields.io/badge/sponsor-Lazy%20%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor Lazy"></a>
   <a href="#install"><img src="https://img.shields.io/badge/homebrew-coming%20soon-fbb040?logo=homebrew&logoColor=white" alt="Homebrew: coming soon"></a>
   <img src="https://img.shields.io/badge/platform-macOS-555?logo=apple&logoColor=white" alt="Platform: macOS">
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26">
@@ -24,8 +24,8 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#features">Features</a> ·
   <a href="#reference">Reference</a> ·
-  <a href="#inspiration">Inspiration</a> ·
-  <a href="#back-lazy">Back Lazy ♥</a>
+  <a href="#sponsor-lazy">Sponsor Lazy ♥</a> ·
+  <a href="#inspiration">Inspiration</a>
 </p>
 
 <p align="center">
@@ -116,7 +116,7 @@ asks you something, its name pops up above Lazy — click it and you are in
 that session. It also tells you when an answer is done (with its first
 line) or failed (rate limit, overloaded…), and sends a desktop notification
 while your terminal is in the background. On macOS it lives in the menu bar
-too. Lazy works for coffee: if it saves you time, [back Lazy](#back-lazy).
+too. Lazy works for coffee: if it saves you time, [sponsor Lazy](#sponsor-lazy).
 
 ### Git without leaving
 
@@ -719,7 +719,7 @@ right corner, three at most), a star running round it when one is done and
 not looked at while nothing works — and for two seconds when one finishes
 while others still work — a `?` by its top edge's right corner
 while one asks, the badges left of it and every key on its keyboard a `?`.
-Its menu ends with "Back Lazy ♥", which opens lazychat's GitHub Sponsors
+Its menu ends with "Sponsor Lazy ♥", which opens lazychat's GitHub Sponsors
 page, and "Quit Lazychat Menu Bar", which quits only the icon. It is drawn like the system's own icons, in the menu bar's
 colour, light or dark, and it moves on a 150 ms beat only while there is
 news. A click on it brings a lazychat's terminal window and tab to the
@@ -866,7 +866,7 @@ internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
 internal/core             agent, api, files, git, history, keylayout, presence, settings, state, status, usage, workspace — no terminal packages; api runs no subprocess; testenv, the tests' own home and temp folder
 macos/Lazychat            Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions, permissions.swift every macOS permission it asks for
-assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
+assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes; lazy.svg, Lazy's rail frames playing in the README, written by `LAZYCHAT_WRITE_ASSETS=1 go test -run TestLazySVG ./internal/ui/kit` (the test fails when it is out of date)
 ```
 
 A tab is `<tab>.go` (its struct, `kit.Tab`), `update.go` (keys, mouse and
@@ -1052,6 +1052,23 @@ whole conversation; delete it when done. Programs a session runs do not
 inherit the setting.
 
 
+## Sponsor Lazy
+
+<p align="center">
+  <a href="https://github.com/sponsors/Perpeer"><img src="assets/lazy.svg" width="184" alt="Lazy, the mascot: resting, typing, asking you, done"></a>
+</p>
+
+Lazy watches your agents all day and has never asked for anything.
+lazychat is free and stays free; if it saves you time, keep Lazy going:
+
+<p align="center">
+  ☕ <b>$3</b> a coffee · 🍩 <b>$10</b> a snack · 🛋️ <b>$50</b> a comfy cushion · 🚀 <b>$100+</b> super sponsor
+</p>
+
+<p align="center">
+  <a href="https://github.com/sponsors/Perpeer"><img src="https://img.shields.io/badge/Sponsor%20Lazy-%E2%99%A5-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor Lazy on GitHub Sponsors"></a>
+</p>
+
 ## Inspiration
 
 lazychat stands on the shoulders of
@@ -1061,34 +1078,13 @@ Duffield: their keyboard-driven terminal UIs showed how good a tool can feel
 when everything is one key away. lazychat brings that spirit to AI coding
 agents.
 
-## Back Lazy
-
-<p align="center">
-  <a href="https://github.com/sponsors/Perpeer"><img src="assets/thumbnail-240.png" width="96" alt="Lazy, the mascot"></a>
-</p>
-
-Lazy watches your sessions all day, tells you who is asking, and has never
-asked for anything — until now. lazychat is free and stays free under the
-AGPL; if it saves you a few minutes a day, you can keep Lazy going on
-[GitHub Sponsors](https://github.com/sponsors/Perpeer): from a $3 coffee
-that keeps it awake to a $100 holiday, monthly or once, or any amount you
-like. It pays for the hours lazychat takes — new agents, Homebrew, the
-menu bar — and every sponsor gets Lazy's thanks.
-
-<p align="center">
-  <a href="https://github.com/sponsors/Perpeer"><img src="https://img.shields.io/badge/%E2%99%A5%20Back%20Lazy-on%20GitHub%20Sponsors-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Back Lazy on GitHub Sponsors"></a>
-</p>
-
-The `?` help in every tab ends with the same link, and Lazychat's menu in
-the menu bar has a **Back Lazy ♥** item that opens it.
-
 ## Contributing
 
 Feedback, ideas and bug reports are very welcome — open an
 [issue](https://github.com/perpeer/lazychat/issues). Which agent should
 lazychat support next? Tell us there. And if lazychat helps you, a
 [⭐ star](https://github.com/perpeer/lazychat/stargazers) helps others find
-it and brings it to Homebrew; [backing Lazy](#back-lazy) keeps it going.
+it and brings it to Homebrew; [sponsoring Lazy](#sponsor-lazy) keeps it going.
 
 ## License
 

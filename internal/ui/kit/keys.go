@@ -291,12 +291,12 @@ var WorkspaceHelp = func() []string {
 	return []string{"Workspace  Ctrl+W             the box at the top: " + strings.Join(keys, " · ") + "; ↓ Esc go back"}
 }()
 
-// SponsorURL is where lazychat, and Lazy, are backed; the menu bar app has
-// the same link.
+// SponsorURL is where lazychat, and Lazy, are sponsored; the menu bar app
+// has the same link.
 const SponsorURL = "https://github.com/sponsors/Perpeer"
 
 // HelpFoot ends every tab's help: the workspace box's keys, and where to
-// back Lazy — said there, never pushed on screen.
+// sponsor Lazy — said there, never pushed on screen.
 var HelpFoot = append(append([]string(nil), WorkspaceHelp...),
 	"",
-	"Back Lazy  ♥ "+SponsorURL+" — lazychat is free; a coffee keeps Lazy awake")
+	"Sponsor Lazy ♥ "+SponsorURL+" — lazychat is free; a coffee keeps Lazy awake")
