@@ -134,7 +134,8 @@ func TestSettingsTheme(t *testing.T) {
 	d.quitApp()
 }
 
-// The mascot and the corner's version can be taken off the screen.
+// The mascot, the splash and the corner's version can be taken off the
+// screen; the splash's row sits between the other two.
 func TestSettingsMascotVersion(t *testing.T) {
 	e, _ := seeded(t)
 	d := start(t, e, 120, 32)
@@ -146,11 +147,14 @@ func TestSettingsMascotVersion(t *testing.T) {
 	d.key("enter", "down", "enter")
 	d.expect("  hidden", "(enter) change")
 	d.expectNot("╭────╮")
+	d.key("down")
+	d.expect("splash", "Lazy waking up")
+	d.key("enter", "down", "enter")
 	d.key("down", "enter", "down", "enter")
 	d.expect("(enter) change")
 	d.expectNot("v1.0(9)")
-	if !d.core.Settings.NoMascot || !d.core.Settings.NoVersion {
-		t.Fatalf("saved: mascot off %v, version off %v", d.core.Settings.NoMascot, d.core.Settings.NoVersion)
+	if !d.core.Settings.NoMascot || !d.core.Settings.NoSplash || !d.core.Settings.NoVersion {
+		t.Fatalf("saved: mascot off %v, splash off %v, version off %v", d.core.Settings.NoMascot, d.core.Settings.NoSplash, d.core.Settings.NoVersion)
 	}
 	d.quitApp()
 }

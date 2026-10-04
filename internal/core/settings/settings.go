@@ -32,9 +32,11 @@ type Settings struct {
 	// Theme is the name of the colours the app draws in; "" is the UI's start theme.
 	Theme string `json:"theme,omitempty"`
 	// NoMascot and NoVersion take the rail's mascot and the corner's
-	// version off the screen.
+	// version off the screen; NoSplash skips the two seconds of Lazy and
+	// the wordmark before the start screen.
 	NoMascot  bool `json:"no_mascot,omitempty"`
 	NoVersion bool `json:"no_version,omitempty"`
+	NoSplash  bool `json:"no_splash,omitempty"`
 	// NoMenuBar hides the macOS menu bar helper's icon; the helper reads
 	// this file itself.
 	NoMenuBar bool `json:"no_menu_bar,omitempty"`

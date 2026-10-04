@@ -11,7 +11,7 @@ lines and that tabs never import each other.
 
 ```
 cmd/lazychat              flags, the workspace loop, subcommands
-internal/ui               the shell: the workspace box, the start screen, the tabs, the rail, footer, popups, key and mouse routing
+internal/ui               the shell: the workspace box, the start screen and its splash, the tabs, the rail, footer, popups, key and mouse routing
 internal/ui/chat          the Chat tab
 internal/ui/git           the Git tab
 internal/ui/terminal      the Terminal tab

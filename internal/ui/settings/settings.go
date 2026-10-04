@@ -70,7 +70,7 @@ var sections = []struct {
 	names []string
 }{
 	{"General", []string{"new session", "commit messages", "tabs", "updates"}},
-	{"Appearance", []string{"theme", "mascot", "version", "syntax colours"}},
+	{"Appearance", []string{"theme", "mascot", "splash", "version", "syntax colours"}},
 	{"Sound", []string{"sounds"}},
 	{"Integrations", []string{"status line", "menu bar"}},
 }
@@ -104,6 +104,7 @@ func (s *Settings) all() []setting {
 			&st.NewSession, false, func() string { return "" }),
 		s.tabsSetting(), s.themeSetting(),
 		onOff("mascot", "Lazy, the face at the rail's top that watches the sessions; off, the footer still names the session that asks or has finished", &st.NoMascot, st.Save),
+		onOff("splash", "the two seconds before the start screen: Lazy waking up beside the lazychat wordmark; any key skips it", &st.NoSplash, st.Save),
 		onOff("version", "lazychat's version at the screen's bottom-right corner; lazychat --version says it with the commit", &st.NoVersion, st.Save),
 		onOff("menu bar", "on macOS, Lazy in the menu bar: a click opens the lazychat with news, a right-click lists every lazychat's sessions; Homebrew builds it with lazychat, install.sh into /Applications", &st.NoMenuBar, func() error {
 			if !st.NoMenuBar {

@@ -29,6 +29,11 @@ type SetupOptions struct {
 	// Restore is a workspace whose state file cannot be read but has a
 	// backup: the screen opens asking to put the backup back.
 	Restore *workspace.Workspace
+	// Splash opens with the two-second splash before the list, the form
+	// or the question; main sets it on the process's first start screen
+	// only. Version is written at the splash's line's end.
+	Splash  bool
+	Version string
 }
 
 // Setup is the screen lazychat opens on: the workspaces, the one opened
@@ -45,6 +50,7 @@ func Setup(o SetupOptions) (ans SetupAnswer, ok bool, err error) {
 
 type setupModel struct {
 	o             SetupOptions
+	splash        splash
 	cursor        int
 	form          *kit.Form    // a popup over the list, or the whole screen with no list
 	confirm       *kit.Confirm // a delete being asked
@@ -56,14 +62,36 @@ type setupModel struct {
 
 func newSetup(o SetupOptions) *setupModel {
 	m := &setupModel{o: o, width: 100, height: 30}
-	if len(m.recent()) == 0 {
-		m.newForm()
-	}
-	if o.Restore != nil {
-		m.askRestore(*o.Restore)
+	if o.Splash {
+		m.splash.on = true
+	} else {
+		m.open()
 	}
 	return m
 }
+
+// open is what the start screen shows first after the splash: the form
+// for a new workspace when there is none, the restore question for a
+// broken one, else the list.
+func (m *setupModel) open() {
+	if len(m.recent()) == 0 {
+		m.newForm()
+	}
+	if m.o.Restore != nil {
+		m.askRestore(*m.o.Restore)
+	}
+}
+
+// endSplash leaves the splash for the start screen proper.
+func (m *setupModel) endSplash() {
+	m.splash.on = false
+	m.open()
+}
+
+// ApplyTheme draws everything from the named theme from now on; main calls
+// it before the start screen, so the splash and the list come in the
+// saved colours and not the default ones.
+func ApplyTheme(name string) { kit.SetTheme(kit.ThemeByName(name)) }
 
 // askRestore offers the backup of a state file that cannot be read; the
 // broken file is kept beside it, so nothing is lost either way.
@@ -92,15 +120,36 @@ func (m *setupModel) newForm() {
 	m.form = &f
 }
 
-func (m *setupModel) Init() tea.Cmd { return nil }
+func (m *setupModel) Init() tea.Cmd {
+	if m.splash.on {
+		return splashTick()
+	}
+	return nil
+}
 
 func (m *setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+	case splashMsg:
+		if !m.splash.on {
+			return m, nil
+		}
+		m.splash.frame++
+		if m.splash.frame >= splashFrames {
+			m.endSplash()
+			return m, nil
+		}
+		return m, splashTick()
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
+		}
+		if m.splash.on {
+			// The key only ends the splash: it was aimed at the logo, not
+			// at a list the user has not seen yet.
+			m.endSplash()
+			return m, nil
 		}
 		switch {
 		case m.confirm != nil:
@@ -202,6 +251,9 @@ func (m *setupModel) remove(w workspace.Workspace, done string) {
 }
 
 func (m *setupModel) View() string {
+	if m.splash.on {
+		return splashView(m.splash.frame, m.o.Version, m.width, m.height)
+	}
 	rows := make([]string, m.height)
 	lines := m.o.Intro
 	if m.note != "" {

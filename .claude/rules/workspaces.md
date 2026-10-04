@@ -20,3 +20,14 @@ paths:
   cannot open leaves you where you were. The start screen shows only at
   start and after a delete.
 - The project is unpublished: no migration of older files or names.
+- The splash (ui/splash.go) is the start screen's first phase, not a
+  program of its own: a second tea.Program would clear the terminal
+  between the two and flicker. Thirteen beats of 150 ms; any key ends it
+  and reaches nothing else; the create form and the restore question wait
+  behind it. main passes `Splash` to the process's first `ui.Setup` only:
+  a start screen shown again after a failed create, a broken state file
+  or a delete comes without it. The saved theme is applied before the
+  start screen (`ui.ApplyTheme`), since the app applied it only after.
+  Tests step the splash with `splashMsg`, never with a clock;
+  `--workspace` skips the screen and the splash with it, so screen and
+  pty tests see it only in TestFirstRun.

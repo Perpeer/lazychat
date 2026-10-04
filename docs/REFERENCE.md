@@ -158,11 +158,27 @@ Nothing of lazychat's is written into a project's folder. Claude Code's
 transcripts stay where Claude Code keeps them, `~/.claude/projects`, and
 are only read.
 
-lazychat opens on the start screen every time: the workspaces, the one
-opened last under the cursor. `Enter` opens it, `n` makes a new one (a
-name), `e` renames one, `d` deletes one — its folder to the Trash, where
-Finder can put it back, asked first. With none it is the form for a new
-one. `--workspace <name>` skips the screen.
+lazychat opens with a two-second splash: Lazy waking up — eyes shut, then
+open, then a smile — at the left of the `lazychat` wordmark typed in
+beside it, a line filling under them with the version at its end, and a
+line saying what lazychat is. Any key skips it; Settings → Appearance →
+splash turns it off; it shows once per start, in the saved theme.
+
+```
+          ╭──────╮   ██      █████  ███████ ██   ██
+          │ ^  ^ │   ██     ██   ██     ██   ██ ██
+          │  ‿   │   ██     ███████   ██      ███    chat
+          ╰──────╯   ██████ ██   ██ ███████    █
+
+                     ──────────────────────────────────── v1.0(64)
+                     sessions · git · notes · one screen
+```
+
+Then the start screen: the workspaces, the one opened last under the
+cursor. `Enter` opens it, `n` makes a new one (a name), `e` renames one,
+`d` deletes one — its folder to the Trash, where Finder can put it back,
+asked first. With none it is the form for a new one. `--workspace <name>`
+skips the screen, and the splash with it.
 
 In the app the open workspace is the box across the top: its name and how
 many projects it has. `Ctrl+W` or a click selects it; `↓` or `Esc`
@@ -632,6 +648,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | General | updates | checked | asks GitHub at start and every six hours (the answer kept in `~/.lazychat/update.json`) whether a newer lazychat is out; when one is, the corner shows it in green, `v1.0.2  ↑ 1.0.3`, and a note says once how to get it (`brew upgrade lazychat`, or `git pull` and `./install.sh` for a source build). Nothing about this Mac goes with the question; offline, it says nothing |
 | Appearance | theme | Gruvbox | Amber (lazychat's own muted yellow on the terminal's colours), Dracula, One Dark, Monokai, Nord, Gruvbox, Solarized Dark, Tokyo Night, Catppuccin Mocha. All but Amber also set the terminal window's background and text while lazychat runs (OSC 10 and 11, given back on the way out), so the panes' programs sit on them too |
 | Appearance | mascot | shown | Lazy, the face at the rail's top |
+| Appearance | splash | shown | the two seconds before the start screen: Lazy waking up beside the wordmark; any key skips it |
 | Appearance | version | shown | the corner's `v1.0(N)` |
 | Appearance | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
 | Sound | sounds | on | on macOS, Lazy's sounds: a short burst of the recorded keys as a session starts on a new prompt (not on an answer), a session asks something, finishes (looked at or not), or ends on an API error; in the details, a subagent of the newest prompt comes back |

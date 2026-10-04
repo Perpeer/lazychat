@@ -146,3 +146,90 @@ func TestStartScreenRestores(t *testing.T) {
 		t.Errorf("the broken file was not kept: %v", aside)
 	}
 }
+
+// The start screen opens on the splash when asked: Lazy with shut eyes and
+// the wordmark's first letter, the rest typed in over the first beats, the
+// eyes open after them, the line full on the last frame, then the list —
+// or, with no workspace, the create form; a key ends it at once. Without
+// Splash the list comes first.
+func TestSplash(t *testing.T) {
+	home := t.TempDir()
+	reg, err := workspace.LoadRegistry(filepath.Join(home, "workspaces.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _ := workspace.Create(home, "primary")
+	if err := reg.Opened(a); err != nil {
+		t.Fatal(err)
+	}
+	d := setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: t.TempDir(), Name: "main", Splash: true, Version: "1.0(9) 1a2b3c4"})}
+	d.m.width, d.m.height = 120, 32
+	if d.m.Init() == nil {
+		t.Fatal("the splash starts no beat")
+	}
+	d.expect("-  -")
+	first := d.m.View()
+	if strings.Contains(first, "workspaces") || strings.Contains(first, "▸ primary") || strings.Contains(first, "chat") {
+		t.Fatalf("the first frame shows more than Lazy:\n%s", first)
+	}
+	step := func(n int) {
+		for range n {
+			d.m.Update(splashMsg{})
+		}
+	}
+	step(2)
+	if strings.Count(d.m.View(), "█") <= strings.Count(first, "█") {
+		t.Fatalf("the wordmark is not typed in:\n%s", d.m.View())
+	}
+	step(splashTyped - 2)
+	d.expect("chat", "^  ^")
+	step(splashFrames - splashTyped - 1)
+	d.expect("‿", "v1.0(9)", "sessions · git · notes · one screen")
+	if strings.Contains(d.m.View(), "1a2b3c4") {
+		t.Fatalf("the commit is on the splash:\n%s", d.m.View())
+	}
+	if strings.Contains(d.m.View(), "workspaces") {
+		t.Fatalf("the list came before the last frame:\n%s", d.m.View())
+	}
+	step(1)
+	d.expect("workspaces", "▸ primary", "(enter) open")
+	if strings.Contains(d.m.View(), "‿") {
+		t.Fatalf("the splash stayed:\n%s", d.m.View())
+	}
+
+	// A key ends it at once and is not a list key.
+	d = setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: t.TempDir(), Name: "main", Splash: true})}
+	d.m.width, d.m.height = 120, 32
+	step(1)
+	d.key("n")
+	d.expect("workspaces", "▸ primary")
+	if strings.Contains(d.m.View(), "create workspace") {
+		t.Fatalf("the skipping key reached the list:\n%s", d.m.View())
+	}
+
+	// No workspace yet: the create form comes after the splash, not over it.
+	empty, _ := workspace.LoadRegistry(filepath.Join(t.TempDir(), "workspaces.json"))
+	d = setupDriver{t: t, m: newSetup(SetupOptions{Registry: empty, Trash: t.TempDir(), Name: "main", Splash: true})}
+	d.m.width, d.m.height = 120, 32
+	if strings.Contains(d.m.View(), "create workspace") {
+		t.Fatalf("the form is over the splash:\n%s", d.m.View())
+	}
+	d.key("enter")
+	d.expect("create workspace", "> main")
+
+	// Narrow: the plain name in place of the block letters.
+	d = setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: t.TempDir(), Name: "main", Splash: true})}
+	d.m.width, d.m.height = 50, 12
+	d.expect("lazychat", "-  -")
+	if strings.Contains(d.m.View(), "█") {
+		t.Fatalf("block letters in a narrow terminal:\n%s", d.m.View())
+	}
+
+	// Without the splash the list is first.
+	d = setupDriver{t: t, m: newSetup(SetupOptions{Registry: reg, Trash: t.TempDir(), Name: "main"})}
+	d.m.width, d.m.height = 120, 32
+	d.expect("workspaces", "▸ primary")
+	if d.m.Init() != nil {
+		t.Fatal("no splash, yet a beat")
+	}
+}

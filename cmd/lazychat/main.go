@@ -76,16 +76,22 @@ func run(args []string) error {
 		fmt.Println(version)
 		return nil
 	}
-	if registryPath == workspace.DefaultRegistryPath() && len(fs.Args()) == 0 {
-		if st, err := settings.Load(filepath.Dir(registryPath)); err == nil && !st.NoMenuBar {
+	// The machine's settings are read before the start screen, so it and
+	// the splash draw in the saved theme and the splash can be turned off;
+	// the workspace's own open reads them again with its state.
+	splash := true
+	if st, err := settings.Load(filepath.Dir(registryPath)); err == nil {
+		if registryPath == workspace.DefaultRegistryPath() && len(fs.Args()) == 0 && !st.NoMenuBar {
 			startMenuBar()
 		}
+		ui.ApplyTheme(st.Theme)
+		splash = !st.NoSplash
 	}
 	reg, err := workspace.LoadRegistry(registryPath)
 	if err != nil {
 		return err
 	}
-	w, err := chooseWorkspace(reg, workspaceName, trash, len(fs.Args()) > 0)
+	w, err := chooseWorkspace(reg, workspaceName, trash, len(fs.Args()) > 0, splash)
 	if errors.Is(err, errNoWorkspace) {
 		return nil
 	}
@@ -134,7 +140,7 @@ func run(args []string) error {
 			if errors.As(err, &bad) && bad.Backup != "" {
 				restore = &w
 			}
-			if w, err = askWorkspace(reg, trash, "! "+err.Error(), restore); err != nil {
+			if w, err = askWorkspace(reg, trash, "! "+err.Error(), restore, false); err != nil {
 				return noWorkspace(err)
 			}
 			continue
@@ -174,7 +180,7 @@ func deleteWorkspace(reg *workspace.Registry, cur workspace.Workspace, trash str
 		}
 		note = "Workspace " + cur.Name + " was deleted; it is in the Trash, as \"" + filepath.Base(got) + "\"."
 	}
-	return askWorkspace(reg, trash, note, nil)
+	return askWorkspace(reg, trash, note, nil, false)
 }
 
 // noWorkspace is nil when the start screen was left without a workspace,
@@ -309,7 +315,7 @@ var errNoWorkspace = errors.New("no workspace chosen")
 // chooseWorkspace is the workspace to open: the one named, made when it is
 // new, else one chosen on the start screen. A subcommand never asks: it
 // runs on the newest workspace, or says there is none.
-func chooseWorkspace(reg *workspace.Registry, name, trash string, subcommand bool) (workspace.Workspace, error) {
+func chooseWorkspace(reg *workspace.Registry, name, trash string, subcommand, splash bool) (workspace.Workspace, error) {
 	var (
 		w   workspace.Workspace
 		err error
@@ -333,7 +339,7 @@ func chooseWorkspace(reg *workspace.Registry, name, trash string, subcommand boo
 		}
 		w = valid[0]
 	default:
-		if w, err = askWorkspace(reg, trash, reg.Note, nil); err != nil {
+		if w, err = askWorkspace(reg, trash, reg.Note, nil, splash); err != nil {
 			return workspace.Workspace{}, err
 		}
 	}
@@ -341,8 +347,9 @@ func chooseWorkspace(reg *workspace.Registry, name, trash string, subcommand boo
 }
 
 // askWorkspace shows the start screen until it gives a workspace that can
-// be made or opened, note on top when there is one.
-func askWorkspace(reg *workspace.Registry, trash, note string, restore *workspace.Workspace) (workspace.Workspace, error) {
+// be made or opened, note on top when there is one; splash opens the first
+// screen with the splash, the ones after a failed create come without.
+func askWorkspace(reg *workspace.Registry, trash, note string, restore *workspace.Workspace, splash bool) (workspace.Workspace, error) {
 	var intro []string
 	if note != "" {
 		intro = append(intro, note)
@@ -350,8 +357,8 @@ func askWorkspace(reg *workspace.Registry, trash, note string, restore *workspac
 	base := len(intro)
 	name := "main"
 	for {
-		ans, ok, err := ui.Setup(ui.SetupOptions{Intro: intro, Registry: reg, Trash: trash, Name: name, Restore: restore})
-		restore = nil // asked once
+		ans, ok, err := ui.Setup(ui.SetupOptions{Intro: intro, Registry: reg, Trash: trash, Name: name, Restore: restore, Splash: splash, Version: version})
+		restore, splash = nil, false // asked and shown once
 		if err != nil {
 			return workspace.Workspace{}, err
 		}
