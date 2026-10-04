@@ -180,7 +180,7 @@ func noWorkspace(err error) error {
 // the menu bar, and jq for the status line it gives Claude Code. Each says
 // how to get it; none fails doctor.
 func extraChecks(apps []string, lookPath func(string) (string, error)) []api.Check {
-	bar := api.Check{Name: "menu bar", Optional: true, Detail: "Lazychat.app is not installed: ./install.sh builds it (it needs the Command Line Tools: xcode-select --install)"}
+	bar := api.Check{Name: "menu bar", Optional: true, Detail: "Lazychat.app is not installed: brew install perpeer/tap/lazychat or ./install.sh builds it (it needs the Command Line Tools: xcode-select --install)"}
 	for _, a := range apps {
 		if _, err := os.Stat(a); err == nil {
 			bar.OK, bar.Detail = true, a
@@ -202,6 +202,9 @@ func subcommand(core *api.Core, rest []string) error {
 		ok := true
 		home := files.Home()
 		apps := []string{"/Applications/Lazychat.app", filepath.Join(home, "Applications", "Lazychat.app")}
+		if exe, err := os.Executable(); err == nil {
+			apps = append([]string{besideBinary(exe)}, apps...)
+		}
 		for _, c := range append(core.Doctor(), extraChecks(apps, exec.LookPath)...) {
 			mark := "ok  "
 			switch {
@@ -330,17 +333,38 @@ func askWorkspace(reg *workspace.Registry, trash, note string, restore *workspac
 	}
 }
 
-// startMenuBar starts Lazychat.app, Lazy in the menu bar, install.sh built, when it
-// is there and not running: open hands an app already running nothing, and
-// -g leaves it in the background.
+// startMenuBar starts Lazychat.app, Lazy in the menu bar, when it is there
+// and not running: open hands an app already running nothing, and -g leaves
+// it in the background. Homebrew's, beside this binary, comes first: it is
+// the same release.
 func startMenuBar() {
 	home := files.Home()
 	if home == "" {
 		return
 	}
-	if bar := menuBarApp("/Applications", home); bar != "" {
+	bar := menuBarApp("/Applications", home)
+	if exe, err := os.Executable(); err == nil {
+		if b := besideBinary(exe); fileExists(b) {
+			bar = b
+		}
+	}
+	if bar != "" {
 		_ = exec.Command("open", "-g", bar).Start()
 	}
+}
+
+// besideBinary is where Homebrew's formula puts Lazychat.app: in the prefix
+// whose bin holds this binary, found through the link Homebrew makes to it.
+func besideBinary(exe string) string {
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	return filepath.Join(filepath.Dir(filepath.Dir(exe)), "Lazychat.app")
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // menuBarApp is where install.sh put Lazychat.app: /Applications, or the

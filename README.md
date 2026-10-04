@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://github.com/perpeer/lazychat/stargazers"><img src="https://img.shields.io/github/stars/perpeer/lazychat?style=flat&logo=github&color=f9bd30" alt="GitHub stars"></a>
   <a href="https://github.com/sponsors/Perpeer"><img src="https://img.shields.io/badge/sponsor-Lazy%20%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor Lazy"></a>
-  <a href="#install"><img src="https://img.shields.io/badge/homebrew-coming%20soon-fbb040?logo=homebrew&logoColor=white" alt="Homebrew: coming soon"></a>
+  <a href="#install"><img src="https://img.shields.io/badge/homebrew-perpeer%2Ftap-fbb040?logo=homebrew&logoColor=white" alt="Homebrew: perpeer/tap"></a>
   <img src="https://img.shields.io/badge/platform-macOS-555?logo=apple&logoColor=white" alt="Platform: macOS">
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0"></a>
@@ -38,6 +38,25 @@ You need a Mac (Apple silicon or Intel, macOS 12 or newer) and an AI coding
 agent you are logged in to: [Claude Code](https://code.claude.com/docs) or
 [Codex](https://github.com/openai/codex).
 
+### Homebrew
+
+```sh
+brew install perpeer/tap/lazychat
+```
+
+Homebrew builds lazychat on your Mac, along with Lazy's menu bar app, so
+macOS opens both without a warning. Then run `lazychat`; `lazychat doctor`
+says what else is ready. Lazy starts with lazychat; `brew services start
+lazychat` keeps it in the menu bar from every login. `brew upgrade
+lazychat` takes a new release.
+
+lazychat comes from our own tap for now. Homebrew's own list takes it at
+225 stars, and then it is just `brew install lazychat`. If it saves you a
+few tabs, [star it](https://github.com/perpeer/lazychat/stargazers): every
+star helps lazychat reach more people.
+
+### From the source
+
 ```sh
 git clone https://github.com/perpeer/lazychat
 cd lazychat
@@ -48,18 +67,11 @@ The script checks your Mac first and tells you what is missing and how to
 get it; `./install.sh --check` does only that. It installs Go with Homebrew
 if you don't have it (an older Go fetches the one lazychat needs by
 itself), builds `~/.local/bin/lazychat` and adds Lazy's menu bar app to
-Applications. Then run `lazychat`; `lazychat doctor` says what else is
-ready.
+Applications.
 
-### Homebrew: coming soon
-
-`brew install perpeer/tap/lazychat` comes with the first release. Homebrew's
-own list takes lazychat at 225 stars, so if it saves you a few tabs,
-[star it](https://github.com/perpeer/lazychat/stargazers): every star gets
-`brew install lazychat` closer.
-
-To remove lazychat, run `./uninstall.sh`. Your settings and workspaces stay
-unless you add `--purge`; your projects and the agents' own files are
+To remove lazychat, run `brew uninstall lazychat`, or `./uninstall.sh` for
+a source install. Your settings and workspaces stay (`./uninstall.sh
+--purge` takes them too); your projects and the agents' own files are
 never touched.
 
 ## Quick start

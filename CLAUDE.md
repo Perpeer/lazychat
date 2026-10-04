@@ -117,10 +117,14 @@ raises it by one and two builds with the same N are the same commit.
 when the tree has uncommitted changes; nothing holds it by hand, so a
 commit never edits a version file. It shows as `v1.0(N)` at the screen's
 bottom-right corner, with the hash in `lazychat --version`. Raise the
-`1.0` part only when the user asks. A release build (the Homebrew formula
-in `packaging/homebrew/`, later the release binaries) stamps the tag's
-version, `1.0.0`, through the same `-X main.version`; tags, the formula's
-url and sha256 and the tap repository come with the first release.
+`1.0` part only when the user asks. A release is a tag `vX.Y.Z` cut by
+`./release.sh X.Y.Z` (clean main, check green, tagged here; the user
+pushes it); `./release.sh --formula X.Y.Z` then writes the tag archive's
+sha256 into `packaging/homebrew/lazychat.rb` and the tap
+(`../homebrew-tap`, github.com/Perpeer/homebrew-tap), which the user
+pushes. Homebrew's build stamps `X.Y.Z` through the same
+`-X main.version`. `./install.sh --brew` installs through Homebrew from
+this checkout (a local tap, version `1.0.N-dev`) to test the formula.
 
 ## iCloud
 

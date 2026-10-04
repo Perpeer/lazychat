@@ -4,6 +4,7 @@
 #   ./install.sh --check       only check this Mac: what is there, what is missing and how to get it
 #   ./install.sh --iterm-keys  also make iTerm send ⌘1–⌘4 as lazychat's tab keys
 #   ./install.sh --uninstall   take it all back: runs ./uninstall.sh (--purge, --dry-run)
+#   ./install.sh --brew        install through Homebrew from this checkout, as a release would be (--brew --remove)
 # On macOS with swiftc it also builds Lazychat.app, Lazy in the menu bar, into /Applications.
 set -euo pipefail
 
@@ -19,13 +20,22 @@ for arg in "$@"; do
   fi
 done
 
+# --brew hands over to the Homebrew path, a release built from this checkout.
+for arg in "$@"; do
+  if [ "$arg" = --brew ]; then
+    rest=()
+    for a in "$@"; do [ "$a" = --brew ] || rest+=("$a"); done
+    exec packaging/homebrew/brew-dev.sh ${rest[@]+"${rest[@]}"}
+  fi
+done
+
 iterm_keys=0
 check_only=0
 for arg in "$@"; do
   case "$arg" in
     --iterm-keys) iterm_keys=1 ;;
     --check) check_only=1 ;;
-    -h|--help) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "install.sh: unknown option $arg" >&2; exit 2 ;;
   esac
 done

@@ -29,3 +29,24 @@ func TestMenuBarApp(t *testing.T) {
 		t.Errorf("in both: %q, want /Applications' first", got)
 	}
 }
+
+// Homebrew's formula puts Lazychat.app in its prefix, beside the bin folder
+// of the binary its link points at.
+func TestBesideBinary(t *testing.T) {
+	prefix := t.TempDir()
+	bin := filepath.Join(prefix, "bin", "lazychat")
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bin, nil, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "lazychat")
+	if err := os.Symlink(bin, link); err != nil {
+		t.Fatal(err)
+	}
+	want, _ := filepath.EvalSymlinks(filepath.Join(prefix, "bin"))
+	if got := besideBinary(link); got != filepath.Join(filepath.Dir(want), "Lazychat.app") {
+		t.Errorf("beside %q: %q", link, got)
+	}
+}

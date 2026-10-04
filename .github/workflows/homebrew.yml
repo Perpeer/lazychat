@@ -1,0 +1,56 @@
+# Updates the tap (Perpeer/homebrew-tap) when a v* tag is pushed: the
+# formula from packaging/homebrew/lazychat.rb with the tag's archive url and
+# sha256, the same file ./release.sh --formula writes by hand. It needs a
+# fine-grained token with Contents: Read and write on Perpeer/homebrew-tap
+# only, saved as the HOMEBREW_TAP_TOKEN secret; without it the job says so
+# and stops.
+name: Homebrew
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  tap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Token
+        id: token
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::notice::HOMEBREW_TAP_TOKEN is not set: update the tap with ./release.sh --formula ${GITHUB_REF_NAME#v}"
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.token.outputs.ok == '1'
+      - uses: actions/checkout@v4
+        if: steps.token.outputs.ok == '1'
+        with:
+          repository: Perpeer/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+      - name: Formula
+        if: steps.token.outputs.ok == '1'
+        run: |
+          url="https://github.com/Perpeer/lazychat/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          sum="$(curl -fsSL "$url" | sha256sum | cut -d' ' -f1)"
+          mkdir -p tap/Formula
+          awk -v url="$url" -v sum="$sum" '
+            /^  url / { print "  url \"" url "\""; next }
+            /^  sha256 / { print "  sha256 \"" sum "\""; next }
+            { print }
+          ' packaging/homebrew/lazychat.rb > tap/Formula/lazychat.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/lazychat.rb
+          git diff --cached --quiet && exit 0
+          git commit -m "lazychat ${GITHUB_REF_NAME#v}"
+          git push

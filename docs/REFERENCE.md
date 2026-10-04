@@ -15,6 +15,26 @@ sit on a rail on the left: **Chat** (the sessions), **Git** (each
 project's changes, commits and worktrees), **Terminal** (plain shells per
 project) and **Settings**.
 
+## Homebrew
+
+`brew install perpeer/tap/lazychat` builds lazychat from the release's
+source on your Mac: the command with the keyboard layout reading (cgo),
+and on macOS 13 or newer Lazychat.app, Lazy in the menu bar, in Homebrew's
+folder for it, which lazychat finds and starts. Built here, nothing is
+quarantined, so no notarization is needed. `brew services start lazychat`
+starts Lazy at every login; `brew upgrade lazychat` takes a new release.
+
+For lazychat's own work, `./install.sh --brew` does the same from this
+checkout: a local tap (`lazychat/dev`) whose formula is
+`packaging/homebrew/lazychat.rb` pointed at an archive of HEAD, version
+`1.0.N-dev`, installed from source, then `brew test` and `brew audit`.
+`./install.sh --brew --remove` takes it and the tap away. Releases:
+`./release.sh 1.0.0` tags a clean, checked main here; once the tag is on
+GitHub, `./release.sh --formula 1.0.0` writes its archive's sha256 into
+the formula and the tap and commits the tap. A pushed `v*` tag also
+updates the tap by itself when the `HOMEBREW_TAP_TOKEN` secret is set
+(`.github/workflows/homebrew.yml`).
+
 ## Building from source
 
 `./install.sh` builds `~/.local/bin/lazychat` from this checkout. It first
