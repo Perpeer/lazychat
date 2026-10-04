@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"strings"
+
+	"lazychat/internal/core/files"
 )
 
 const CodexID = "codex"
@@ -72,12 +74,12 @@ func (c *Codex) Check(ctx context.Context) Status {
 // Suggest is codex exec in a read-only sandbox: it prints its work as it
 // goes, so only its last message, which it writes to a file, is the answer.
 func (c *Codex) Suggest(ctx context.Context, dir, request, input string) (string, error) {
-	f, err := os.CreateTemp("", "lazychat-suggest-")
+	f, err := files.TempFile("lazychat-suggest-")
 	if err != nil {
 		return "", err
 	}
 	f.Close()
-	defer os.Remove(f.Name())
+	defer files.Remove(f.Name())
 	if _, err := oneShot(ctx, dir, "", c.bin(), "exec", "--skip-git-repo-check", "-s", "read-only", "-o", f.Name(), request+"\n\n"+input); err != nil {
 		return "", err
 	}

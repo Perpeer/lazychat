@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// A registry keeps terminals by key, counts the running ones per project,
-// follows a project's rename, and forgets one whose process exited.
+// A registry keeps terminals by key, follows a project's rename, and
+// forgets one whose process exited.
 func TestRegistry(t *testing.T) {
 	r := NewRegistry()
 	s, err := Start(1, "one", "p", t.TempDir(), []string{"/bin/sh", "-c", "sleep 0.2"}, 40, 10, nil)
@@ -14,12 +14,12 @@ func TestRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.Put("k", s)
-	if !r.Running("k") || r.CountIn("p") != 1 {
-		t.Fatalf("running %v, count %d", r.Running("k"), r.CountIn("p"))
+	if !r.Running("k") {
+		t.Fatal("not running")
 	}
 	r.RenameProject("p", "q")
-	if r.CountIn("q") != 1 || r.CountIn("p") != 0 {
-		t.Errorf("after the rename: p %d, q %d", r.CountIn("p"), r.CountIn("q"))
+	if got, _ := r.Get("k"); got.Project != "q" {
+		t.Errorf("after the rename: project %q", got.Project)
 	}
 	var reaped []string
 	for end := time.Now().Add(3 * time.Second); len(reaped) == 0 && time.Now().Before(end); time.Sleep(20 * time.Millisecond) {

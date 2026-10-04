@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"lazychat/internal/core/files"
 )
 
 // ResumeGap is the quiet between two records taken as the session having
@@ -115,9 +117,8 @@ func newStream(calls *[]Call, agent string) *stream {
 // Update.
 func Open(path string) *Reader {
 	id := strings.TrimSuffix(filepath.Base(path), ".jsonl")
-	home, _ := os.UserHomeDir()
 	r := &Reader{
-		Home:    home,
+		Home:    files.Home(),
 		main:    tail{path: path},
 		dir:     filepath.Join(filepath.Dir(path), id, "subagents"),
 		s:       &Session{ID: id, Tools: map[string]int{}},
@@ -132,6 +133,16 @@ func Open(path string) *Reader {
 
 // Session is what was read so far.
 func (r *Reader) Session() *Session { return r.s }
+
+// Read is how far into its files the reader is: it moves only when a file
+// gained lines, so a caller can skip work for a session that did nothing.
+func (r *Reader) Read() int64 {
+	n := r.main.offset
+	for _, f := range r.agents {
+		n += f.offset
+	}
+	return n
+}
 
 // Update reads what the session's files gained since the last call.
 func (r *Reader) Update() (*Session, error) {

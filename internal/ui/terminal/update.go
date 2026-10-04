@@ -10,12 +10,12 @@ import (
 var hits = kit.Hits{Row: "trow", Heading: "tproj", Pane: "tterm", Panels: []string{"tpanel-1", "tpanel-2"}}
 
 func (t *Terminal) Update(msg tea.Msg) tea.Cmd {
-	if t.capture.Update(msg) {
+	if t.Capture.Update(msg) {
 		return nil
 	}
 	switch msg := msg.(type) {
 	case kit.Tick:
-		t.tick = msg.N
+		t.Tick = msg.N
 		if msg.N%pruneTicks == 0 {
 			t.act.Prune()
 		}
@@ -32,7 +32,7 @@ func (t *Terminal) Key(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (t *Terminal) move(d int) {
-	if t.capture.Held() {
+	if t.Capture.Held() {
 		return
 	}
 	t.tree.Step(d)
@@ -44,7 +44,7 @@ func (t *Terminal) move(d int) {
 func (t *Terminal) follow() {
 	if sh, ok := t.tree.Shell(); ok {
 		if s, ok := t.act.Live.Get(sh.Key); ok {
-			t.point(sh.Key, s)
+			t.Point(sh.Key, s)
 		}
 	}
 }
@@ -59,14 +59,14 @@ func (t *Terminal) carry(d int) {
 		err = t.tree.MoveShell(d)
 	}
 	if err != nil {
-		t.screen.Note("move: %v", err)
+		t.Screen.Note("move: %v", err)
 	}
 }
 
 // enter gives the shell under the cursor the keys.
 func (t *Terminal) enter() {
-	t.paneSel = false
-	if sh, ok := t.tree.Shell(); ok && !t.capture.Held() {
+	t.PaneSel = false
+	if sh, ok := t.tree.Shell(); ok && !t.Capture.Held() {
 		t.act.Open(asShell(sh))
 	}
 }
@@ -80,16 +80,14 @@ func (t *Terminal) newShell() {
 // toPanel gives the keys to panel p: 1 the list, 2 the shell on the right.
 func (t *Terminal) toPanel(p int) {
 	if p == 1 {
-		t.fullTerm, t.paneSel = false, false
+		t.ToList()
 		return
 	}
 	if t.tree.OnProject() {
 		t.Note("a terminal takes the keys: this project has none")
 		return
 	}
-	// Chosen, not entered: Enter goes in, so a number never lands the
-	// keys in the shell.
-	t.paneSel, t.fullTerm = true, true
+	t.Choose()
 }
 
 // shellRows are the rows that are shells, in list order, as the view
@@ -126,11 +124,7 @@ func (t *Terminal) Mouse(msg tea.MouseMsg) tea.Cmd {
 	hit := hits.At(msg, len(t.shellRows()), len(t.core.Store.Projects))
 	if d := kit.Wheel(msg); d != 0 {
 		if hit.Kind == kit.HitPane {
-			code := kit.WheelUp
-			if d > 0 {
-				code = kit.WheelDown
-			}
-			t.pane.Mouse(t.paneRect(), code, msg.X, msg.Y, false)
+			t.WheelPane(msg.X, msg.Y, d)
 		} else {
 			t.scroll.Wheel(d / kit.WheelRows)
 		}
@@ -139,29 +133,29 @@ func (t *Terminal) Mouse(msg tea.MouseMsg) tea.Cmd {
 	if !kit.LeftClick(msg) {
 		return nil
 	}
-	t.tree.Moving, t.paneSel = false, false
+	t.tree.Moving, t.PaneSel = false, false
 	switch hit.Kind {
 	case kit.HitRow:
-		if rows := t.shellRows(); hit.N < len(rows) && rows[hit.N] == t.tree.Sel && !t.capture.Held() {
+		if rows := t.shellRows(); hit.N < len(rows) && rows[hit.N] == t.tree.Sel && !t.Capture.Held() {
 			t.enter()
 			return nil
 		}
-		t.capture.Drop()
+		t.Capture.Drop()
 		t.selectShell(hit.N)
 	case kit.HitHeading:
-		t.capture.Drop()
+		t.Capture.Drop()
 		t.selectProject(hit.N)
 	case kit.HitPane, kit.HitPanel:
 		if hit.Kind == kit.HitPanel && hit.N != 2 {
 			return nil
 		}
-		t.pane.StopCopy()
-		if !t.tree.OnProject() && t.pane.Session != nil {
-			t.capture.Take()
+		t.Pane.StopCopy()
+		if !t.tree.OnProject() && t.Pane.Session != nil {
+			t.Capture.Take()
 			// The click that takes the keys also starts a selection: its
 			// drag and release arrive as the shell's raw mouse after it.
-			if r := t.paneRect(); hit.Kind == kit.HitPane {
-				t.pane.Press(r, msg.X-r.X0, msg.Y-r.Y0)
+			if r := t.PaneRect(); hit.Kind == kit.HitPane {
+				t.Pane.Press(r, msg.X-r.X0, msg.Y-r.Y0)
 			}
 		}
 	}

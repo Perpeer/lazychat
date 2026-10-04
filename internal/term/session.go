@@ -66,6 +66,9 @@ type Session struct {
 	// can be told from typing; lastOutput is when it last wrote, in unix nanos.
 	pasteMode  atomic.Bool
 	lastOutput atomic.Int64
+	// gen counts the changes to what Render shows: output, a resize, the
+	// end; a view that drew generation n need not draw it again.
+	gen atomic.Uint64
 	// given is the user having sent the program anything — a key, a paste —
 	// since it started; focus reports lazychat sends on its own do not count.
 	given atomic.Bool
@@ -208,6 +211,7 @@ func (s *Session) readLoop() {
 			s.trace.output(buf[:n])
 			s.filter.apply(buf[:n])
 			_, _ = s.emu.Write(buf[:n])
+			s.gen.Add(1)
 			s.feed.Unlock()
 			s.lastOutput.Store(time.Now().UnixNano())
 			if s.pending.CompareAndSwap(false, true) && s.notify != nil {
@@ -253,6 +257,7 @@ func (s *Session) waitLoop() {
 	s.mu.Lock()
 	s.done, s.exitErr = true, err
 	s.mu.Unlock()
+	s.gen.Add(1)
 	s.trace.event("exit %v", err)
 	s.trace.close()
 	_ = s.pty.Close()
@@ -274,6 +279,10 @@ func (s *Session) Ack() { s.pending.Store(false) }
 
 // Render is the program's screen as ANSI-styled lines, one per row.
 func (s *Session) Render() string { return s.emu.Render() }
+
+// Gen is the screen's generation: it moves whenever what Render shows may
+// have changed.
+func (s *Session) Gen() uint64 { return s.gen.Load() }
 
 // Total is how many rows the program has produced that can still be shown:
 // what scrolled off the top, then the live screen. Row indices stay put as
@@ -373,6 +382,7 @@ func (s *Session) Resize(cols, rows int) {
 	s.feed.Lock()
 	s.trace.event("resize %d %d", cols, rows)
 	s.resizeAnchored(oldRows, cols, rows)
+	s.gen.Add(1)
 	s.feed.Unlock()
 	_ = pty.Setsize(s.pty, &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)})
 }

@@ -8,10 +8,6 @@ import (
 	"lazychat/internal/ui/kit"
 )
 
-// leaveLabel names the key that hands the keys back to the tree, the only
-// one: ctrl+q, in every terminal and keyboard layout.
-const leaveLabel = "ctrl+q"
-
 // binding is one key of the Chat tab's tables.
 type binding = kit.Binding[*Chat]
 
@@ -19,20 +15,22 @@ var act = kit.Act[*Chat]
 
 // The bindings that work whether or not a session is under the cursor.
 var (
-	keyUp     = binding{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from session to session, across the projects; the headings take no cursor; on a running session the pane follows", Run: act(func(c *Chat) { c.move(-1) })}
-	keyDown   = binding{Keys: []string{"down", "j"}, Run: act(func(c *Chat) { c.move(1) })}
-	keyFirst  = binding{Keys: []string{"g", "home"}, Run: act(func(c *Chat) { c.move(-1 << 20) })}
-	keyLast   = binding{Keys: []string{"G", "end"}, Run: act(func(c *Chat) { c.move(1 << 20) })}
-	keyBack   = kit.BackKey(func(c *Chat) { c.toList() })
-	keyNew    = binding{Keys: []string{"n"}, Hint: kit.Hint{Key: "n", Does: "new"}, Help: "a new session in the cursor's project: a popup asks the AI tool and a name", Run: act(func(c *Chat) { c.act.NewSession(c.cursorProject()) })}
-	keyResume = binding{Keys: []string{"r"}, Hint: kit.Hint{Key: "r", Does: "resume"}, Help: "resume one of the cursor's project's saved sessions, newest first", Run: act(func(c *Chat) { c.act.Resume(c.cursorProject()) })}
-	keyAdd    = binding{Keys: []string{"o"}, Hint: kit.Hint{Key: "o", Does: "open"}, Help: "open a project: a directory, listed under a name; nothing starts in it until n asks", Run: act(func(c *Chat) { c.act.AddProject() })}
-	keyPageUp = binding{Keys: []string{"pgup"}, Run: act(func(c *Chat) { c.pane.ScrollBy(c.paneRect(), -kit.PageRows) })}
-	keyPageDn = binding{Keys: []string{"pgdown"}, Name: "Fn+↑↓", Help: "scroll the shown session; the wheel and the trackpad too", Run: act(func(c *Chat) { c.pane.ScrollBy(c.paneRect(), kit.PageRows) })}
-	keyHelp   = binding{Keys: []string{"?"}, Hint: kit.Hint{Key: "?", Does: "help"}, Run: act(func(c *Chat) { c.screen.Push(kit.NewPager("keys", helpText(), c.screen.Header, c.screen.FooterLine)) })}
+	keyUp     = binding{Key: kit.ChatKeys.Up, Run: act(func(c *Chat) { c.move(-1) })}
+	keyDown   = binding{Key: kit.ListKeys.Down, Run: act(func(c *Chat) { c.move(1) })}
+	keyFirst  = binding{Key: kit.ListKeys.First, Run: act(func(c *Chat) { c.move(-1 << 20) })}
+	keyLast   = binding{Key: kit.ListKeys.Last, Run: act(func(c *Chat) { c.move(1 << 20) })}
+	keyBack   = kit.BackKey(func(c *Chat) { c.ToList() })
+	keyNew    = binding{Key: kit.ChatKeys.New, Run: act(func(c *Chat) { c.act.NewSession(c.cursorProject()) })}
+	keyResume = binding{Key: kit.ChatKeys.Resume, Run: act(func(c *Chat) { c.act.Resume(c.cursorProject()) })}
+	keyAdd    = binding{Key: kit.ChatKeys.Open, Run: act(func(c *Chat) { c.act.AddProject() })}
+	keyPageUp = binding{Key: kit.ListKeys.PageUp, Run: act(func(c *Chat) { c.Pane.ScrollBy(c.PaneRect(), -kit.PageRows) })}
+	keyPageDn = binding{Key: kit.ChatKeys.PageDown, Run: act(func(c *Chat) { c.Pane.ScrollBy(c.PaneRect(), kit.PageRows) })}
+	keyHelp   = kit.HelpKey(chatScreen, helpText)
 	keyMove   = kit.ReorderStart(func(c *Chat) { c.tree.Moving, c.tree.Whole = true, false })
-	keyQuit   = binding{Keys: []string{"q"}, Hint: kit.Hint{Key: "q", Does: "quit"}, Quiet: true, Help: "quit, Ctrl+C too, always asked; running sessions are stopped, nothing survives lazychat", Run: func(c *Chat) tea.Cmd { return c.screen.Quit() }}
+	keyQuit   = kit.QuitKey(kit.ChatKeys.Quit, chatScreen)
 )
+
+func chatScreen(c *Chat) kit.Screen { return c.Screen }
 
 // The tables per context: a session under the cursor, a project's empty
 // row, the project's own row under either, an empty tree, move mode, and
@@ -47,25 +45,25 @@ var pageKeys, paneKeys []binding
 
 func init() {
 	moves := []binding{keyUp, keyDown, keyFirst, keyLast, keyBack, keyPageUp, keyPageDn}
-	moves = append(moves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session on the right, chosen — Enter goes in — 3 the details: what each prompt of the Claude session spent, and on what")...)
+	moves = append(moves, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, kit.PanelNames.Chat)...)
 	// Each table is the footer, in its order: everything that can be done
 	// there, and nothing else but moving the cursor.
 	sessionKeys = append([]binding{
-		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "continue"}, Help: "into the session's chat, its terminal, the only key that goes in, as Enter is on the Terminal tab; an ended one is resumed · " + leaveLabel + " comes back", Run: act(func(c *Chat) { c.enter() })},
+		{Key: kit.ChatKeys.Continue, Run: act(func(c *Chat) { c.enter() })},
 		keyNew, keyResume,
-		{Keys: []string{"e"}, Hint: kit.Hint{Key: "e", Does: "rename"}, Help: "rename the session: a popup, its name prefilled; the tree and the pane's title follow", Run: act(func(c *Chat) {
+		{Key: kit.ChatKeys.Rename, Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {
 				c.act.RenameSession(r)
 			}
 		})},
-		{Keys: []string{"w"}, Hint: kit.Hint{Key: "w", Does: "draft"}, Help: "write the session's next prompt in a box under its pane while it works; an answer it asks for never takes its place, and it is kept across runs (✎ on the row)", Run: act(func(c *Chat) { c.openDraft() })},
+		{Key: kit.ChatKeys.Draft, Run: act(func(c *Chat) { c.openDraft() })},
 		keyMove,
-		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "close"}, Help: "close the session, asked: a running one is stopped, the record leaves the tree; the transcript stays and r brings it back", Run: act(func(c *Chat) {
+		{Key: kit.ChatKeys.Close, Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {
 				c.act.Close(r)
 			}
 		})},
-		{Hint: kit.Hint{Key: "wheel", Does: "scroll"}, Help: "the wheel over the session on the right scrolls it; over the tree it scrolls the tree and leaves the cursor"},
+		{Key: kit.ChatKeys.Wheel},
 		keyHelp, keyQuit,
 	}, moves...)
 	// On the empty row Enter makes the first session, as n does.
@@ -76,29 +74,29 @@ func init() {
 	emptyKeys = []binding{keyAdd, keyHelp, keyQuit, keyBack}
 	moveKeys = kit.ReorderKeys(func(c *Chat, d int) { c.carry(d) }, func(c *Chat) { c.tree.Moving = false })
 	draftKeys = []binding{
-		{Hint: kit.Hint{Key: "cmd/opt+enter", Does: "paste in prompt"}, Help: "paste the draft into the session's input and go into it, once it runs, does not work and asks nothing; Enter is yours after a last edit. Cmd+Enter where the terminal passes it on (kitty-protocol terminals, an iTerm mapping), Option+Enter everywhere with Option as Meta; a draft starting with / goes on one line, so claude runs it as a command"},
-		{Hint: kit.Hint{Key: "ctrl+u", Does: "clear"}, Help: "clear the draft, asked"},
-		{Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the tree, the draft kept; " + leaveLabel + " too, and a click outside the box"},
-		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the draft to select, the release copies it; a click puts the cursor there; Enter is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field"},
+		{Key: kit.ChatKeys.DraftPaste},
+		{Key: kit.ChatKeys.DraftClear},
+		{Key: kit.ChatKeys.DraftBack},
+		{Key: kit.ChatKeys.DraftDrag},
 	}
-	keyReportBack := binding{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the chat", Run: act(func(c *Chat) { c.reportBack() })}
+	keyReportBack := binding{Key: kit.ChatKeys.DetailsBack, Run: act(func(c *Chat) { c.reportBack() })}
 	pageKeys = append([]binding{
-		{Keys: []string{"up", "k"}, Hint: kit.Hint{Key: "↑↓", Does: "pick prompt"}, Help: "pick the prompt shown in full under the list: up to a newer one, down to an older one; on the newest the page follows the next prompt", Run: act(func(c *Chat) { c.pickPrompt(-1) })},
-		{Keys: []string{"down", "j"}, Run: act(func(c *Chat) { c.pickPrompt(1) })},
-		{Keys: []string{"pgup"}, Name: "PgUp PgDn", Help: "scroll the page; the wheel too", Run: act(func(c *Chat) { c.rep.scroll -= 10 })},
-		{Keys: []string{"pgdown"}, Run: act(func(c *Chat) { c.rep.scroll += 10 })},
+		{Key: kit.ChatKeys.PickPrompt, Run: act(func(c *Chat) { c.pickPrompt(-1) })},
+		{Key: kit.ListKeys.Down, Run: act(func(c *Chat) { c.pickPrompt(1) })},
+		{Key: kit.ChatKeys.DetailsPageUp, Run: act(func(c *Chat) { c.rep.scroll -= 10 })},
+		{Key: kit.ListKeys.PageDown, Run: act(func(c *Chat) { c.rep.scroll += 10 })},
 		keyReportBack, keyHelp, keyQuit,
-	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session, 3 the details")...)
+	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, kit.PanelNames.ChatShort)...)
 	paneKeys = append([]binding{
-		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "go in"}, Help: "into the session: its terminal takes the keys, " + leaveLabel + " comes back; an ended one is resumed", Run: act(func(c *Chat) { c.enter() })},
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the tree", Run: act(func(c *Chat) { c.toList() })},
+		{Key: kit.ChatKeys.PaneEnter, Run: act(func(c *Chat) { c.enter() })},
+		{Key: kit.ChatKeys.PaneBack, Run: act(func(c *Chat) { c.ToList() })},
 		keyPageUp, keyPageDn, keyHelp, keyQuit, keyBack,
-	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, "1 the project tree, 2 the session, 3 the details")...)
+	}, kit.PanelKeys(3, func(c *Chat, p int) tea.Cmd { return c.toPanel(p) }, kit.PanelNames.ChatShort)...)
 	termKeys = []binding{
-		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the tree, in every terminal; the session runs on, and Esc is claude's, which stops its answer"},
-		{Hint: kit.Hint{Key: "click", Does: "the tree: back there"}, Help: "a click beside the pane leaves the terminal and puts the cursor on the session clicked"},
-		{Hint: kit.Hint{Key: "wheel", Does: "scroll"}},
-		{Hint: kit.Hint{Key: "other keys", Does: "go to claude"}, Help: "every other key, exactly as typed, goes to claude"},
+		{Key: kit.ChatKeys.PaneLeave},
+		{Key: kit.ChatKeys.PaneClick},
+		{Key: kit.ChatKeys.PaneWheel},
+		{Key: kit.ChatKeys.PaneOther},
 	}
 }
 
@@ -109,11 +107,11 @@ func (c *Chat) tables() (top, below []binding) {
 	switch {
 	case c.drafting:
 		return draftKeys, nil
-	case c.capture.Held():
+	case c.Capture.Held():
 		return termKeys, nil
 	case c.rep.shown && c.repFocus:
 		return pageKeys, nil
-	case c.paneSel:
+	case c.PaneSel:
 		return paneKeys, nil
 	case c.tree.Moving:
 		return moveKeys, nil
@@ -142,9 +140,9 @@ func (c *Chat) Footer() []kit.Hint {
 func (c *Chat) Lead() string {
 	top, below := c.tables()
 	switch {
-	case c.rep.shown && c.repFocus && !c.capture.Held():
+	case c.rep.shown && c.repFocus && !c.Capture.Held():
 		return "details"
-	case c.paneSel && !c.capture.Held():
+	case c.PaneSel && !c.Capture.Held():
 		return "session"
 	case below != nil:
 		return "session"

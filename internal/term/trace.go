@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"lazychat/internal/core/files"
 )
 
 // traceEnv names a folder; when set, every session records what it gets
@@ -29,15 +31,15 @@ func openTrace(id int, name string, argv []string, cols, rows int) *trace {
 	if dir == "" {
 		return nil
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := files.MkdirAll(dir, 0o755); err != nil {
 		return nil
 	}
 	stem := filepath.Join(dir, fmt.Sprintf("%s-%d-%s", time.Now().Format("150405"), id, strings.ReplaceAll(name, "/", "-")))
-	out, err := os.Create(stem + ".out")
+	out, err := files.Create(stem + ".out")
 	if err != nil {
 		return nil
 	}
-	ev, err := os.Create(stem + ".events")
+	ev, err := files.Create(stem + ".events")
 	if err != nil {
 		_ = out.Close()
 		return nil

@@ -258,7 +258,7 @@ func (g *Git) load(key string) tea.Cmd {
 		switch {
 		case err != nil:
 		case wt == nil:
-			msg.wts, msg.linked, _ = git.Others(dir)
+			msg.wts, msg.linked, _ = git.OthersAt(s.Root)
 		case base != "" && base != "(detached)" && wt.Branch != "" && wt.Branch != base:
 			msg.parted, _ = git.Parted(s.Root, base, wt.Branch)
 		}

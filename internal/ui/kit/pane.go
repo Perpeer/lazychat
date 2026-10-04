@@ -22,6 +22,19 @@ type TermPane struct {
 
 	Sel  CopyMode
 	Drag Drag
+
+	live liveRows // the last live screen drawn, kept while nothing changed
+}
+
+// liveRows is a live screen as drawn, and what it was drawn from: the same
+// session, generation, size and cursor give the same rows.
+type liveRows struct {
+	s      *term.Session
+	gen    uint64
+	w, h   int
+	cursor bool
+	focus  bool
+	rows   []string
 }
 
 // Rect is where the pane's inner area sits on the screen, zero-based: the
@@ -43,7 +56,7 @@ func (p *TermPane) Point(key string, s *term.Session, cols, rows int) {
 }
 
 func (p *TermPane) Clear() {
-	p.Session, p.Key, p.Live, p.Sel.Active, p.Drag = nil, "", true, false, Drag{}
+	p.Session, p.Key, p.Live, p.Sel.Active, p.Drag, p.live = nil, "", true, false, Drag{}, liveRows{}
 }
 
 func (p *TermPane) Title() string {
@@ -126,14 +139,24 @@ func (p *TermPane) View(w, h int, focused, blinkOn bool) []string {
 		return []string{"", StyleDim.Render(text.Fit(" no session shown — Enter on a project starts one, Enter on a session shows it", w))}
 	}
 	if p.Live && !p.Sel.Active && !p.Drag.Active {
+		// Most frames — a tick, a blink of an idle cursor, another tab's
+		// output — show the same screen; it is rendered once per change.
+		gen := p.Session.Gen()
+		_, _, on := p.Session.Cursor()
+		cursor := on && p.Session.Alive() && (!focused || blinkOn)
+		if c := p.live; c.s == p.Session && c.gen == gen && c.w == w && c.h == h && c.cursor == cursor && c.focus == focused && gen != 0 {
+			return c.rows
+		}
 		rows := strings.Split(p.Session.Render(), "\n")
 		if len(rows) > h {
 			rows = rows[:h]
 		}
-		if x, y, on := p.Session.Cursor(); on && p.Session.Alive() && y >= 0 && y < len(rows) && (!focused || blinkOn) {
+		if x, y, _ := p.Session.Cursor(); cursor && y >= 0 && y < len(rows) {
 			rows[y] = withCursor(rows[y], x, w, focused)
 		}
-		return ZoneBlock("term", rows, w)
+		rows = ZoneBlock("term", rows, w)
+		p.live = liveRows{s: p.Session, gen: gen, w: w, h: h, cursor: cursor, focus: focused, rows: rows}
+		return rows
 	}
 	if p.Drag.Active {
 		return ZoneBlock("term", p.dragRows(w, h), w)

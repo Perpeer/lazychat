@@ -400,3 +400,28 @@ func TestTurnStartedAgain(t *testing.T) {
 		t.Errorf("active %v", got)
 	}
 }
+
+// The prices file is read again only when it changed.
+func TestPriceFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "prices.json")
+	f := &PriceFile{Path: path}
+	if p, err := f.Load(); err != nil || p != nil {
+		t.Fatalf("none: %v %v", p, err)
+	}
+	if err := os.WriteFile(path, []byte(`{"model-x":{"input":1}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if p, _ := f.Load(); p["model-x"].Input != 1 {
+		t.Fatalf("written: %v", p)
+	}
+	later := time.Now().Add(time.Minute)
+	if err := os.WriteFile(path, []byte(`{"model-x":{"input":2}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if p, _ := f.Load(); p["model-x"].Input != 2 {
+		t.Errorf("changed: %v", p)
+	}
+}

@@ -39,12 +39,16 @@ func SaveJSON(path string, v any, mode fs.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
 	}
-	data, err := json.MarshalIndent(v, "", " ")
+	data, err := EncodeJSON(v)
 	if err != nil {
 		return err
 	}
 	return WriteAtomic(path, append(data, '\n'), mode)
 }
+
+// EncodeJSON is v as every file of lazychat's holds it: indented by one
+// space, so a person can read and edit it.
+func EncodeJSON(v any) ([]byte, error) { return json.MarshalIndent(v, "", " ") }
 
 // Broken is what LoadJSON does with a file that does not parse.
 type Broken int

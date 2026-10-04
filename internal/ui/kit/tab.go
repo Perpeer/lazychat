@@ -112,9 +112,3 @@ type MenuBarShown struct{}
 // WorkspaceMoved tells every tab the open workspace's folder has a new name
 // or place; a tab holding paths inside it reads them again.
 type WorkspaceMoved struct{}
-
-// WorkspaceHelp is the help's line for the box above every tab, which the
-// shell owns and each tab's help mentions.
-var WorkspaceHelp = []string{
-	"Workspace  Ctrl+W             the box at the top: (n) new workspace · (o) open · (e) edit (rename) · (x) delete; ↓ Esc go back",
-}

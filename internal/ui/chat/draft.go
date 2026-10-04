@@ -69,7 +69,7 @@ func (c *Chat) openDraft() {
 	if _, ok := c.draftRecord(); !ok {
 		return
 	}
-	c.capture.Drop()
+	c.Capture.Drop()
 	c.drafting = true
 }
 
@@ -90,7 +90,7 @@ func (c *Chat) saveDraft() {
 		return
 	}
 	if err := c.core.Store.SetDraft(r.Key, e.Value()); err != nil {
-		c.screen.Note("draft: %v", err)
+		c.Screen.Note("draft: %v", err)
 	}
 }
 
@@ -107,7 +107,7 @@ func (c *Chat) draftKey(msg tea.KeyMsg) tea.Cmd {
 		return nil
 	}
 	switch msg.String() {
-	case "esc", leaveLabel:
+	case "esc", kit.LeaveLabel:
 		c.closeDraft()
 		return nil
 	case "ctrl+u":
@@ -115,7 +115,7 @@ func (c *Chat) draftKey(msg tea.KeyMsg) tea.Cmd {
 		if e.Value() == "" {
 			return nil
 		}
-		c.screen.Push(&kit.Confirm{Question: "clear the draft for " + r.Name + "? it is not kept anywhere else", Yes: func() {
+		c.Screen.Push(&kit.Confirm{Question: "clear the draft for " + r.Name + "? it is not kept anywhere else", Yes: func() {
 			c.drafts[r.Key] = kit.NewEditor("")
 			c.drafts[r.Key].Plain = true
 			c.saveDraft()
@@ -146,18 +146,18 @@ func (c *Chat) sendDraft() tea.Cmd {
 	asks := c.board.Asking(r.Key) || hooked || (live && c.act.ScreenAsks(r))
 	switch {
 	case text == "":
-		c.screen.Note("%s has no draft: w writes one", r.Name)
+		c.Screen.Note("%s has no draft: w writes one", r.Name)
 		return nil
 	case !live || !s.Alive():
-		c.screen.Note("%s does not run: Enter resumes it, then the draft can go", r.Name)
+		c.Screen.Note("%s does not run: Enter resumes it, then the draft can go", r.Name)
 		return nil
 	case asks:
-		c.screen.Note("%s asks something: answer it first, the draft waits", r.Name)
+		c.Screen.Note("%s asks something: answer it first, the draft waits", r.Name)
 		return nil
 	case s.Working() || c.board.Working(r.Key):
 		// The board still counts it working for a moment after the title
 		// stops: a question may be on its way.
-		c.screen.Note("%s is working: the draft can go once it is done", r.Name)
+		c.Screen.Note("%s is working: the draft can go once it is done", r.Name)
 		return nil
 	}
 	c.saveDraft()
@@ -182,24 +182,24 @@ func promptText(text string) string {
 func (c *Chat) draftSent(msg draftSentMsg) {
 	if msg.err != nil {
 		if errors.Is(msg.err, term.ErrNoPaste) {
-			c.screen.Note("draft not pasted: the tool takes no pasted text yet; it is kept")
+			c.Screen.Note("draft not pasted: the tool takes no pasted text yet; it is kept")
 			return
 		}
-		c.screen.Note("draft not pasted: %v; it is kept", msg.err)
+		c.Screen.Note("draft not pasted: %v; it is kept", msg.err)
 		return
 	}
 	delete(c.drafts, msg.key)
 	if err := c.core.Store.SetDraft(msg.key, ""); err != nil {
-		c.screen.Note("draft: %v", err)
+		c.Screen.Note("draft: %v", err)
 	}
 	if r, ok := c.draftRecord(); ok && r.Key == msg.key && c.drafting {
 		c.closeDraft()
 	}
 	if s, ok := c.act.Live.Get(msg.key); ok && s.Alive() {
-		c.point(msg.key, s)
+		c.Point(msg.key, s)
 		c.takeKeys()
 	}
-	c.screen.Note("draft pasted: edit it if need be, Enter sends it")
+	c.Screen.Note("draft pasted: edit it if need be, Enter sends it")
 }
 
 // draftView is the box over the pane's lower rows while it has the keys;
@@ -211,7 +211,7 @@ func (c *Chat) draftView(w, h int) string {
 	}
 	e := c.draftEditor(r)
 	e.SetSize(w-2, h-2)
-	on := c.tick%2 == 0
+	on := c.Tick%2 == 0
 	lines := e.View(on)
 	if e.Value() == "" {
 		cursor := " "
@@ -228,11 +228,11 @@ func (c *Chat) draftView(w, h int) string {
 func (c *Chat) draftRect() kit.Rect {
 	g := c.geometry()
 	dh := c.draftH(g.bodyH)
-	x0, w := c.rect.X0+g.leftW+1, g.rightW-2
-	if c.narrow() {
-		x0, w = c.rect.X0+1, c.rect.Cols-2
+	x0, w := c.Rect.X0+g.leftW+1, g.rightW-2
+	if c.Narrow() {
+		x0, w = c.Rect.X0+1, c.Rect.Cols-2
 	}
-	return kit.Rect{X0: x0, Y0: c.rect.Y0 + g.bodyH - dh + 1, Cols: w, Rows: dh - 2}
+	return kit.Rect{X0: x0, Y0: c.Rect.Y0 + g.bodyH - dh + 1, Cols: w, Rows: dh - 2}
 }
 
 // draftMouse is the mouse over the open draft: a press puts the cursor
@@ -258,9 +258,9 @@ func (c *Chat) draftMouse(msg tea.MouseMsg) bool {
 	case msg.Action == tea.MouseActionRelease && e.Dragging():
 		if e.Release() {
 			if err := kit.CopyToClipboard(e.Selection()); err != nil {
-				c.screen.Note("copy: %v", err)
+				c.Screen.Note("copy: %v", err)
 			} else {
-				c.screen.Note("copied from the draft")
+				c.Screen.Note("copied from the draft")
 			}
 		}
 		return true

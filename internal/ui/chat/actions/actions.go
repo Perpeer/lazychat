@@ -5,12 +5,13 @@
 package actions
 
 import (
-	"os"
 	"sync/atomic"
 	"time"
 
 	"lazychat/internal/core/api"
 	"lazychat/internal/term"
+
+	"lazychat/internal/core/files"
 )
 
 // Host is what the actions need from the screen.
@@ -68,6 +69,7 @@ type Actions struct {
 	nextID  int
 	// questions is the folder the sessions' tools write their notices to.
 	questions string
+	asks      map[string]screenAsk // by record key; loop only
 	// leaving is set once lazychat stops every session, to quit or to open
 	// another workspace: their exits then keep the running marks.
 	leaving atomic.Bool
@@ -82,7 +84,7 @@ func (a *Actions) StopAll(timeout time.Duration) {
 }
 
 func New(core *api.Core, host Host, onOutput func()) *Actions {
-	clearStaleNotices(os.TempDir())
+	clearStaleNotices(files.Temp())
 	return &Actions{core: core, host: host, onOutput: onOutput, Live: newLive(), resumes: map[string]resumeAttempt{}, closing: map[string]bool{}}
 }
 

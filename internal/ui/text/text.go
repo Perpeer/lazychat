@@ -5,11 +5,12 @@ package text
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"lazychat/internal/core/files"
 )
 
 // Width is the display width of s, escape sequences excluded.
@@ -23,14 +24,7 @@ func Fit(s string, n int) string {
 	if Width(s) <= n {
 		return s
 	}
-	out := ""
-	for _, r := range s {
-		if Width(out+string(r)) > n-1 {
-			break
-		}
-		out += string(r)
-	}
-	return out + "…"
+	return ansi.Truncate(s, n, "…")
 }
 
 // FitMiddle cuts to n display columns with an ellipsis in the middle, the
@@ -69,14 +63,28 @@ func FitExact(s string, n int) string {
 	if Width(s) <= n {
 		return s
 	}
-	out := ""
-	for _, r := range s {
-		if Width(out+string(r)) > n {
-			break
-		}
-		out += string(r)
+	return ansi.Truncate(s, n, "")
+}
+
+// FitPad is Fit then Pad, the width measured once.
+func FitPad(s string, n int) string { return fitPad(s, n, "…") }
+
+// FitExactPad is FitExact then Pad, the width measured once: a terminal's
+// row, already n wide, costs one measure.
+func FitExactPad(s string, n int) string { return fitPad(s, n, "") }
+
+func fitPad(s string, n int, tail string) string {
+	if n <= 0 {
+		return ""
 	}
-	return out
+	w := Width(s)
+	switch {
+	case w == n:
+		return s
+	case w < n:
+		return s + strings.Repeat(" ", n-w)
+	}
+	return Pad(ansi.Truncate(s, n, tail), n)
 }
 
 // FitLeft keeps the end of a string, for paths whose last segments matter.
@@ -220,7 +228,7 @@ func Span(d time.Duration) string {
 
 // ShortHome writes the home directory as ~.
 func ShortHome(p string) string {
-	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(p, home) {
+	if home := files.Home(); home != "" && strings.HasPrefix(p, home) {
 		return "~" + p[len(home):]
 	}
 	return p

@@ -37,17 +37,6 @@ func (l *Registry) Alive() []*Session {
 	return out
 }
 
-// CountIn is how many terminals run in a project.
-func (l *Registry) CountIn(project string) int {
-	n := 0
-	for _, s := range l.byKey {
-		if s.Project == project && s.Alive() {
-			n++
-		}
-	}
-	return n
-}
-
 // RenameProject moves the terminals of a renamed project to its new name.
 func (l *Registry) RenameProject(from, to string) {
 	for _, s := range l.byKey {

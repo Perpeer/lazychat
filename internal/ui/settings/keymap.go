@@ -16,10 +16,9 @@ var act = kit.Act[*Settings]
 var rowKeys, valueKeys []binding
 
 func init() {
-	keyHelp := binding{Keys: []string{"?"}, Hint: kit.Hint{Key: "?", Does: "help"}, Run: act(func(s *Settings) {
-		s.screen.Push(kit.NewPager("keys", helpText(), s.screen.Header, s.screen.FooterLine))
-	})}
-	keyQuit := binding{Keys: []string{"q"}, Hint: kit.Hint{Key: "q", Does: "quit"}, Quiet: true, Help: "quit, Ctrl+C too, always asked", Run: func(s *Settings) tea.Cmd { return s.screen.Quit() }}
+	screen := func(s *Settings) kit.Screen { return s.screen }
+	keyHelp := kit.HelpKey(screen, helpText)
+	keyQuit := kit.QuitKey(kit.ListKeys.Quit, screen)
 	keyBack := kit.BackKey(func(s *Settings) { s.onRight = false })
 	panels := kit.PanelKeys(2, func(s *Settings, p int) tea.Cmd {
 		if p == 1 {
@@ -28,19 +27,19 @@ func init() {
 			s.toValues()
 		}
 		return nil
-	}, "1 the settings, 2 the values of the one under the cursor")
+	}, kit.PanelNames.Settings)
 	rowKeys = []binding{
-		{Keys: []string{"enter", "right", "l"}, Hint: kit.Hint{Key: "enter", Does: "change"}, Help: "go to the setting's values on the right; →  and l too", Run: act(func(s *Settings) { s.toValues() })},
-		{Keys: []string{"up", "k"}, Name: "↑↓ j k", Help: "move over the settings", Run: act(func(s *Settings) { s.rows.Move(-1, len(s.settings())) })},
-		{Keys: []string{"down", "j"}, Run: act(func(s *Settings) { s.rows.Move(1, len(s.settings())) })},
+		{Key: kit.SettingsKeys.Change, Run: act(func(s *Settings) { s.toValues() })},
+		{Key: kit.SettingsKeys.RowUp, Run: act(func(s *Settings) { s.rows.Move(-1, len(s.settings())) })},
+		{Key: kit.ListKeys.Down, Run: act(func(s *Settings) { s.rows.Move(1, len(s.settings())) })},
 		keyHelp, keyQuit, keyBack,
 	}
 	rowKeys = append(rowKeys, panels...)
 	valueKeys = []binding{
-		{Keys: []string{"enter", " "}, Hint: kit.Hint{Key: "enter", Does: "choose"}, Help: "make the value under the cursor the setting's, saved at once; in tabs, show or hide the one under the cursor and stay", Run: act(func(s *Settings) { s.pick(s.choice.Sel); s.onRight = s.current().toggle })},
-		{Keys: []string{"up", "k"}, Name: "↑↓ j k", Help: "move over the values", Run: act(func(s *Settings) { s.choice.Move(-1, len(s.current().choices())) })},
-		{Keys: []string{"down", "j"}, Run: act(func(s *Settings) { s.choice.Move(1, len(s.current().choices())) })},
-		{Keys: []string{"esc", "left", "h"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the settings, nothing changed; ← and h too", Run: act(func(s *Settings) { s.onRight = false })},
+		{Key: kit.SettingsKeys.Choose, Run: act(func(s *Settings) { s.pick(s.choice.Sel); s.onRight = s.current().toggle })},
+		{Key: kit.SettingsKeys.ValueUp, Run: act(func(s *Settings) { s.choice.Move(-1, len(s.current().choices())) })},
+		{Key: kit.ListKeys.Down, Run: act(func(s *Settings) { s.choice.Move(1, len(s.current().choices())) })},
+		{Key: kit.SettingsKeys.ValueBack, Run: act(func(s *Settings) { s.onRight = false })},
 		keyHelp, keyQuit, keyBack,
 	}
 	valueKeys = append(valueKeys, panels...)

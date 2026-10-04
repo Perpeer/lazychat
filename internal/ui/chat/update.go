@@ -13,12 +13,13 @@ import (
 var hits = kit.Hits{Row: "row", Heading: "proj", Pane: "term", Panels: []string{"cpanel-1", "cpanel-2", "cpanel-3"}}
 
 func (c *Chat) Update(msg tea.Msg) tea.Cmd {
-	if c.capture.Update(msg) {
+	c.mascot.valid = false
+	if c.Capture.Update(msg) {
 		return nil
 	}
 	switch msg := msg.(type) {
 	case kit.Tick:
-		c.tick = msg.N
+		c.Tick = msg.N
 		c.list.tick = msg.N
 		// On the first beat, when the pane has its size: the sessions that
 		// ran when lazychat last quit come back.
@@ -26,8 +27,8 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 			c.resumed = true
 			if n := c.act.ResumeRunning(); n > 0 {
 				// Shown, not entered: the list keeps the keys at start.
-				c.capture.Drop()
-				c.screen.Note("resumed %d session(s) that ran when lazychat quit", n)
+				c.Capture.Drop()
+				c.Screen.Note("resumed %d session(s) that ran when lazychat quit", n)
 			}
 		}
 		c.act.LearnIDs()
@@ -62,7 +63,7 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 // others ask over whichever tab is shown.
 func (c *Chat) projectAction(msg kit.ProjectAction) {
 	if msg.Do == "open" {
-		c.screen.Switch(c.Name())
+		c.Screen.Switch(c.Name())
 		c.act.AddProject()
 		return
 	}
@@ -79,6 +80,7 @@ func (c *Chat) projectAction(msg kit.ProjectAction) {
 }
 
 func (c *Chat) Key(msg tea.KeyMsg) tea.Cmd {
+	c.mascot.valid = false
 	if c.drafting {
 		return c.draftKey(msg)
 	}
@@ -92,14 +94,14 @@ func (c *Chat) Key(msg tea.KeyMsg) tea.Cmd {
 // selectShown moves the cursor to the shown session, so leaving the terminal
 // lands on what was just in use.
 func (c *Chat) selectShown() {
-	if c.pane.Session == nil {
+	if c.Pane.Session == nil {
 		return
 	}
-	c.tree.SelectSession(c.pane.Key)
+	c.tree.SelectSession(c.Pane.Key)
 }
 
 func (c *Chat) move(d int) {
-	if c.capture.Held() {
+	if c.Capture.Held() {
 		return
 	}
 	c.tree.Step(d)
@@ -110,13 +112,13 @@ func (c *Chat) move(d int) {
 // session, wherever that ends up.
 func (c *Chat) moveSession(d int) {
 	if err := c.tree.MoveSession(d); err != nil {
-		c.screen.Note("move: %v", err)
+		c.Screen.Note("move: %v", err)
 	}
 }
 
 func (c *Chat) moveProject(d int) {
 	if err := c.tree.MoveProject(d); err != nil {
-		c.screen.Note("move: %v", err)
+		c.Screen.Note("move: %v", err)
 	}
 }
 
@@ -135,13 +137,10 @@ func (c *Chat) carry(d int) {
 func (c *Chat) followCursor() {
 	if r, ok := c.tree.Session(); ok {
 		if s, ok := c.act.Live.Get(r.Key); ok {
-			c.point(r.Key, s)
+			c.Point(r.Key, s)
 		}
 	}
 }
-
-// toList is panel 1, the tree: the keys were already there.
-func (c *Chat) toList() { c.fullTerm, c.paneSel = false, false }
 
 // toPanel gives the keys to panel p: 1 the tree, 2 the session on the
 // right, lit but not entered — Enter goes in, so a number never lands the
@@ -150,10 +149,10 @@ func (c *Chat) toPanel(p int) tea.Cmd {
 	switch p {
 	case 1:
 		c.repFocus = false
-		c.toList()
+		c.ToList()
 		return nil
 	case 3:
-		c.repFocus, c.paneSel = true, false
+		c.repFocus, c.PaneSel = true, false
 		return c.showReport()
 	}
 	if c.rep.shown {
@@ -164,16 +163,16 @@ func (c *Chat) toPanel(p int) tea.Cmd {
 		c.Note("a session takes the keys: this project has none")
 		return nil
 	}
-	c.paneSel, c.fullTerm = true, true
+	c.Choose()
 	return nil
 }
 
 // enter opens the session under the cursor.
 func (c *Chat) enter() {
-	if c.capture.Held() {
+	if c.Capture.Held() {
 		return
 	}
-	c.paneSel = false
+	c.PaneSel = false
 	if r, ok := c.tree.Session(); ok {
 		c.act.Open(r)
 	}
@@ -215,9 +214,10 @@ func (c *Chat) cursorProject() string {
 // a running session's pane gives it the keys, unless the pane shows a
 // project, which takes no keys.
 func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
+	c.mascot.valid = false
 	if kit.LeftClick(msg) {
 		// A click is aimed: it goes where it lands, past a selected pane.
-		c.paneSel = false
+		c.PaneSel = false
 		if c.tabClick(msg) {
 			return nil
 		}
@@ -240,11 +240,7 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 	}
 	if d := kit.Wheel(msg); d != 0 {
 		if hit.Kind == kit.HitPane {
-			code := kit.WheelUp
-			if d > 0 {
-				code = kit.WheelDown
-			}
-			c.pane.Mouse(c.paneRect(), code, msg.X, msg.Y, false)
+			c.WheelPane(msg.X, msg.Y, d)
 		} else {
 			c.list.scroll.Wheel(d / kit.WheelRows)
 		}
@@ -263,25 +259,25 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 	}
 	switch hit.Kind {
 	case kit.HitRow:
-		if c.onRow(hit.N) && !c.capture.Held() {
+		if c.onRow(hit.N) && !c.Capture.Held() {
 			c.enter()
 			return nil
 		}
-		c.capture.Drop()
+		c.Capture.Drop()
 		c.selectRow(hit.N)
 		// A click on a finished session is looking at it: it stops calling.
 		if r, ok := c.tree.Current(); ok && r.Session != nil {
 			c.board.See(r.Session.Key)
 		}
 	case kit.HitHeading:
-		c.capture.Drop()
+		c.Capture.Drop()
 		c.selectProjectAt(hit.N)
 	case kit.HitPane:
 		if !c.tree.OnProject() {
 			c.takeKeys()
 		}
 	case kit.HitPanel: // the empty part of a box: it takes the keys, the cursor stays
-		c.pane.StopCopy()
+		c.Pane.StopCopy()
 		if hit.N == 2 && !c.tree.OnProject() {
 			c.takeKeys()
 		}
@@ -307,7 +303,7 @@ func (c *Chat) pointAt(msg tea.MouseMsg) {
 // takeKeys gives the shown session the keys, which is looking at it: a
 // finished one stops calling at once, and waits quietly for its prompt.
 func (c *Chat) takeKeys() {
-	if c.capture.Take() {
-		c.board.See(c.pane.Key)
+	if c.Capture.Take() {
+		c.board.See(c.Pane.Key)
 	}
 }

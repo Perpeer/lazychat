@@ -137,11 +137,11 @@ type startBinding = kit.Binding[*setupModel]
 // same table, so each is named once.
 func startKeys() []startBinding {
 	return []startBinding{
-		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "open"}, Run: (*setupModel).continueHere},
-		{Keys: []string{"n"}, Hint: kit.Hint{Key: "n", Does: "new"}, Run: kit.Act((*setupModel).newForm)},
-		{Keys: []string{"e"}, Hint: kit.Hint{Key: "e", Does: "rename"}, Run: kit.Act(func(m *setupModel) { m.renameForm(m.recent()[m.cursor]) })},
-		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "delete"}, Run: kit.Act(func(m *setupModel) { m.askDelete(m.recent()[m.cursor]) })},
-		{Keys: []string{"esc", "q"}, Hint: kit.Hint{Key: "esc", Does: "quit"}, Run: func(*setupModel) tea.Cmd { return tea.Quit }},
+		{Key: kit.StartKeys.Open, Run: (*setupModel).continueHere},
+		{Key: kit.StartKeys.New, Run: kit.Act((*setupModel).newForm)},
+		{Key: kit.StartKeys.Rename, Run: kit.Act(func(m *setupModel) { m.renameForm(m.recent()[m.cursor]) })},
+		{Key: kit.StartKeys.Delete, Run: kit.Act(func(m *setupModel) { m.askDelete(m.recent()[m.cursor]) })},
+		{Key: kit.StartKeys.Quit, Run: func(*setupModel) tea.Cmd { return tea.Quit }},
 	}
 }
 
@@ -236,25 +236,15 @@ func (m *setupModel) listView(background string) string {
 	for i, w := range m.recent() {
 		row := text.Fit(w.Name, inner-4)
 		if i == m.cursor {
-			lines = append(lines, "  "+kit.StyleSel.Render(text.Pad("▸ "+row, inner-2)))
+			lines = append(lines, "  "+kit.SelRow(row, inner-2))
 		} else {
 			lines = append(lines, "    "+row)
 		}
 	}
 	lines = append(lines, "")
 	// The hints wrap rather than lose their last keys to a narrow popup.
-	row := ""
-	for _, h := range kit.FooterHints(startKeys()) {
-		next := kit.RenderHints([]kit.Hint{h})
-		if row != "" && text.Width(row)+3+text.Width(next) > inner-2 {
-			lines = append(lines, "  "+row)
-			row = ""
-		}
-		if row != "" {
-			row += kit.StyleDim.Render(" · ")
-		}
-		row += next
+	for _, row := range kit.WrapHints(kit.FooterHints(startKeys()), inner-2) {
+		lines = append(lines, "  "+kit.RenderHints(row))
 	}
-	lines = append(lines, "  "+row)
 	return kit.Popup(background, "workspaces", lines, m.width, mw)
 }

@@ -30,7 +30,9 @@ the app Lazy.
   (AppleScript is the only way to pick a tab by tty). Do not add
   Accessibility, Screen Recording or notifications without the user's
   say; `NSAppleEventsUsageDescription` goes only with the last
-  AppleScript call.
+  AppleScript call. Every permission goes through `Permissions` in
+  permissions.swift (`automate` runs the AppleScript); a new one is added
+  there.
 - The mascot is drawn once, in `mascot.swift`; the app icon is rendered
   from it by `install.sh` (`--icon`, `iconutil`).
 - `--status [seconds]` prints what the icon would show and what a click

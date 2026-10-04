@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"lazychat/internal/core/files"
 )
 
 // statusLineScript is the status line lazychat offers a claude session that
@@ -23,14 +25,12 @@ func WriteStatusLine(dir string) (string, error) {
 	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, statusLineScript) {
 		return path, nil
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := files.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", fmt.Errorf("status line: %w", err)
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, statusLineScript, 0o755); err != nil {
-		return "", fmt.Errorf("status line: %w", err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
+	// A temp name of its own: lazychats on other workspaces write the same
+	// file at once.
+	if err := files.WriteAtomic(path, statusLineScript, 0o755); err != nil {
 		return "", fmt.Errorf("status line: %w", err)
 	}
 	return path, nil
@@ -51,15 +51,11 @@ var jqThere = func() bool {
 // not a list, so the command line's would replace it. A file that does not
 // parse counts as naming one, so lazychat stays out of the way.
 func hasStatusLine(home, project string) bool {
-	user := filepath.Join(home, ".claude")
-	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
-		user = dir
-	}
-	files := []string{filepath.Join(user, "settings.json")}
+	paths := []string{filepath.Join(files.ClaudeConfig(home), "settings.json")}
 	if project != "" {
-		files = append(files, filepath.Join(project, ".claude", "settings.json"), filepath.Join(project, ".claude", "settings.local.json"))
+		paths = append(paths, filepath.Join(project, ".claude", "settings.json"), filepath.Join(project, ".claude", "settings.local.json"))
 	}
-	for _, f := range files {
+	for _, f := range paths {
 		b, err := os.ReadFile(f)
 		if err != nil {
 			continue // no file is no status line

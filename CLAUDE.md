@@ -48,8 +48,13 @@ enforces the lines, so a wrong import fails the check.
   release, the leave key, kitty mode, typed bytes, raw mouse, the click
   beside the pane. A tab never writes its own focus switch.
 - What a mouse event is over is `kit.Hits`. A tab never loops over zones.
-- Colours come from `kit.Theme`; keys from the tab's `keymap.go`, which
-  also feeds the footer and `?` help.
+- Colours come from `kit.Theme`. A key's keys and words come from
+  `kit/keys.go`, its action from the tab's `keymap.go`, which also feeds
+  the footer and `?` help.
+- A tab with projects and a program's pane embeds `kit.PaneTab`; a
+  project tree is drawn with `kit.DrawTree`.
+- Files are read and written through `internal/core/files` alone; every
+  test package's TestMain calls `testenv.Main`.
 - What a session is doing — working, done, looked at, asking, its turn,
   what calls first — is `status.Board`. A tool adds its signals through
   its capabilities; nothing else derives a state.

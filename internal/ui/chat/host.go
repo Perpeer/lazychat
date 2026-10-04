@@ -3,8 +3,6 @@ package chat
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-
 	"lazychat/internal/term"
 	"lazychat/internal/ui/chat/actions"
 	"lazychat/internal/ui/kit"
@@ -27,7 +25,7 @@ func (c *Chat) Form(title string, fs []actions.Field, submit func(values []strin
 		}
 	}
 	m := kit.NewForm(title, fields, submit)
-	c.screen.Push(&m)
+	c.Screen.Push(&m)
 }
 
 func (c *Chat) Pick(title string, n, at int, row func(i int) actions.Row, pick func(i int)) {
@@ -42,48 +40,27 @@ func (c *Chat) Pick(title string, n, at int, row func(i int) actions.Row, pick f
 	p.Heading = func(i int) bool { return row(i).Heading }
 	p.Cursor.Sel = at
 	p.Settle()
-	c.screen.Push(&p)
-}
-
-func (c *Chat) Ask(question string, yes func()) {
-	c.screen.Push(&kit.Confirm{Question: question, Yes: yes})
+	c.Screen.Push(&p)
 }
 
 func (c *Chat) Show(key string, s *term.Session) {
-	c.point(key, s)
-	if c.narrow() {
-		c.fullTerm = true
+	c.Point(key, s)
+	if c.Narrow() {
+		c.FullTerm = true
 	}
 	c.selectShown()
 	c.takeKeys()
 }
 
 func (c *Chat) Hide(key string) {
-	if c.pane.Key == key {
-		c.pane.Clear()
-	}
-}
-
-func (c *Chat) Ended(key string) {
-	if c.pane.Key == key {
-		c.capture.Drop()
+	if c.Pane.Key == key {
+		c.Pane.Clear()
 	}
 }
 
 func (c *Chat) SelectProject(name string) { c.tree.SelectProject(name) }
 
-func (c *Chat) Later(f func()) {
-	c.screen.Queue(func() tea.Msg {
-		f()
-		return termMsg{}
-	})
-}
-
-// point makes the pane show a session without moving the focus.
-func (c *Chat) point(key string, s *term.Session) {
-	cols, rows := c.PaneSize()
-	c.pane.Point(key, s, cols, rows)
-}
+func (c *Chat) Later(f func()) { c.PaneTab.Later(f, termMsg{}) }
 
 // dirValue is a directory as the path field shows it: ~ for home and a
 // slash at the end, so the folder's own contents are listed at once.

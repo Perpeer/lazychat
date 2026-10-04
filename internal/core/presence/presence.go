@@ -6,10 +6,6 @@ package presence
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strconv"
 
@@ -59,14 +55,14 @@ type Writer struct {
 
 // Write puts s in its file when it differs from the last written.
 func (w *Writer) Write(s Snapshot) error {
-	data, err := json.MarshalIndent(s, "", " ")
+	data, err := files.EncodeJSON(s)
 	if err != nil {
 		return err
 	}
 	if bytes.Equal(data, w.last) {
 		return nil
 	}
-	if err := os.MkdirAll(Dir(w.Home), 0o755); err != nil {
+	if err := files.MkdirAll(Dir(w.Home), 0o755); err != nil {
 		return err
 	}
 	if err := files.WriteAtomic(path(w.Home, s.Pid), data, 0o600); err != nil {
@@ -78,9 +74,5 @@ func (w *Writer) Write(s Snapshot) error {
 
 // Remove takes the process's snapshot away, as lazychat quits.
 func (w *Writer) Remove(pid int) error {
-	err := os.Remove(path(w.Home, pid))
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	return err
+	return files.Remove(path(w.Home, pid))
 }

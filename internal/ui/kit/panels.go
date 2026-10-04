@@ -28,12 +28,12 @@ func Box(title string, lines []string, w, h int, focused, exact bool) string {
 			line = lines[i]
 		}
 		if exact {
-			line = text.FitExact(line, inner)
+			line = text.FitExactPad(line, inner)
 		} else {
-			line = text.Fit(line, inner)
+			line = text.FitPad(line, inner)
 		}
 		// Reset styles at the row's end so a terminal row's colours never bleed into the frame.
-		out = append(out, frame.Render("│")+text.Pad(line, inner)+"\x1b[0m"+frame.Render("│"))
+		out = append(out, frame.Render("│")+line+"\x1b[0m"+frame.Render("│"))
 	}
 	out = append(out, frame.Render("└"+strings.Repeat("─", inner)+"┘"))
 	return strings.Join(out, "\n")

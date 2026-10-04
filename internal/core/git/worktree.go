@@ -25,6 +25,10 @@ func Worktrees(dir string) ([]Worktree, error) {
 	if err != nil {
 		return nil, err
 	}
+	return worktreesAt(root)
+}
+
+func worktreesAt(root string) ([]Worktree, error) {
 	out, err := run(root, nil, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return nil, err
@@ -65,11 +69,17 @@ func parseWorktrees(out []byte) []Worktree {
 // Others is the checkouts of dir's repository but the one dir is in, and
 // whether that one is a linked worktree rather than the main checkout.
 func Others(dir string) (others []Worktree, linked bool, err error) {
-	all, err := Worktrees(dir)
+	root, err := Root(dir)
 	if err != nil {
 		return nil, false, err
 	}
-	root, err := Root(dir)
+	return OthersAt(root)
+}
+
+// OthersAt is Others for a repository's top already known, as a status
+// read has it: git is asked one time less.
+func OthersAt(root string) (others []Worktree, linked bool, err error) {
+	all, err := worktreesAt(root)
 	if err != nil {
 		return nil, false, err
 	}

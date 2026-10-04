@@ -82,9 +82,7 @@ func openLazychat(in t: TerminalApp) throws {
     switch t.launch {
     case .appleScript(let template):
         let escaped = cmd.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        var err: NSDictionary?
-        NSAppleScript(source: template.replacingOccurrences(of: "%@", with: escaped))?.executeAndReturnError(&err)
-        if let err { throw OpenError.script(err[NSAppleScript.errorMessage] as? String ?? "\(err)") }
+        try Permissions.automate(template.replacingOccurrences(of: "%@", with: escaped))
     case .warp:
         try openWarp(cmd)
     case .openArgs(let flags):

@@ -10,6 +10,10 @@ import (
 	"time"
 
 	"lazychat/internal/core/state"
+
+	"lazychat/internal/core/files"
+
+	"lazychat/internal/term"
 )
 
 // Question is a session's question to the user: when its tool told.
@@ -26,7 +30,7 @@ const noticePrefix = "lazychat-notices-"
 // session in a folder of this run's, made on first use; "" when it cannot be.
 func (a *Actions) questionFile(key string) string {
 	if a.questions == "" {
-		dir, err := os.MkdirTemp("", fmt.Sprintf("%s%d-", noticePrefix, os.Getpid()))
+		dir, err := files.TempDir(fmt.Sprintf("%s%d-", noticePrefix, os.Getpid()))
 		if err != nil {
 			return ""
 		}
@@ -52,14 +56,14 @@ func (a *Actions) Asked(key string) (Question, bool) {
 // session ended.
 func (a *Actions) Answered(key string) {
 	if a.questions != "" {
-		_ = os.Remove(filepath.Join(a.questions, key)) // already gone is the same as removed
+		_ = files.Remove(filepath.Join(a.questions, key))
 	}
 }
 
 // dropNotices removes this run's notices folder, as lazychat leaves.
 func (a *Actions) dropNotices() {
 	if a.questions != "" {
-		_ = os.RemoveAll(a.questions) // a folder in the temp folder; the system clears it anyway
+		_ = files.RemoveAll(a.questions) // a folder in the temp folder; the system clears it anyway
 		a.questions = ""
 	}
 }
@@ -77,7 +81,7 @@ func clearStaleNotices(tmp string) {
 			continue
 		}
 		if strings.HasPrefix(name, "lazychat-questions-") {
-			_ = os.RemoveAll(filepath.Join(tmp, name)) // best effort: a leftover of an older build
+			_ = files.RemoveAll(filepath.Join(tmp, name)) // best effort: a leftover of an older build
 			continue
 		}
 		rest, ok := strings.CutPrefix(name, noticePrefix)
@@ -90,7 +94,7 @@ func clearStaleNotices(tmp string) {
 			continue
 		}
 		if syscall.Kill(pid, 0) == syscall.ESRCH {
-			_ = os.RemoveAll(filepath.Join(tmp, name)) // best effort: its lazychat is gone
+			_ = files.RemoveAll(filepath.Join(tmp, name)) // best effort: its lazychat is gone
 		}
 	}
 }
@@ -102,5 +106,29 @@ func (a *Actions) ScreenAsks(r state.Session) bool {
 	if !ok || !s.Alive() {
 		return false
 	}
-	return a.core.Asking(r.Tool, s.Render())
+	// Asked every tick of every idle session: a screen that did not change
+	// since gives the same answer, without rendering and reading it again.
+	gen := s.Gen()
+	if seen, ok := a.asks[r.Key]; ok && seen.s == s && seen.gen == gen && gen != 0 {
+		return seen.asks
+	}
+	asks := a.core.Asking(r.Tool, s.Render())
+	if a.asks == nil {
+		a.asks = map[string]screenAsk{}
+	}
+	a.asks[r.Key] = screenAsk{s: s, gen: gen, asks: asks}
+	// An ended session's screen is let go with its answer.
+	for k, v := range a.asks {
+		if !v.s.Alive() {
+			delete(a.asks, k)
+		}
+	}
+	return asks
+}
+
+// screenAsk is the last answer of ScreenAsks for a session's screen.
+type screenAsk struct {
+	s    *term.Session
+	gen  uint64
+	asks bool
 }

@@ -12,8 +12,15 @@ import (
 // details page does. Readers are touched only by the read in flight.
 type clocks struct {
 	readers map[string]*usage.Reader // by session key
+	read    map[string]clockRead     // by session key, touched with readers
 	reading bool
 	last    map[string]*usage.Turn
+}
+
+// clockRead is a session's last prompt and how far its reader was then.
+type clockRead struct {
+	at   int64
+	turn *usage.Turn
 }
 
 // clocksMsg is a read's result: each read session's last prompt.
@@ -26,7 +33,7 @@ func (c *Chat) readClocks() tea.Cmd {
 		return nil
 	}
 	if k.readers == nil {
-		k.readers = map[string]*usage.Reader{}
+		k.readers, k.read = map[string]*usage.Reader{}, map[string]clockRead{}
 	}
 	type job struct{ key, id, dir string }
 	var jobs []job
@@ -46,7 +53,7 @@ func (c *Chat) readClocks() tea.Cmd {
 		return nil
 	}
 	k.reading = true
-	readers, core := k.readers, c.core
+	readers, read, core := k.readers, k.read, c.core
 	return func() tea.Msg {
 		out := map[string]*usage.Turn{}
 		for _, j := range jobs {
@@ -68,9 +75,17 @@ func (c *Chat) readClocks() tea.Cmd {
 				}
 			}
 			s, _ := rd.Update()
-			if turns := s.Clone().Turns(); len(turns) > 0 {
-				out[j.key] = &turns[len(turns)-1]
+			// A transcript that did not grow has the same last prompt.
+			if was, ok := read[j.key]; ok && was.at == rd.Read() {
+				out[j.key] = was.turn
+				continue
 			}
+			var last *usage.Turn
+			if turns := s.Clone().Turns(); len(turns) > 0 {
+				last = &turns[len(turns)-1]
+				out[j.key] = last
+			}
+			read[j.key] = clockRead{at: rd.Read(), turn: last}
 		}
 		return clocksMsg{out}
 	}

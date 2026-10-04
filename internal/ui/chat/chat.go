@@ -21,29 +21,25 @@ type termMsg struct{}
 // actions; the pane shows a session, which holds the keys through capture,
 // as every tab's program does.
 type Chat struct {
-	core     *api.Core
-	screen   kit.Screen
-	rect     kit.Rect
-	tick     int
-	resumed  bool // the sessions running at the last quit were brought back
-	fullTerm bool // narrow terminal: only the pane is shown
+	kit.PaneTab
+	core    *api.Core
+	resumed bool // the sessions running at the last quit were brought back
 
-	act     *actions.Actions
-	tree    *model.Tree
-	list    treeView
-	pane    kit.TermPane
-	capture *kit.Capture
-	board   status.Board // what each running session is doing
+	act   *actions.Actions
+	tree  *model.Tree
+	list  treeView
+	board status.Board // what each running session is doing
 	// drafts are the next prompts being written, per session; drafting is
 	// the draft box under the pane having the keys.
 	drafts   map[string]*kit.Editor
 	drafting bool
 	// rep is the report, the right side's second tab; repFocus is it
 	// having the keys.
-	rep report
-	// paneSel is panel 2 chosen by its number: lit, the keys still
-	// lazychat's until Enter.
-	paneSel  bool
+	rep    report
+	mascot struct {
+		valid bool
+		st    kit.MascotState
+	}
 	clocks   clocks
 	repFocus bool
 }
@@ -51,7 +47,8 @@ type Chat struct {
 var _ kit.Tab = (*Chat)(nil)
 
 func New(core *api.Core, screen kit.Screen) *Chat {
-	c := &Chat{core: core, screen: screen}
+	c := &Chat{core: core}
+	c.Init(screen)
 	c.act = actions.New(core, c, func() { screen.Send(termMsg{}) })
 	c.tree = &model.Tree{Store: core.Store}
 	c.list = treeView{tree: c.tree, live: c.act.Live,
@@ -68,25 +65,21 @@ func New(core *api.Core, screen kit.Screen) *Chat {
 	}
 	c.list.turn = c.turnTime
 	c.list.draft = c.hasDraft
-	c.capture = kit.NewCapture(screen, &c.pane, c.paneRect)
-	c.capture.HeldNewline = true
+	c.Capture.HeldNewline = true
 	// Leaving the terminal lands on what was just in use, and on a narrow
 	// screen the lists come back with the keys.
-	c.capture.Left = func() {
-		c.fullTerm = false
+	c.Capture.Left = func() {
+		c.FullTerm = false
 		c.selectShown()
 	}
-	c.capture.Beside = c.pointAt
+	c.Capture.Beside = c.pointAt
 	return c
 }
 
 func (c *Chat) Name() string { return "chat" }
 
 func (c *Chat) Resize(r kit.Rect) {
-	c.rect = r
-	if !c.narrow() {
-		c.fullTerm = false
-	}
+	c.SetRect(r)
 	c.act.Live.ResizeAll(c.PaneSize())
 }
 
@@ -94,7 +87,7 @@ func (c *Chat) Status() string { return fmt.Sprintf("%d live", len(c.act.Live.Al
 
 func (c *Chat) Blur() {
 	c.tree.Moving = false
-	c.capture.Drop()
+	c.Capture.Drop()
 	if c.drafting {
 		c.closeDraft()
 	}

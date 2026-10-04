@@ -9,12 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
 
 	"lazychat/internal/core/history"
+
+	"lazychat/internal/core/files"
 )
 
 // Tool is what every AI tool has: an id recorded with its sessions, a name
@@ -169,7 +170,7 @@ type Registry struct{ tools []Tool }
 func NewRegistry(o Options) Registry {
 	home := o.Home
 	if home == "" {
-		home, _ = os.UserHomeDir()
+		home = files.Home()
 	}
 	return Registry{tools: []Tool{
 		NewClaude(o.Bins[ClaudeID], home),

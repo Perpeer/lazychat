@@ -127,61 +127,41 @@ func (t *treeView) view(w, h int, focused bool) []string {
 		return []string{kit.StyleDim.Render(text.Fit(" none yet — o opens a project", w))}
 	}
 	cur, hasCur := t.tree.Current()
-	selRow := -1
-	blocks := make([][]string, len(rows))
-	heights := make([]int, len(rows))
+	blocks := make([]kit.TreeBlock, len(rows))
 	project, session := 0, 0
 	for i, r := range rows {
-		var lead []string // rows above the entry that are not part of it
-		var b []string
+		b := &blocks[i]
 		switch {
 		case r.Empty:
 			// Drawn with its heading, inside the heading's click zone.
-			if hasCur && cur.Empty && cur.Project.Name == r.Project.Name {
-				selRow = i
-			}
+			b.Empty, b.Selected = true, hasCur && cur.Empty && cur.Project.Name == r.Project.Name
 		case r.Heading():
+			b.Heading = true
 			if i > 0 {
-				lead = []string{""}
+				b.Lead = []string{""}
 			}
 			project++
 			entry := t.projectEntry(*r.Project, project, w)
 			if hasCur && t.tree.Moving && t.tree.Whole && cur.Project != nil && cur.Project.Name == r.Project.Name {
 				entry = kit.Picked(entry)
 			}
-			b = kit.DrawEntry(entry, w, false, focused)
-			if i+1 < len(rows) && rows[i+1].Empty {
-				empty := hasCur && cur.Empty && cur.Project.Name == r.Project.Name
-				b = append(append(b, kit.ChildGap()), kit.DrawEntry(kit.EmptyEntry("no sessions yet"), w, empty, focused)...)
-			}
-			b = kit.ZoneBlock(fmt.Sprintf("proj-%d", project), b, w)
+			empty := i+1 < len(rows) && rows[i+1].Empty
+			b.Rows = kit.HeadingRows(entry, empty, "no sessions yet", empty && hasCur && cur.Empty && cur.Project.Name == r.Project.Name, w, focused, fmt.Sprintf("proj-%d", project))
 		default:
 			orphan := r.Project == nil
 			if orphan && (i == 0 || rows[i-1].Project != nil) {
-				lead = []string{"", kit.StyleDim.Render(text.Fit(" ? no longer registered", w))}
+				b.Lead = []string{"", kit.StyleDim.Render(text.Fit(" ? no longer registered", w))}
 			}
-			lead = append(lead, kit.ChildGap())
+			b.Lead = append(b.Lead, kit.ChildGap())
 			last := i+1 == len(rows) || rows[i+1].Heading() || rows[i+1].Project != r.Project
-			selected := hasCur && cur.Session != nil && r.Session.Key == cur.Session.Key
-			if selected {
-				selRow = i
-			}
+			b.Selected = hasCur && cur.Session != nil && r.Session.Key == cur.Session.Key
 			entry := t.sessionEntry(*r.Session, w, last, orphan)
-			if selected && t.tree.Moving && !t.tree.Whole {
+			if b.Selected && t.tree.Moving && !t.tree.Whole {
 				entry = kit.Picked(entry)
 			}
-			b = kit.DrawEntry(entry, w, selected, focused)
-			b = kit.ZoneBlock(fmt.Sprintf("row-%d", session), b, w)
+			b.Rows = kit.ZoneBlock(fmt.Sprintf("row-%d", session), kit.DrawEntry(entry, w, b.Selected, focused), w)
 			session++
 		}
-		blocks[i] = append(lead, b...)
-		heights[i] = len(blocks[i])
 	}
-	// The empty row is drawn in its heading's block, so that block is the
-	// one to keep in view.
-	if selRow > 0 && rows[selRow].Empty {
-		selRow--
-	}
-	headingAbove := selRow > 0 && rows[selRow-1].Heading()
-	return kit.DrawBlocks(blocks, t.scroll.Place(heights, selRow, h, headingAbove), h)
+	return kit.DrawTree(blocks, &t.scroll, h)
 }

@@ -13,6 +13,7 @@ import (
 
 	"lazychat/internal/core/keylayout"
 	"lazychat/internal/core/state"
+	"lazychat/internal/core/testenv"
 	"lazychat/internal/core/workspace"
 	"lazychat/internal/term"
 )
@@ -31,7 +32,7 @@ func TestMain(m *testing.M) {
 		main()
 		os.Exit(0)
 	}
-	os.Exit(m.Run())
+	testenv.Main(m)
 }
 
 // workspaceIn makes a workspace called name in home, as ~/.lazychat holds

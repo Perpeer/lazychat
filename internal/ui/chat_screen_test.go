@@ -519,16 +519,6 @@ func TestDraft(t *testing.T) {
 	d.quitApp()
 }
 
-// lineWith is the first screen row holding needle, trimmed; "" when none.
-func lineWith(screen, needle string) string {
-	for _, l := range strings.Split(screen, "\n") {
-		if i := strings.Index(l, needle); i >= 0 {
-			return strings.TrimSpace(l[i:])
-		}
-	}
-	return ""
-}
-
 // What goes on and what came of an action share one place in every tab:
 // the right end of the footer's last row, where the version sits, never
 // the end of the keys' row above it.

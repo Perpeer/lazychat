@@ -18,6 +18,7 @@ import (
 	"lazychat/internal/core/history"
 	"lazychat/internal/core/settings"
 	"lazychat/internal/core/state"
+	"lazychat/internal/core/testenv"
 	"lazychat/internal/core/workspace"
 	"lazychat/internal/ui/kit"
 )
@@ -34,7 +35,7 @@ func TestMain(m *testing.M) {
 	// What the app copies never reaches the system clipboard of the machine
 	// running the tests.
 	kit.CopyToClipboard = func(string) error { return nil }
-	os.Exit(m.Run())
+	testenv.Main(m)
 }
 
 // focus is the input router's side of Capture: what a session would get.

@@ -18,27 +18,26 @@ var act = kit.Act[*Git]
 var branchKeys, worktreeRowKeys, projectKeys, emptyKeys, changeKeys, commitsKeys, diffKeys, moveKeys, commitKeys, commitSelKeys []binding
 
 func init() {
-	keyRefresh := binding{Keys: []string{"r"}, Hint: kit.Hint{Key: "r", Does: "refresh"}, Help: "read the project's changes and the diff again now; they are read every few seconds anyway while the tab is on screen", Run: func(g *Git) tea.Cmd { return tea.Batch(g.loadCursor(), g.loadDiff()) }}
-	keyHelp := binding{Keys: []string{"?"}, Hint: kit.Hint{Key: "?", Does: "help"}, Run: act(func(g *Git) {
-		g.screen.Push(kit.NewPager("keys", helpText(), g.screen.Header, g.screen.FooterLine))
-	})}
-	keyQuit := binding{Keys: []string{"q"}, Hint: kit.Hint{Key: "q", Does: "quit"}, Quiet: true, Help: "quit, Ctrl+C too, always asked", Run: func(g *Git) tea.Cmd { return g.screen.Quit() }}
+	keyRefresh := binding{Key: kit.GitKeys.Refresh, Run: func(g *Git) tea.Cmd { return tea.Batch(g.loadCursor(), g.loadDiff()) }}
+	screen := func(g *Git) kit.Screen { return g.screen }
+	keyHelp := kit.HelpKey(screen, helpText)
+	keyQuit := kit.QuitKey(kit.ListKeys.Quit, screen)
 	// The wheel over the diff scrolls it, as over a session's pane; PgUp
 	// PgDn do the same half a page at a time, named in the help only.
 	scroll := []binding{
-		{Hint: kit.Hint{Key: "wheel", Does: "scroll"}, Help: "the wheel over the diff scrolls it, over a list moves its cursor"},
-		{Keys: []string{"pgup"}, Name: "PgUp PgDn", Help: "scroll the diff half a page, Fn+↑↓ on a MacBook", Run: act(func(g *Git) { g.scrollDiff(-g.diffRows() / 2) })},
-		{Keys: []string{"pgdown"}, Run: act(func(g *Git) { g.scrollDiff(g.diffRows() / 2) })},
+		{Key: kit.GitKeys.Wheel},
+		{Key: kit.GitKeys.PageUp, Run: act(func(g *Git) { g.scrollDiff(-g.diffRows() / 2) })},
+		{Key: kit.ListKeys.PageDown, Run: act(func(g *Git) { g.scrollDiff(g.diffRows() / 2) })},
 	}
-	keyCommit := binding{Keys: []string{"c"}, Hint: kit.Hint{Key: "c", Does: "commit"}, Help: "write the commit's subject and description in the box under the diff, as 6 and Enter do; Tab walks to the Commit button", Run: act(func(g *Git) { g.startCommit() })}
-	keyBranch := binding{Keys: []string{"b"}, Hint: kit.Hint{Key: "b", Does: "branches"}, Help: "the branch list: local, then remote branches, newest first, each noted where it is out (● this folder, main folder, ⑂ a worktree), the remotes fetched as it opens. Enter on a branch out in another folder takes the cursor to that folder's row — a worktree is a folder, never a checkout; on the main folder Enter switches to one that is out nowhere (a remote one as a local branch tracking it), and a name no branch has offers a new branch from the row's. A worktree keeps its branch: on its row nothing is switched or made here — w makes a worktree; d on a row deletes", Run: func(g *Git) tea.Cmd { return g.openBranches() }}
-	keyWorktree := binding{Keys: []string{"w"}, Hint: kit.Hint{Key: "w", Does: "worktrees"}, Help: "the worktree list: the repository's other worktrees. Enter goes to one's row; a new name makes a worktree on a branch of that name from the row's branch, in .worktrees/, opened as a project — with nothing typed another of the row's branch, its name suggested; d on a worktree's row removes it", Run: func(g *Git) tea.Cmd { return g.openWorktrees() }}
-	keyDelete := binding{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "delete"}, Help: "delete what the row is, asked: on a worktree's row the worktree with its folder, its project and the project's saved sessions and shells (asked again when it has changes; refused while a session of it runs; its branch stays); on the project's own row the branch it is on — the checkout switches to the default branch first, which itself is never deleted; commits not merged there are asked again, and a branch tracking a remote one then offers that one, asked twice since it goes for everyone", Run: act(func(g *Git) { g.deleteRow() })}
+	keyCommit := binding{Key: kit.GitKeys.Commit, Run: act(func(g *Git) { g.startCommit() })}
+	keyBranch := binding{Key: kit.GitKeys.Branches, Run: func(g *Git) tea.Cmd { return g.openBranches() }}
+	keyWorktree := binding{Key: kit.GitKeys.Worktrees, Run: func(g *Git) tea.Cmd { return g.openWorktrees() }}
+	keyDelete := binding{Key: kit.GitKeys.Delete, Run: act(func(g *Git) { g.deleteRow() })}
 	// Branches have no order of their own, so m moves nothing here; M
 	// moves the project, as in every tab.
-	keyPush := binding{Keys: []string{"P"}, Hint: kit.Hint{Key: "shift+p", Does: "push"}, Help: "push the row's branch to its upstream; with none, asked, to the first remote, tracked there. Never a force push: a rejected push says to pull first", Run: func(g *Git) tea.Cmd { return g.push() }}
-	keyPull := binding{Keys: []string{"p"}, Hint: kit.Hint{Key: "p", Does: "pull"}, Help: "pull the upstream's commits into the row's branch, a fast-forward; when both sides have commits, asked, rebase yours onto it", Run: func(g *Git) tea.Cmd { return g.pull() }}
-	keyFetch := binding{Keys: []string{"f"}, Hint: kit.Hint{Key: "f", Does: "fetch"}, Help: "fetch the remotes, so ↑ ↓ say how far the branch is from its upstream", Run: func(g *Git) tea.Cmd { return g.fetch() }}
+	keyPush := binding{Key: kit.GitKeys.Push, Run: func(g *Git) tea.Cmd { return g.push() }}
+	keyPull := binding{Key: kit.GitKeys.Pull, Run: func(g *Git) tea.Cmd { return g.pull() }}
+	keyFetch := binding{Key: kit.GitKeys.Fetch, Run: func(g *Git) tea.Cmd { return g.fetch() }}
 	branchKeys = []binding{
 		keyCommit,
 		keyPull,
@@ -52,80 +51,80 @@ func init() {
 	}
 	branchKeys = append(branchKeys, scroll...)
 	branchKeys = append(branchKeys, keyHelp, keyQuit,
-		binding{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from branch to branch, one per project; the middle shows the changes of the one under the cursor", Run: func(g *Git) tea.Cmd { return g.moveProject(-1) }},
-		binding{Keys: []string{"down", "j"}, Run: func(g *Git) tea.Cmd { return g.moveProject(1) }},
-		binding{Keys: []string{"g", "home"}, Run: func(g *Git) tea.Cmd { return g.moveProject(-1 << 20) }},
-		binding{Keys: []string{"G", "end"}, Run: func(g *Git) tea.Cmd { return g.moveProject(1 << 20) }},
+		binding{Key: kit.GitKeys.BranchUp, Run: func(g *Git) tea.Cmd { return g.moveProject(-1) }},
+		binding{Key: kit.ListKeys.Down, Run: func(g *Git) tea.Cmd { return g.moveProject(1) }},
+		binding{Key: kit.ListKeys.First, Run: func(g *Git) tea.Cmd { return g.moveProject(-1 << 20) }},
+		binding{Key: kit.ListKeys.Last, Run: func(g *Git) tea.Cmd { return g.moveProject(1 << 20) }},
 	)
 	branchKeys = append(branchKeys, panelKeys()...)
 	// An added worktree's row has one key more, after fetch: bring its
 	// branch up to date with main, as a worktree is kept current.
-	worktreeRowKeys = append(append(append([]binding{}, branchKeys[:4]...), binding{Keys: []string{"u"}, Hint: kit.Hint{Key: "u", Does: "update from main"}, Help: "on a worktree's row: fetch, then replay its branch's commits on the remote's main (git rebase), local changes put aside and back, asked first; a conflict stops it, named on the footer, for you to resolve and git rebase --continue", Run: func(g *Git) tea.Cmd { return g.updateFromMain() }}), branchKeys[4:]...)
+	worktreeRowKeys = append(append(append([]binding{}, branchKeys[:4]...), binding{Key: kit.GitKeys.UpdateFromMain, Run: func(g *Git) tea.Cmd { return g.updateFromMain() }}), branchKeys[4:]...)
 	emptyKeys = []binding{kit.ProjectOpen[*Git](), keyHelp, keyQuit}
 	projectKeys = kit.ProjectRow((*Git).cursorProject, func(g *Git) { g.moving = true })
 	changeKeys = []binding{
-		{Keys: []string{" "}, Hint: kit.Hint{Key: "space", Does: "stage / unstage"}, Help: "stage the file or folder under the cursor when it is in unstaged, unstage it when it is in staged; a conflict is left for you to resolve", Run: func(g *Git) tea.Cmd { return g.toggle() }},
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as ctrl+q", Run: act(func(g *Git) { g.focus = panelProjects })},
+		{Key: kit.GitKeys.StageUnstage, Run: func(g *Git) tea.Cmd { return g.toggle() }},
+		{Key: kit.GitKeys.ChangesBack, Run: act(func(g *Git) { g.focus = panelProjects })},
 	}
 	changeKeys = append(changeKeys, keyCommit)
 	changeKeys = append(changeKeys, scroll...)
 	changeKeys = append(changeKeys, keyRefresh, keyHelp, keyQuit,
-		binding{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move over the changes; the right side shows the diff of the one under the cursor", Run: func(g *Git) tea.Cmd { return g.moveChange(-1) }},
-		binding{Keys: []string{"down", "j"}, Run: func(g *Git) tea.Cmd { return g.moveChange(1) }},
-		binding{Keys: []string{"g", "home"}, Run: func(g *Git) tea.Cmd { return g.moveChange(-1 << 20) }},
-		binding{Keys: []string{"G", "end"}, Run: func(g *Git) tea.Cmd { return g.moveChange(1 << 20) }},
+		binding{Key: kit.GitKeys.ChangeUp, Run: func(g *Git) tea.Cmd { return g.moveChange(-1) }},
+		binding{Key: kit.ListKeys.Down, Run: func(g *Git) tea.Cmd { return g.moveChange(1) }},
+		binding{Key: kit.ListKeys.First, Run: func(g *Git) tea.Cmd { return g.moveChange(-1 << 20) }},
+		binding{Key: kit.ListKeys.Last, Run: func(g *Git) tea.Cmd { return g.moveChange(1 << 20) }},
 	)
 	changeKeys = append(changeKeys, keyBack)
 	changeKeys = append(changeKeys, panelKeys()...)
 	commitsKeys = []binding{
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as ctrl+q", Run: func(g *Git) tea.Cmd { return g.goTo(panelProjects) }},
+		{Key: kit.GitKeys.ChangesBack, Run: func(g *Git) tea.Cmd { return g.goTo(panelProjects) }},
 		keyCommit,
 	}
 	commitsKeys = append(commitsKeys, scroll...)
 	commitsKeys = append(commitsKeys, keyRefresh, keyHelp, keyQuit,
-		binding{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move over the last commits of the branch or worktree under the left cursor, newest first, ↑ on those not pushed yet; the right side shows what the one under the cursor changed", Run: func(g *Git) tea.Cmd { return g.moveCommit(-1) }},
-		binding{Keys: []string{"down", "j"}, Run: func(g *Git) tea.Cmd { return g.moveCommit(1) }},
-		binding{Keys: []string{"g", "home"}, Run: func(g *Git) tea.Cmd { return g.moveCommit(-1 << 20) }},
-		binding{Keys: []string{"G", "end"}, Run: func(g *Git) tea.Cmd { return g.moveCommit(1 << 20) }},
+		binding{Key: kit.GitKeys.CommitsUp, Run: func(g *Git) tea.Cmd { return g.moveCommit(-1) }},
+		binding{Key: kit.ListKeys.Down, Run: func(g *Git) tea.Cmd { return g.moveCommit(1) }},
+		binding{Key: kit.ListKeys.First, Run: func(g *Git) tea.Cmd { return g.moveCommit(-1 << 20) }},
+		binding{Key: kit.ListKeys.Last, Run: func(g *Git) tea.Cmd { return g.moveCommit(1 << 20) }},
 	)
 	commitsKeys = append(commitsKeys, keyBack)
 	commitsKeys = append(commitsKeys, panelKeys()...)
 	diffKeys = []binding{
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "drop the selection; with none, back to the projects, as ctrl+q", Run: act(func(g *Git) {
+		{Key: kit.GitKeys.DiffBack, Run: act(func(g *Git) {
 			if g.diff.marked {
 				g.diff.marked = false
 				return
 			}
 			g.goTo(panelProjects)
 		})},
-		{Keys: []string{"v"}, Hint: kit.Hint{Key: "v", Does: "select"}, Help: "mark the cursor's row as one end of a selection, the cursor the other; v again drops it", Run: act(func(g *Git) { g.markDiff() })},
-		{Keys: []string{"y"}, Hint: kit.Hint{Key: "y", Does: "copy"}, Help: "copy the selected rows, or the cursor's, for a prompt: each file's part headed by its path and line numbers (path:28-35), every line marked + added, - removed or a space", Run: act(func(g *Git) { g.copyDiff() })},
-		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the diff to select rows; the release copies them, as y does"},
+		{Key: kit.GitKeys.DiffSelect, Run: act(func(g *Git) { g.markDiff() })},
+		{Key: kit.GitKeys.DiffCopy, Run: act(func(g *Git) { g.copyDiff() })},
+		{Key: kit.GitKeys.DiffDrag},
 		keyCommit,
 	}
 	diffKeys = append(diffKeys, scroll...)
 	diffKeys = append(diffKeys, keyRefresh, keyHelp, keyQuit,
-		binding{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move the row cursor, the diff following; g and G to its first and last row", Run: act(func(g *Git) { g.moveDiff(-1) })},
-		binding{Keys: []string{"down", "j"}, Run: act(func(g *Git) { g.moveDiff(1) })},
-		binding{Keys: []string{"g", "home"}, Run: act(func(g *Git) { g.moveDiff(-1 << 20) })},
-		binding{Keys: []string{"G", "end"}, Run: act(func(g *Git) { g.moveDiff(1 << 20) })},
+		binding{Key: kit.GitKeys.DiffUp, Run: act(func(g *Git) { g.moveDiff(-1) })},
+		binding{Key: kit.ListKeys.Down, Run: act(func(g *Git) { g.moveDiff(1) })},
+		binding{Key: kit.ListKeys.First, Run: act(func(g *Git) { g.moveDiff(-1 << 20) })},
+		binding{Key: kit.ListKeys.Last, Run: act(func(g *Git) { g.moveDiff(1 << 20) })},
 	)
 	diffKeys = append(diffKeys, keyBack)
 	diffKeys = append(diffKeys, panelKeys()...)
 	commitKeys = []binding{
-		{Keys: []string{"ctrl+s"}, Hint: kit.Hint{Key: "ctrl+s", Does: "commit"}, Help: "commit the staged changes with the subject and description; Enter on the Commit button too", Run: func(g *Git) tea.Cmd { return g.commit() }},
-		{Keys: []string{"ctrl+n"}, Hint: kit.Hint{Key: "ctrl+n", Does: "suggest"}, Help: "ask the AI tool Settings names for a subject and description of what is staged, run in the row's folder; Enter on the Suggest button too. Text already typed is replaced only once you say so", Run: func(g *Git) tea.Cmd { return g.suggest() }},
-		{Keys: []string{"tab"}, Hint: kit.Hint{Key: "Tab", Does: "next"}, Help: "subject, description, the Suggest and Commit buttons; Shift+Tab back. Enter in the subject goes to the description. Digits are text here, so Esc first to reach another panel"},
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as ctrl+q; what is typed stays", Run: act(func(g *Git) { g.goTo(panelProjects) })},
+		{Key: kit.GitKeys.BoxCommit, Run: func(g *Git) tea.Cmd { return g.commit() }},
+		{Key: kit.GitKeys.BoxSuggest, Run: func(g *Git) tea.Cmd { return g.suggest() }},
+		{Key: kit.GitKeys.BoxNext},
+		{Key: kit.GitKeys.BoxBack, Run: act(func(g *Git) { g.goTo(panelProjects) })},
 		keyBack,
 	}
 	commitSelKeys = append([]binding{
-		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "write"}, Help: "into the commit box: the subject takes the keys, Esc comes back", Run: act(func(g *Git) { g.startCommit() })},
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "projects"}, Help: "back to the projects, as from the box's fields", Run: act(func(g *Git) { g.goTo(panelProjects) })},
+		{Key: kit.GitKeys.BoxEnter, Run: act(func(g *Git) { g.startCommit() })},
+		{Key: kit.GitKeys.BoxChosenBack, Run: act(func(g *Git) { g.goTo(panelProjects) })},
 		keyHelp, keyQuit, keyBack,
 	}, panelKeys()...)
 	moveKeys = append(kit.ReorderKeys(func(g *Git, d int) { g.carry(d) }, func(g *Git) { g.moving = false }),
-		binding{Keys: []string{"esc"}, Run: act(func(g *Git) { g.moving = false })})
+		binding{Key: kit.GitKeys.MoveEsc, Run: act(func(g *Git) { g.moving = false })})
 }
 
 // tables are the footer's two rows for where the keys are now: the

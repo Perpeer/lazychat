@@ -28,15 +28,16 @@ type target struct {
 // report is the second tab's state; readers are touched only by the read
 // running off the loop, one at a time, and the screen keeps a clone.
 type report struct {
-	shown    bool
-	readers  map[string]*usage.Reader
-	reading  bool
-	read     bool
-	shownFor target // what the last read was for
-	s        *usage.Session
-	path     string
-	prices   usage.Prices
-	err      error
+	shown     bool
+	readers   map[string]*usage.Reader
+	priceFile *usage.PriceFile // read in the same goroutine as readers
+	reading   bool
+	read      bool
+	shownFor  target // what the last read was for
+	s         *usage.Session
+	path      string
+	prices    usage.Prices
+	err       error
 
 	scroll int
 	back   int // the prompt shown in full, counted back from the newest
@@ -54,7 +55,7 @@ type reportMsg struct {
 // showReport puts the report on the right, the session pane kept running
 // behind it; nothing is read until it shows.
 func (c *Chat) showReport() tea.Cmd {
-	c.capture.Drop()
+	c.Capture.Drop()
 	c.closeDraft()
 	c.rep.shown = true
 	return c.readReport()
@@ -92,16 +93,15 @@ func (c *Chat) readReport() tea.Cmd {
 	if r.readers == nil {
 		r.readers = map[string]*usage.Reader{}
 	}
-	r.reading = true
-	readers, core := r.readers, c.core
-	home := ""
-	if core.Settings != nil {
-		home = core.Settings.Home
+	if r.priceFile == nil && c.core.Settings != nil && c.core.Settings.Home != "" {
+		r.priceFile = &usage.PriceFile{Path: filepath.Join(c.core.Settings.Home, "prices.json")}
 	}
+	r.reading = true
+	readers, prices, core := r.readers, r.priceFile, c.core
 	return func() tea.Msg {
 		msg := reportMsg{shownFor: t}
-		if home != "" {
-			msg.prices, msg.err = usage.LoadPrices(filepath.Join(home, "prices.json"))
+		if prices != nil {
+			msg.prices, msg.err = prices.Load()
 		}
 		if t.id == "?" {
 			return msg
@@ -196,7 +196,7 @@ func (c *Chat) tabClick(msg tea.MouseMsg) bool {
 	}
 	if i == 1 {
 		c.repFocus = true
-		c.screen.Queue(c.showReport())
+		c.Screen.Queue(c.showReport())
 	} else {
 		c.repFocus = false
 		c.showChat()

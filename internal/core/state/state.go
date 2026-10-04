@@ -112,22 +112,17 @@ func Load(path string) (*Store, error) {
 }
 
 func (s *Store) Save() error {
-	if err := os.MkdirAll(filepath.Dir(s.Path), 0o700); err != nil {
+	if err := files.MkdirAll(filepath.Dir(s.Path), 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(s.Path), err)
 	}
-	data, err := json.MarshalIndent(s.State, "", " ")
+	data, err := files.EncodeJSON(s.State)
 	if err != nil {
 		return err
 	}
 	// The version it replaces is linked aside first, so the backup is
 	// always whole and one save old.
 	if _, err := os.Stat(s.Path); err == nil {
-		bak := BackupPath(s.Path)
-		_ = os.Remove(bak + ".tmp")
-		if err := os.Link(s.Path, bak+".tmp"); err != nil {
-			return fmt.Errorf("keep %s aside: %w", s.Path, err)
-		}
-		if err := os.Rename(bak+".tmp", bak); err != nil {
+		if err := files.Backup(s.Path, BackupPath(s.Path)); err != nil {
 			return fmt.Errorf("keep %s aside: %w", s.Path, err)
 		}
 	}
@@ -142,12 +137,8 @@ func Restore(path string) (aside string, err error) {
 		return "", fmt.Errorf("%s has no backup: %w", path, err)
 	}
 	aside = path + ".broken-" + time.Now().Format("20060102-150405")
-	if err := os.Rename(path, aside); err != nil {
-		return "", fmt.Errorf("keep %s aside: %w", path, err)
-	}
-	if err := os.Rename(bak, path); err != nil {
-		_ = os.Rename(aside, path)
-		return "", fmt.Errorf("put %s back: %w", bak, err)
+	if err := files.Swap(path, bak, aside); err != nil {
+		return "", err
 	}
 	return aside, nil
 }
@@ -386,13 +377,7 @@ func (s *Store) RemoveSession(key string) error {
 	return fmt.Errorf("no session with key %s", key)
 }
 
-func expandHome(p string) string {
-	if strings.HasPrefix(p, "~/") {
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, p[2:])
-	}
-	return p
-}
+func expandHome(p string) string { return files.ExpandHome(p) }
 
 // MoveProject moves a project up (delta < 0) or down past its neighbour; at
 // either end it stays.

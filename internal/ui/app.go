@@ -386,16 +386,16 @@ func (a *App) logKey(name, action string) {
 func (a *App) route(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Ctrl+C on a list quits like q, asking first; a tab taking text gets it
 	// (the commit box's editor copies with it).
-	if msg.String() == "ctrl+c" && !a.tab().Typing() && !a.popups.Open() {
+	if kit.GlobalKeys.Quit.Has(msg.String()) && !a.tab().Typing() && !a.popups.Open() {
 		return a, a.withPending(a.Quit())
 	}
 	if a.popups.Open() {
 		return a.keyOverlay(msg)
 	}
-	if k := msg.String(); (k == "tab" || k == "shift+tab") && !a.tab().Typing() {
+	if k := msg.String(); (kit.GlobalKeys.NextTab.Has(k) || kit.GlobalKeys.PrevTab.Has(k)) && !a.tab().Typing() {
 		a.wsSel = false
 		d := 1
-		if k == "shift+tab" {
+		if kit.GlobalKeys.PrevTab.Has(k) {
 			d = -1
 		}
 		a.switchTo(a.nextWorkTab(d))
@@ -404,7 +404,7 @@ func (a *App) route(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if a.wsSel {
 		return a, a.withPending(kit.Dispatch(workspaceKeys(), msg.String(), a))
 	}
-	if msg.String() == "ctrl+w" && !a.tab().Typing() {
+	if kit.GlobalKeys.Workspace.Has(msg.String()) && !a.tab().Typing() {
 		a.selectWorkspace()
 		return a, nil
 	}

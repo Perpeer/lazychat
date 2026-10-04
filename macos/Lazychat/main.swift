@@ -256,8 +256,8 @@ final class Bar: NSObject, NSApplicationDelegate, NSMenuDelegate {
             end tell
             """
         }
-        var err: NSDictionary?
-        NSAppleScript(source: script)?.executeAndReturnError(&err)
+        // Nothing is shown when it fails: the click just brings no window.
+        try? Permissions.automate(script)
     }
 
     // openDesktop opens a Claude desktop session: the one picked, else the

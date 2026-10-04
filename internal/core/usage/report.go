@@ -57,6 +57,31 @@ type Price struct {
 // change and differ by plan.
 type Prices map[string]Price
 
+// PriceFile is the prices file read again only when it changed; one
+// goroutine owns it.
+type PriceFile struct {
+	Path   string
+	mod    time.Time
+	prices Prices
+	err    error
+	read   bool
+}
+
+// Load is the file's prices, read when it is new or changed since.
+func (f *PriceFile) Load() (Prices, error) {
+	info, err := os.Stat(f.Path)
+	var mod time.Time
+	if err == nil {
+		mod = info.ModTime()
+	}
+	if f.read && mod.Equal(f.mod) {
+		return f.prices, f.err
+	}
+	f.prices, f.err = LoadPrices(f.Path)
+	f.mod, f.read = mod, true
+	return f.prices, f.err
+}
+
 // LoadPrices reads the prices file; none is no prices.
 func LoadPrices(path string) (Prices, error) {
 	b, err := os.ReadFile(path)

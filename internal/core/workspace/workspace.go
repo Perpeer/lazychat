@@ -33,8 +33,7 @@ func (w Workspace) StatePath() string { return filepath.Join(w.Dir, StateFile) }
 // DefaultHome is lazychat's folder of this machine: the workspaces, the
 // list of them and the settings.
 func DefaultHome() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".lazychat")
+	return filepath.Join(files.Home(), ".lazychat")
 }
 
 func DefaultRegistryPath() string { return filepath.Join(DefaultHome(), "workspaces.json") }
@@ -57,7 +56,7 @@ func Create(home, name string) (Workspace, error) {
 	if _, err := os.Lstat(w.Dir); err == nil {
 		return Workspace{}, fmt.Errorf("a workspace named %s is already there", name)
 	}
-	if err := os.MkdirAll(w.Dir, 0o755); err != nil {
+	if err := files.MkdirAll(w.Dir, 0o755); err != nil {
 		return Workspace{}, fmt.Errorf("create %s: %w", w.Dir, err)
 	}
 	st, err := state.Load(w.StatePath())
@@ -94,8 +93,7 @@ func Rename(home string, w Workspace, name string) (Workspace, error) {
 // DefaultTrash is the Trash Finder shows, where a deleted workspace can be
 // put back from.
 func DefaultTrash() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".Trash")
+	return filepath.Join(files.Home(), ".Trash")
 }
 
 // Delete puts the workspace's folder into trash and returns where it went.

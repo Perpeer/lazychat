@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"lazychat/internal/core/files"
 )
 
 // worktreesDir is the folder inside the main checkout that holds the
@@ -110,18 +112,7 @@ func exclude(root string) error {
 	if len(have) > 0 && !strings.HasSuffix(string(have), "\n") {
 		line = "\n" + line
 	}
-	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	if _, err := f.WriteString(line + "\n"); err != nil {
-		f.Close()
-		return err
-	}
-	return f.Close()
+	return files.AppendLine(file, line)
 }
 
 // FreeName is a name for another worktree of base's work: base-2, base-3…,

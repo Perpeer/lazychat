@@ -12,16 +12,21 @@ import (
 // Hint is one key and what it does, as the footer shows it.
 type Hint struct{ Key, Does string }
 
-// Binding is one key of one context of a tab, run against the tab T. The
-// same table dispatches the key, writes the footer and writes the help, so
-// a key is declared in one place.
-type Binding[T any] struct {
+// Key is a key apart from what it runs; every one is in keys.go.
+type Key struct {
 	Keys  []string // as tea.KeyMsg.String() spells them
 	Hint  Hint     // the footer's words; the key part also names it in the help
 	Name  string   // the help's name for keys without a hint
 	Help  string   // the help's wording when it says more than the hint; "" repeats the hint
 	Quiet bool     // works and is in the help, but the footer leaves it out for room
-	Run   func(t T) tea.Cmd
+}
+
+// Binding is one key of one context of a tab, run against the tab T. The
+// same table dispatches the key, writes the footer and writes the help; a
+// Binding with no Run only names a key something else handles.
+type Binding[T any] struct {
+	Key
+	Run func(t T) tea.Cmd
 }
 
 // Label is how the help names the binding's keys.
@@ -154,4 +159,26 @@ func RenderHints(hs []Hint) string {
 		parts[i] = StyleAccent.Render("("+h.Key+")") + " " + StyleDim.Render(h.Does)
 	}
 	return strings.Join(parts, StyleDim.Render(" · "))
+}
+
+// WrapHints splits hints into rows no wider than room as RenderHints draws
+// them, as many to a row as fit; a hint wider than room has a row alone.
+func WrapHints(hs []Hint, room int) [][]Hint {
+	var out [][]Hint
+	start, w := 0, 0
+	for i, h := range hs {
+		hw := text.Width(RenderHints([]Hint{h}))
+		if i > start && w+3+hw > room { // 3: the " · " between two
+			out, start = append(out, hs[start:i]), i
+		}
+		if i == start {
+			w = hw
+		} else {
+			w += 3 + hw
+		}
+	}
+	if start < len(hs) {
+		out = append(out, hs[start:])
+	}
+	return out
 }

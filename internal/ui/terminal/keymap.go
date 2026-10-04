@@ -8,9 +8,6 @@ import (
 	"lazychat/internal/ui/kit"
 )
 
-// leaveLabel names the key that hands the keys back to the list.
-const leaveLabel = "ctrl+q"
-
 type binding = kit.Binding[*Terminal]
 
 var act = kit.Act[*Terminal]
@@ -22,39 +19,38 @@ var act = kit.Act[*Terminal]
 var shellKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, copyKeys, termKeys, paneKeys []binding
 
 func init() {
-	keyNew := binding{Keys: []string{"n"}, Hint: kit.Hint{Key: "n", Does: "new"}, Help: "a new shell ($SHELL, as a login shell) in the cursor's project's folder, named on its own; any number per project", Run: act(func(t *Terminal) { t.newShell() })}
-	keyHelp := binding{Keys: []string{"?"}, Hint: kit.Hint{Key: "?", Does: "help"}, Run: act(func(t *Terminal) {
-		t.screen.Push(kit.NewPager("keys", helpText(), t.screen.Header, t.screen.FooterLine))
-	})}
-	keyQuit := binding{Keys: []string{"q"}, Hint: kit.Hint{Key: "q", Does: "quit"}, Quiet: true, Help: "quit, Ctrl+C too, always asked; the shells are stopped, nothing survives lazychat", Run: func(t *Terminal) tea.Cmd { return t.screen.Quit() }}
+	keyNew := binding{Key: kit.TerminalKeys.New, Run: act(func(t *Terminal) { t.newShell() })}
+	screen := func(t *Terminal) kit.Screen { return t.Screen }
+	keyHelp := kit.HelpKey(screen, helpText)
+	keyQuit := kit.QuitKey(kit.TerminalKeys.Quit, screen)
 	keyMove := kit.ReorderStart(func(t *Terminal) { t.tree.Moving, t.tree.Whole = true, false })
-	keyBack := kit.BackKey(func(t *Terminal) { t.fullTerm, t.paneSel = false, false })
-	keyPgUp := binding{Keys: []string{"pgup"}, Run: act(func(t *Terminal) { t.pane.ScrollBy(t.paneRect(), -kit.PageRows) })}
-	keyPgDn := binding{Keys: []string{"pgdown"}, Name: "Fn+↑↓", Help: "scroll the shown terminal; the wheel and the trackpad too", Run: act(func(t *Terminal) { t.pane.ScrollBy(t.paneRect(), kit.PageRows) })}
-	panels := kit.PanelKeys(2, func(t *Terminal, p int) tea.Cmd { t.toPanel(p); return nil }, "1 the projects and their terminals, 2 the terminal on the right, chosen — Enter goes in")
+	keyBack := kit.BackKey(func(t *Terminal) { t.ToList() })
+	keyPgUp := binding{Key: kit.ListKeys.PageUp, Run: act(func(t *Terminal) { t.Pane.ScrollBy(t.PaneRect(), -kit.PageRows) })}
+	keyPgDn := binding{Key: kit.TerminalKeys.PageDown, Run: act(func(t *Terminal) { t.Pane.ScrollBy(t.PaneRect(), kit.PageRows) })}
+	panels := kit.PanelKeys(2, func(t *Terminal, p int) tea.Cmd { t.toPanel(p); return nil }, kit.PanelNames.Terminal)
 	moves := []binding{
-		{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from terminal to terminal, across the projects; the headings take no cursor; on a terminal the right side shows it", Run: act(func(t *Terminal) { t.move(-1) })},
-		{Keys: []string{"down", "j"}, Run: act(func(t *Terminal) { t.move(1) })},
-		{Keys: []string{"g", "home"}, Run: act(func(t *Terminal) { t.move(-1 << 20) })},
-		{Keys: []string{"G", "end"}, Run: act(func(t *Terminal) { t.move(1 << 20) })},
+		{Key: kit.TerminalKeys.Up, Run: act(func(t *Terminal) { t.move(-1) })},
+		{Key: kit.ListKeys.Down, Run: act(func(t *Terminal) { t.move(1) })},
+		{Key: kit.ListKeys.First, Run: act(func(t *Terminal) { t.move(-1 << 20) })},
+		{Key: kit.ListKeys.Last, Run: act(func(t *Terminal) { t.move(1 << 20) })},
 		keyBack, keyPgUp, keyPgDn,
 	}
 	moves = append(moves, panels...)
 	shellKeys = append([]binding{
-		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "continue"}, Help: "into the shell: it gets every key · " + leaveLabel + " comes back, the shell runs on", Run: act(func(t *Terminal) { t.enter() })},
+		{Key: kit.TerminalKeys.Continue, Run: act(func(t *Terminal) { t.enter() })},
 		keyNew,
-		{Keys: []string{"e"}, Hint: kit.Hint{Key: "e", Does: "rename"}, Help: "rename the terminal: a popup, its name prefilled", Run: act(func(t *Terminal) {
+		{Key: kit.TerminalKeys.Rename, Run: act(func(t *Terminal) {
 			if sh, ok := t.tree.Shell(); ok {
 				t.act.Rename(asShell(sh))
 			}
 		})},
 		keyMove,
-		{Keys: []string{"d"}, Hint: kit.Hint{Key: "d", Does: "close"}, Help: "close the terminal, asked while its shell runs: the shell and what runs in it are stopped", Run: act(func(t *Terminal) {
+		{Key: kit.TerminalKeys.Close, Run: act(func(t *Terminal) {
 			if sh, ok := t.tree.Shell(); ok {
 				t.act.Close(asShell(sh))
 			}
 		})},
-		{Keys: []string{"v"}, Hint: kit.Hint{Key: "v", Does: "copy"}, Help: "copy mode over the shown terminal: mark rows and put them on the clipboard", Run: act(func(t *Terminal) { _, rows := t.PaneSize(); t.pane.StartCopy(rows) })},
+		{Key: kit.TerminalKeys.CopyMode, Run: act(func(t *Terminal) { _, rows := t.PaneSize(); t.Pane.StartCopy(rows) })},
 		keyHelp, keyQuit,
 	}, moves...)
 	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyHelp, keyQuit}, moves...)
@@ -62,24 +58,24 @@ func init() {
 	emptyKeys = []binding{kit.ProjectOpen[*Terminal](), keyHelp, keyQuit}
 	moveKeys = kit.ReorderKeys(func(t *Terminal, d int) { t.carry(d) }, func(t *Terminal) { t.tree.Moving = false })
 	copyKeys = []binding{
-		{Keys: []string{"up", "k"}, Hint: kit.Hint{Key: "↑↓ Fn+↑↓", Does: "move"}, Help: "move the cursor row", Run: act(func(t *Terminal) { t.copyMove(-1) })},
-		{Keys: []string{" "}, Hint: kit.Hint{Key: "space", Does: "mark"}, Help: "mark where the selection starts", Run: act(func(t *Terminal) { t.pane.Sel.Mark() })},
-		{Keys: []string{"y", "enter"}, Hint: kit.Hint{Key: "y", Does: "copy"}, Help: "put the selected rows on the clipboard", Run: act(func(t *Terminal) { t.copySelection() })},
-		{Keys: []string{"ctrl+q", "q", "v", "1"}, Hint: kit.Hint{Key: "ctrl+q", Does: "done"}, Help: "back to the list; q, v and 1 too", Run: act(func(t *Terminal) { t.pane.StopCopy() })},
-		{Keys: []string{"down", "j"}, Run: act(func(t *Terminal) { t.copyMove(1) })},
-		{Keys: []string{"pgup"}, Run: act(func(t *Terminal) { t.copyMove(-kit.PageRows) })},
-		{Keys: []string{"pgdown"}, Run: act(func(t *Terminal) { t.copyMove(kit.PageRows) })},
+		{Key: kit.TerminalKeys.CopyMove, Run: act(func(t *Terminal) { t.copyMove(-1) })},
+		{Key: kit.TerminalKeys.CopyMark, Run: act(func(t *Terminal) { t.Pane.Sel.Mark() })},
+		{Key: kit.TerminalKeys.CopyYank, Run: act(func(t *Terminal) { t.copySelection() })},
+		{Key: kit.TerminalKeys.CopyDone, Run: act(func(t *Terminal) { t.Pane.StopCopy() })},
+		{Key: kit.ListKeys.Down, Run: act(func(t *Terminal) { t.copyMove(1) })},
+		{Key: kit.ListKeys.PageUp, Run: act(func(t *Terminal) { t.copyMove(-kit.PageRows) })},
+		{Key: kit.ListKeys.PageDown, Run: act(func(t *Terminal) { t.copyMove(kit.PageRows) })},
 	}
 	paneKeys = append([]binding{
-		{Keys: []string{"enter"}, Hint: kit.Hint{Key: "enter", Does: "go in"}, Help: "into the shell: it gets every key · " + leaveLabel + " comes back", Run: act(func(t *Terminal) { t.enter() })},
-		{Keys: []string{"esc"}, Hint: kit.Hint{Key: "esc", Does: "back"}, Help: "back to the list", Run: act(func(t *Terminal) { t.fullTerm, t.paneSel = false, false })},
+		{Key: kit.TerminalKeys.PaneEnter, Run: act(func(t *Terminal) { t.enter() })},
+		{Key: kit.TerminalKeys.PaneBack, Run: act(func(t *Terminal) { t.ToList() })},
 		keyPgUp, keyPgDn, keyHelp, keyQuit, keyBack,
 	}, panels...)
 	termKeys = []binding{
-		{Hint: kit.Hint{Key: leaveLabel, Does: "back to lazychat"}, Help: "back to the list, in every terminal; the shell runs on"},
-		{Hint: kit.Hint{Key: "click", Does: "the list: back there"}, Help: "a click beside the pane leaves the shell and puts the cursor where it landed"},
-		{Hint: kit.Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the shell's text to select it, the release copies it, as a plain terminal does; a program on the alternate screen (vim, less) keeps the mouse for itself"},
-		{Hint: kit.Hint{Key: "other keys", Does: "go to the shell"}, Help: "every other key, exactly as typed, goes to the shell"},
+		{Key: kit.TerminalKeys.PaneLeave},
+		{Key: kit.TerminalKeys.PaneClick},
+		{Key: kit.TerminalKeys.PaneDrag},
+		{Key: kit.TerminalKeys.PaneOther},
 	}
 }
 
@@ -88,11 +84,11 @@ func init() {
 func (t *Terminal) tables() (top, below []binding) {
 	_, onShell := t.tree.Shell()
 	switch {
-	case t.capture.Held():
+	case t.Capture.Held():
 		return termKeys, nil
-	case t.paneSel:
+	case t.PaneSel:
 		return paneKeys, nil
-	case t.pane.Copying():
+	case t.Pane.Copying():
 		return copyKeys, nil
 	case t.tree.Moving:
 		return moveKeys, nil
@@ -118,7 +114,7 @@ func (t *Terminal) Footer() []kit.Hint {
 func (t *Terminal) Lead() string {
 	top, below := t.tables()
 	switch {
-	case below != nil, t.paneSel && !t.capture.Held():
+	case below != nil, t.PaneSel && !t.Capture.Held():
 		return "terminal"
 	case len(top) > 0 && top[0].Hint == emptyKeys[0].Hint:
 		return "project"
@@ -150,15 +146,15 @@ func helpText() string {
 
 func (t *Terminal) copyMove(n int) {
 	_, rows := t.PaneSize()
-	t.pane.MoveCursor(n, rows)
+	t.Pane.MoveCursor(n, rows)
 }
 
 func (t *Terminal) copySelection() {
-	rows := t.pane.Selected()
+	rows := t.Pane.Selected()
 	if err := kit.CopyToClipboard(rows); err != nil {
 		t.Note("copy: %v", err)
 	} else {
 		t.Note("copied %d line(s)", strings.Count(rows, "\n")+1)
 	}
-	t.pane.StopCopy()
+	t.Pane.StopCopy()
 }

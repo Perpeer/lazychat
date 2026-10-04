@@ -12,8 +12,12 @@ paths:
   `cmd/lazychat/pty_test.go`.
 - Wait for text, never for time. `order()` searches the whole frame, so
   assert on rows only one column shows.
-- Run checks with `env -u LAZYCHAT_TRACE` when inside a lazychat session:
-  tests inherit its environment.
+- Every package's TestMain calls `testenv.Main` (internal/core/testenv):
+  its own home, temp folder (under /tmp, short: screen tests find printed
+  paths), Claude config, no global git config, a made-up git identity,
+  GIT_DIR and LAZYCHAT_TRACE dropped. Tests had deleted notice folders in
+  the real $TMPDIR and committed with the user's git identity.
+  `TestEveryPackage` fails for a package that forgets.
 - macOS temp dirs are `/var` → `/private/var`; compare paths after
   `filepath.EvalSymlinks`.
 - A `vt.SafeEmulator` without a session needs a goroutine reading its

@@ -7,47 +7,23 @@ import (
 	"lazychat/internal/ui/text"
 )
 
-// narrowWidth is where the two columns stop fitting; below it the terminal
-// pane is shown alone on demand.
-const narrowWidth = 80
-
 type geometry struct {
 	leftW, rightW int
 	bodyH         int // the tab's height: the tree's and the pane's
 }
 
 func (c *Chat) geometry() geometry {
-	g := geometry{bodyH: max(8, c.rect.Rows)}
-	g.leftW = kit.ListWidth(c.rect.Cols)
-	if c.narrow() {
-		g.leftW = c.rect.Cols
-	}
-	g.rightW = c.rect.Cols - g.leftW
+	g := geometry{bodyH: c.BodyH(), leftW: c.LeftW()}
+	g.rightW = c.Rect.Cols - g.leftW
 	return g
 }
 
-func (c *Chat) narrow() bool { return c.rect.Cols < narrowWidth }
-
-// paneRect is where the terminal pane's inner area is on the screen: its
-// size is what the sessions' ptys get.
-func (c *Chat) paneRect() kit.Rect {
-	g := c.geometry()
-	if c.narrow() {
-		return kit.Rect{X0: c.rect.X0 + 1, Y0: c.rect.Y0 + 1, Cols: c.rect.Cols - 2, Rows: g.bodyH - 2}
-	}
-	return kit.Rect{X0: c.rect.X0 + g.leftW + 1, Y0: c.rect.Y0 + 1, Cols: g.rightW - 2, Rows: g.bodyH - 2}
-}
-
-func (c *Chat) PaneSize() (cols, rows int) {
-	r := c.paneRect()
-	return r.Cols, r.Rows
-}
-
 func (c *Chat) View() string {
+	c.mascot.valid = false // what a frame shows is never older than the last one
 	c.list.follow.Sync(&c.core.Selected, c.cursorProject(), func(p string) { c.tree.SelectProject(p) })
 	g := c.geometry()
 	left := func() string {
-		focused := !c.capture.Held() && !(c.rep.shown && c.repFocus) && !c.paneSel
+		focused := !c.Capture.Held() && !(c.rep.shown && c.repFocus) && !c.PaneSel
 		rows := kit.WithTools(c.core.ToolStates(), g.leftW-2, g.bodyH-2, func(h int) []string { return c.list.view(g.leftW-2, h, focused) })
 		return hits.Panel(1, kit.Box(c.list.title(), rows, g.leftW, g.bodyH, focused, false))
 	}
@@ -63,8 +39,8 @@ func (c *Chat) View() string {
 			right = c.projectPanel(r.Project.Name, w, h)
 		default:
 			// The block blinks with the tick while the session has the keys; unfocused it is a steady underline.
-			term := kit.Box(c.chatTabs(c.pane.State()), c.pane.View(w-2, h-2, c.capture.Held(), c.tick%2 == 0), w, h, c.capture.Held() || c.paneSel, true)
-			from, length := c.pane.Scrollbar(h - 2)
+			term := kit.Box(c.chatTabs(c.Pane.State()), c.Pane.View(w-2, h-2, c.Capture.Held(), c.Tick%2 == 0), w, h, c.Capture.Held() || c.PaneSel, true)
+			from, length := c.Pane.Scrollbar(h - 2)
 			right = kit.WithScrollbar(term, from, length)
 		}
 		right = hits.Panel(2, right)
@@ -78,9 +54,9 @@ func (c *Chat) View() string {
 		return right
 	}
 	switch {
-	case c.narrow() && c.fullTerm:
-		return pane(c.rect.Cols)
-	case c.narrow():
+	case c.Narrow() && c.FullTerm:
+		return pane(c.Rect.Cols)
+	case c.Narrow():
 		return left()
 	default:
 		return kit.JoinHorizontal(left(), pane(g.rightW))
@@ -118,6 +94,3 @@ func (c *Chat) projectPanel(project string, w, h int) string {
 	}
 	return kit.Box(c.chatTabs(""), append([]string{""}, lines...), w, h, false, false)
 }
-
-// Note shows one line in the footer for a few seconds: the result of an action.
-func (c *Chat) Note(format string, args ...any) { c.screen.Note(format, args...) }

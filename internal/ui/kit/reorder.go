@@ -13,7 +13,7 @@ import (
 
 // ReorderStart is the m key that picks the row up.
 func ReorderStart[T any](start func(T)) Binding[T] {
-	return Binding[T]{Keys: []string{"m"}, Hint: Hint{Key: "m", Does: "move"}, Help: "move mode: pick up the row under the cursor (↕); ↑↓ j k carry it, Enter puts it down", Run: Act(start)}
+	return Binding[T]{Key: ListKeys.MoveRow, Run: Act(start)}
 }
 
 // EnterToo is a key Enter does too, where a row has nothing for Enter to
@@ -27,7 +27,7 @@ func EnterToo[T any](b Binding[T]) Binding[T] {
 // ProjectOpen is o where there is no project yet, in every tab: the one
 // thing to do there, which Chat does, as shift+o on a project row.
 func ProjectOpen[T any]() Binding[T] {
-	return Binding[T]{Keys: []string{"o"}, Hint: Hint{Key: "o", Does: "open"}, Help: "open the first project: a directory, listed under a name, in Chat", Run: func(T) tea.Cmd {
+	return Binding[T]{Key: ListKeys.OpenFirst, Run: func(T) tea.Cmd {
 		return func() tea.Msg { return ProjectAction{Do: "open"} }
 	}}
 }
@@ -45,19 +45,19 @@ func ProjectRow[T any](project func(T) string, move func(T)) []Binding[T] {
 		}
 	}
 	return []Binding[T]{
-		{Keys: []string{"O"}, Hint: Hint{Key: "shift+o", Does: "open"}, Help: "open a project: a directory, listed under a name, in Chat; nothing starts in it until asked", Run: ask("open")},
-		{Keys: []string{"E"}, Hint: Hint{Key: "shift+e", Does: "edit"}, Help: "edit the cursor's project: its name and its directory, both prefilled", Run: ask("edit")},
-		{Keys: []string{"M"}, Hint: Hint{Key: "shift+m", Does: "move"}, Help: "move mode for the whole project (↕ on its heading); ↑↓ j k carry it among the projects, Enter puts it down", Run: Act(move)},
-		{Keys: []string{"D"}, Hint: Hint{Key: "shift+d", Does: "remove"}, Help: "remove the cursor's project from the list, asked, closing its sessions and shells; the directory and Claude Code's transcripts stay", Run: ask("remove")},
+		{Key: ListKeys.OpenProject, Run: ask("open")},
+		{Key: ListKeys.EditProject, Run: ask("edit")},
+		{Key: ListKeys.MoveProject, Run: Act(move)},
+		{Key: ListKeys.RemoveProject, Run: ask("remove")},
 	}
 }
 
 // ReorderKeys is the table while a row is picked up; step carries it by one.
 func ReorderKeys[T any](step func(T, int), done func(T)) []Binding[T] {
 	return []Binding[T]{
-		{Keys: []string{"up", "k"}, Hint: Hint{Key: "↑↓ j k", Does: "move"}, Help: "carry the picked row up or down; the order is saved at every step", Run: Act(func(t T) { step(t, -1) })},
-		{Keys: []string{"down", "j"}, Run: Act(func(t T) { step(t, 1) })},
-		{Keys: []string{"enter", "m", "M", "ctrl+q"}, Hint: Hint{Key: "enter", Does: "done"}, Help: "put the row down where it is; m, M and ctrl+q too", Run: Act(done)},
+		{Key: ListKeys.Carry, Run: Act(func(t T) { step(t, -1) })},
+		{Key: ListKeys.Down, Run: Act(func(t T) { step(t, 1) })},
+		{Key: ListKeys.PutDown, Run: Act(done)},
 	}
 }
 

@@ -28,7 +28,7 @@ func (c *Chat) watchSessions() {
 			ScreenAsks: !working && c.act.ScreenAsks(r),
 			Hooked:     hooked,
 			HookSince:  q.Since,
-			Looking:    c.capture.Held() && c.pane.Key == r.Key,
+			Looking:    c.Capture.Held() && c.Pane.Key == r.Key,
 			Last:       c.clocks.last[r.Key],
 		}
 	}
@@ -63,6 +63,18 @@ func (c *Chat) records(keys []string) []state.Session {
 // MascotState is the mascot's mood and line, its questions, and how many
 // finished sessions the user has not looked at yet, for its party.
 func (c *Chat) MascotState() kit.MascotState {
+	// The rail, the status area and the footer's width each ask once per
+	// frame; the board changes only while a message is handled, so one
+	// answer serves until the next message or frame.
+	if c.mascot.valid {
+		return c.mascot.st
+	}
+	st := c.mascotState()
+	c.mascot.st, c.mascot.valid = st, true
+	return st
+}
+
+func (c *Chat) mascotState() kit.MascotState {
 	sum := c.summary()
 	st := c.mascotSay(sum)
 	switch sum.Mood() {
@@ -122,6 +134,7 @@ func (c *Chat) mascotSay(sum status.Summary) kit.MascotState {
 // keys. A question goes on until it is answered; a finished session,
 // looked at, stops calling.
 func (c *Chat) OpenMascot() {
+	c.mascot.valid = false
 	key, ok := c.summary().Target()
 	if !ok {
 		return

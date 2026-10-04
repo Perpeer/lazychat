@@ -168,7 +168,7 @@ func (f *Finder) body(w, screenH int) []string {
 			}
 			label := "+ " + text.Fit(f.made[i-len(f.shown)], w-4)
 			if i == f.cursor.Sel {
-				lines = append(lines, StyleSel.Render(text.Pad("▸ "+label, w)))
+				lines = append(lines, SelRow(label, w))
 			} else {
 				lines = append(lines, "  "+StyleAccent.Render(label))
 			}
@@ -197,12 +197,12 @@ func (f *Finder) row(at, w int, selected bool) string {
 	if note != "" && text.Width(item)+2+text.Width(note) <= room {
 		gap := strings.Repeat(" ", room-text.Width(item)-text.Width(note))
 		if selected {
-			return StyleSel.Render(text.Pad("▸ "+item+gap+note, w))
+			return SelRow(item+gap+note, w)
 		}
 		return "  " + item + gap + StyleDim.Render(note)
 	}
 	if selected {
-		return StyleSel.Render(text.Pad("▸ "+text.Fit(item, room), w))
+		return SelRow(text.Fit(item, room), w)
 	}
 	return "  " + text.Fit(item, room)
 }

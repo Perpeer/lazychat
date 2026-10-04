@@ -108,7 +108,7 @@ func (g *Git) leave() {
 // fields, which take digits as text.
 func panelKeys() []binding {
 	return kit.PanelKeys(int(panelCommit), func(g *Git, p int) tea.Cmd { return g.goTo(panel(p)) },
-		"1 projects, 2 unstaged, 3 staged, 4 commits, 5 the diff, 6 the commit box, chosen — Enter writes in it")
+		kit.PanelNames.Git)
 }
 
 // keyBack is Ctrl+Q: back to the projects from any panel, the commit box too.

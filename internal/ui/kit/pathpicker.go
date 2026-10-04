@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"lazychat/internal/ui/text"
+
+	"lazychat/internal/core/files"
 )
 
 // PathSpec is what a path field chooses a folder for, so it words its
@@ -37,7 +39,7 @@ type pathCol struct {
 // expand is a typed path with ~ as the home folder.
 func expand(p string) string {
 	if p == "~" || strings.HasPrefix(p, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
+		if home := files.Home(); home != "" {
 			return filepath.Join(home, strings.TrimPrefix(p, "~"))
 		}
 	}
@@ -223,7 +225,7 @@ func (p *PathPicker) lines(w int, active bool) []string {
 		// is highlighted like any entry; the field above already names it.
 		switch {
 		case c.sel < 0 && focused:
-			grid[0] += cell(StyleSel.Render(text.Pad("▸ ./", colW-1)))
+			grid[0] += cell(SelRow("./", colW-1))
 		case c.sel < 0 && start+ci == p.focus:
 			grid[0] += cell(StyleAccent.Render("▸ ./"))
 		default:
@@ -242,7 +244,7 @@ func (p *PathPicker) lines(w int, active bool) []string {
 				name = text.Fit(name, colW-3)
 				switch {
 				case i == c.sel && focused:
-					line = StyleSel.Render(text.Pad("▸ "+name, colW-1))
+					line = SelRow(name, colW-1)
 				case i == c.sel:
 					line = StyleAccent.Render("▸ " + name)
 				default:

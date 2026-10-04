@@ -110,17 +110,7 @@ func (a *App) areaNeed() int {
 func (a *App) keyRows(keys []kit.Hint) [][]kit.Hint {
 	lead := text.Width(a.leadText())
 	room := a.width - railW - lead - 1
-	var out [][]kit.Hint
-	for len(keys) > 0 {
-		n := len(keys)
-		for i := 1; i <= len(keys); i++ {
-			if text.Width(kit.RenderHints(keys[:i])) > room {
-				n = max(1, i-1)
-				break
-			}
-		}
-		out, keys = append(out, keys[:n]), keys[n:]
-	}
+	out := kit.WrapHints(keys, room)
 	if len(out) == 0 {
 		return [][]kit.Hint{nil}
 	}

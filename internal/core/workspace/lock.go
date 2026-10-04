@@ -3,9 +3,10 @@ package workspace
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"syscall"
+
+	"lazychat/internal/core/files"
 )
 
 // Lock holds the workspace for this process, so a second lazychat on it is
@@ -14,10 +15,7 @@ import (
 // renamed while it is held keeps it.
 func Lock(w Workspace) (release func(), err error) {
 	path := filepath.Join(w.Dir, "lock")
-	if err := os.MkdirAll(w.Dir, 0o755); err != nil {
-		return nil, fmt.Errorf("create %s: %w", w.Dir, err)
-	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
+	f, err := files.OpenLock(path)
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}

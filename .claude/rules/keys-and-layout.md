@@ -5,6 +5,10 @@ paths:
 
 # Keys and layout
 
+- Every key's keys, hint and help are in `kit/keys.go`, by context; a
+  tab's keymap.go binds them to actions. Go 1.26 refuses promoted fields
+  in a literal, so a Binding cannot spell its own keys: they stay in one
+  file. Words were moved verbatim; the footer tests pin them.
 - Ctrl+Q is the only key that leaves a pane; Esc goes to the program.
 - A panel number only chooses a panel that holds a program or a text field
   (Chat 2, Terminal 2, Git 6): lit, its own footer (enter go in, esc

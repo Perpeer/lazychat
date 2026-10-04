@@ -861,15 +861,16 @@ internal/ui/kit           what tabs share
 internal/ui/vm            shared plain-Go state: the list cursor
 internal/ui/text          width-aware string helpers
 internal/term             one pty + emulator per process; nothing else touches either
-internal/core             agent, api, files, git, history, keylayout, presence, settings, state, status, usage, workspace — no terminal packages; api runs no subprocess
-macos/Lazychat            Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions
+internal/core             agent, api, files, git, history, keylayout, presence, settings, state, status, usage, workspace — no terminal packages; api runs no subprocess; testenv, the tests' own home and temp folder
+macos/Lazychat            Lazychat.app, Lazy the mascot in the menu bar, Swift, built by install.sh into /Applications: main.swift the app, mascot.swift the one drawing of the mascot, terminals.swift opening lazychat in a terminal, desktop.swift Claude desktop's Code sessions, permissions.swift every macOS permission it asks for
 assets                    the mascot as images: icon-1024.png (`Lazychat --icon`'s 1024 px icon) and thumbnail-240.png (that icon cut to its square, 240 px), rendered again when mascot.swift changes
 ```
 
 A tab is `<tab>.go` (its struct, `kit.Tab`), `update.go` (keys, mouse and
 messages turned into model operations and action calls), `view*.go`
-(drawing only), `keymap.go` (every key as `kit.Binding` tables, which feed
-dispatch, the footer and `?`) and `host.go` (its actions' `Host`), over
+(drawing only), `keymap.go` (its key tables: each key's words from
+`kit/keys.go`, its action here; the tables feed dispatch, the footer and
+`?`) and `host.go` (its actions' `Host`), over
 its `model` and `actions` packages, so a test drives the model without a
 screen and the actions with a fake host. The shell owns the screen and
 nothing a tab does; a tab reaches it only through `kit.Screen` — push a
@@ -884,13 +885,14 @@ Git is on screen; only the selected tab gets keys and the mouse.
 | --- | --- |
 | `Capture` | a program in a pane holding the keys: the raw input to its pty and back, the leave key, its kitty mode, its mouse, the click beside it |
 | `Hits` | what a mouse event is over — a row, a heading, the pane, a panel, a second list's item — from the zones the view marked |
-| `Binding` | the key tables every keymap is written in |
+| `Key`, `Binding`, keys.go | every key of the app and its words in one file, by where it works (`ListKeys`, `ChatKeys`, `TerminalKeys`, `GitKeys`, `SettingsKeys`, `WorkspaceKeys`, `StartKeys`, `GlobalKeys`); a tab's `Binding` gives a key its action |
+| `PaneTab` | what Chat and Terminal share: the split, the narrow and chosen-pane flags, the pane and its capture, the host calls alike in both |
 | `Theme`, `Themes` | every colour in one place; `SetTheme` rebuilds the styles |
 | popups | form (with the column path field), picker, finder, confirm, alert, the help pager, behind one `Overlay` |
 | `Editor`, `CommitBox` | the text editor and the commit box built on it |
 | `TermPane`, `CopyMode` | the terminal pane with its scrolling and mouse, and row selection |
 | `InputRouter` | hands raw bytes to a captured pty, takes out the leave key, the tab keys and mouse reports, turns kitty text reports back into characters |
-| `Mascot`, headings, `ReorderKeys`, `ProjectRow` | the face, the project heading and tree rows, move mode, the project keys row |
+| `Mascot`, headings, `DrawTree`, `ReorderKeys`, `ProjectRow` | the face, the project heading and tree rows, a project tree laid out and scrolled, move mode, the project keys row |
 
 ### Session status
 
@@ -965,7 +967,9 @@ rail's foot (`AtBottom`) — and add its digit to `install.sh`.
 
 **A feature:** a change to what a tab shows is a `model` operation; one
 that works with core is an `actions` method (a new need from the screen is
-one more `Host` method in `host.go`). Its key goes in `keymap.go`. A new
+one more `Host` method in `host.go`). Its key's words go in `kit/keys.go`,
+its action in `keymap.go`. A file is read or written through
+`internal/core/files` only (`TestOneIOLayer` says where not). A new
 piece of screen is its own file, in `kit` once a second tab could use it.
 
 ### Tests
@@ -990,8 +994,12 @@ piece of screen is its own file, in `kit` once a second tab could use it.
   wheel), characters typed as a keyboard layout sends them, a second
   lazychat refused, and quit leaving no child.
 
-Every step waits for the text it expects, never for a fixed time. A
-behaviour change comes with a screen-test step.
+Every test package runs through `testenv.Main`: its own home, temp folder
+and Claude config, no global git config, so no test touches the machine
+running it. Every step waits for the text it expects, never for a fixed
+time. A behaviour change comes with a screen-test step. Benchmarks:
+`go test -bench . ./internal/ui/kit ./internal/ui/text`, and a frame and a
+tick with `LAZYCHAT_BENCH=1 go test -run TestFrameCost -v ./internal/ui`.
 
 ## Troubleshooting
 

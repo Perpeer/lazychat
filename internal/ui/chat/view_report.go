@@ -96,7 +96,7 @@ func (c *Chat) pageView(s *usage.Session, w int) []string {
 	working := c.working(s, now)
 	state := kit.StyleDim.Render("idle")
 	if working {
-		state = kit.StyleBusy.Render(kit.Spinner[(c.tick/2)%len(kit.Spinner)] + " working")
+		state = kit.StyleBusy.Render(kit.Spinner[(c.Tick/2)%len(kit.Spinner)] + " working")
 	}
 	out := []string{" " + kit.StyleBold.Render(c.rep.shownFor.name) + "  " + state +
 		kit.StyleDim.Render("   time without the questions put to you; a permission prompt's wait is not written down and stays in")}
@@ -180,7 +180,7 @@ func (c *Chat) promptView(s *usage.Session, turns []usage.Turn, i int, working b
 	}
 	out = append(out, " "+kinds(t.Tokens)+kit.StyleDim.Render(fmt.Sprintf("   %s · %d calls%s", strings.Join(tokenLabels, " · "), t.Calls, cost)))
 	if running {
-		out[len(out)-1] += " " + kit.StyleBusy.Render(kit.Spinner[(c.tick/2)%len(kit.Spinner)])
+		out[len(out)-1] += " " + kit.StyleBusy.Render(kit.Spinner[(c.Tick/2)%len(kit.Spinner)])
 	}
 	out = append(out, "", section("agents", "out ▶, back ◀ with what they spent; ★ one of yours"))
 	out = append(out, c.sequence(t.Agents, now, w)...)

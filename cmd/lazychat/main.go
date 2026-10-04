@@ -23,6 +23,8 @@ import (
 	"lazychat/internal/core/state"
 	"lazychat/internal/core/workspace"
 	"lazychat/internal/ui"
+
+	"lazychat/internal/core/files"
 )
 
 // version is 1.0(N) and the repo's short git hash, N its commit count,
@@ -310,8 +312,8 @@ func askWorkspace(reg *workspace.Registry, trash, note string, restore *workspac
 // is there and not running: open hands an app already running nothing, and
 // -g leaves it in the background.
 func startMenuBar() {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	home := files.Home()
+	if home == "" {
 		return
 	}
 	if bar := menuBarApp("/Applications", home); bar != "" {
