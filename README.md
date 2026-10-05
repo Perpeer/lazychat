@@ -47,9 +47,7 @@ brew install perpeer/tap/lazychat
 Homebrew builds lazychat on your Mac, along with Lazy's menu bar app, so
 macOS opens both without a warning. Then run `lazychat`; `lazychat doctor`
 says what else is ready. Lazy starts with lazychat; `brew services start
-lazychat` keeps it in the menu bar from every login. `brew upgrade
-lazychat` takes a new release; lazychat tells you in green, beside its
-version, when one is out.
+lazychat` keeps it in the menu bar from every login.
 
 lazychat comes from our own tap for now. Homebrew's own list takes it at
 225 stars, and then it is just `brew install lazychat`. If it saves you a
@@ -69,6 +67,20 @@ get it; `./install.sh --check` does only that. It installs Go with Homebrew
 if you don't have it (an older Go fetches the one lazychat needs by
 itself), builds `~/.local/bin/lazychat` and adds Lazy's menu bar app to
 Applications.
+
+### Update
+
+lazychat tells you in green, beside its version at the bottom right, when
+a new release is out. With Homebrew:
+
+```sh
+brew update && brew upgrade lazychat
+```
+
+Homebrew sees a release within the hour it comes out. Then quit lazychat
+(`q`) and start it again; if Lazy runs as a service, `brew services restart
+lazychat` brings the new menu bar app too. From the source, `git pull`
+in the clone and run `./install.sh` again.
 
 To remove lazychat, run `brew uninstall lazychat`, or `./uninstall.sh` for
 a source install. Your settings and workspaces stay (`./uninstall.sh
