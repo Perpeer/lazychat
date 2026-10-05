@@ -70,6 +70,7 @@ type driver struct {
 	ready chan struct{}
 	done  chan struct{}
 	quit  bool
+	syncs int    // zonesStored's marks so far
 	state string // the state file
 	// painted is the last theme the app gave the terminal's own colours.
 	painted kit.Theme
@@ -370,7 +371,7 @@ func (d *driver) tab(n int) {
 // a session has the keys it comes as the router's mouse report.
 func (d *driver) click(x, y int) {
 	d.t.Helper()
-	d.screen()
+	d.zonesStored()
 	d.focus.mu.Lock()
 	mouse := d.focus.mouse
 	d.focus.mu.Unlock()
@@ -543,4 +544,25 @@ func (d *driver) railRow(name string) int {
 	}
 	d.t.Fatalf("no %s box on the rail:\n%s", name, d.screen())
 	return 0
+}
+
+// zonesStored draws a frame and waits until bubblezone's worker stored its
+// zones: it stores them in a goroutine, and a click right after the draw
+// missed its box on GitHub's loaded runner (a release stopped on it). The
+// frame ends with a mark of its own; the worker stores in order, so once
+// the mark is there, so is every zone before it.
+func (d *driver) zonesStored() {
+	d.t.Helper()
+	d.syncs++
+	id := fmt.Sprintf("drv-sync-%d", d.syncs)
+	d.app.zoneSync = id
+	defer func() { d.app.zoneSync = "" }()
+	d.screen()
+	end := time.Now().Add(waitFor)
+	for zone.Get(id) == nil {
+		if time.Now().After(end) {
+			d.t.Fatalf("the frame's zones were never stored")
+		}
+		time.Sleep(time.Millisecond)
+	}
 }

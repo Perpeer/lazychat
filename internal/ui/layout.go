@@ -49,6 +49,10 @@ func (a *App) View() string {
 	if top := a.popups.Top(); top != nil {
 		body = top.View(body, a.width, a.height)
 	}
+	if a.zoneSync != "" {
+		// A zone needs a cell: one space at the last row's end, in tests only.
+		body += zone.Mark(a.zoneSync, " ")
+	}
 	// Zones are read before the cut: the cut never moves what is kept.
 	return fitFrame(zone.Scan(body), a.width, a.height)
 }

@@ -91,6 +91,10 @@ type App struct {
 	// asked is when the shell last asked for it.
 	latest string
 	asked  time.Time
+	// zoneSync, set by the tests only, is a zone marked at the frame's end:
+	// bubblezone stores a frame's zones in a goroutine, and once this one is
+	// stored every zone before it is, so a test's click lands where drawn.
+	zoneSync string
 	// upRun is the upgrade run from the popup; a done one keeps the
 	// rail's new box until lazychat is restarted on the new build.
 	upRun kit.Upgrade

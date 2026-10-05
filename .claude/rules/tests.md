@@ -34,3 +34,9 @@ paths:
   grace and the ticks, and on GitHub's Mac runner, with every package's
   tests at once, TestMascotTwoSessions missed the 5 s limit and stopped a
   release. Short waits are for what the screen draws at once.
+- A screen test's click waits for the frame's zones (driver zonesStored):
+  bubblezone stores them in a goroutine, and the driver clicked right
+  after drawing; on GitHub's loaded runner TestSettingsTab's click missed
+  its box and stopped a release. The driver marks the frame's end through
+  App.zoneSync (tests only) and waits until that zone is stored — the
+  worker stores in order, so every zone before it is there too.
