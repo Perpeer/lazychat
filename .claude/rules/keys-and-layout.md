@@ -65,3 +65,11 @@ paths:
   resize made claude redraw its whole screen, which the user took for a
   freeze. A draft starting with `/` is pasted on one line: claude runs a
   slash command only from a single line (tried with real claude).
+- Every frame is cut to the terminal (ui/layout.go fitFrame, after
+  zone.Scan): each line to its width, the frame to its height. A wider
+  line wraps in the terminal and a taller frame scrolls it, either pushing
+  the whole screen up a row; the user saw the screen shift while scrolling
+  a session's diff in a full-screen Terminal.app window. The cause was not
+  recorded (the user chose the guard alone); if it comes back, a character
+  Terminal.app draws wider than x/ansi counts is the next suspect —
+  record it with LAZYCHAT_TRACE and replay. It costs about 0.07 ms a frame.
