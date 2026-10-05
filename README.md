@@ -49,6 +49,12 @@ macOS opens both without a warning. Then run `lazychat`; `lazychat doctor`
 says what else is ready. Lazy starts with lazychat; `brew services start
 lazychat` keeps it in the menu bar from every login.
 
+To update:
+
+```sh
+brew update && brew upgrade lazychat
+```
+
 lazychat comes from our own tap for now. Homebrew's own list takes it at
 225 stars, and then it is just `brew install lazychat`. If it saves you a
 few tabs, [star it](https://github.com/perpeer/lazychat/stargazers): every
@@ -62,31 +68,15 @@ cd lazychat
 ./install.sh
 ```
 
-The script checks your Mac first and tells you what is missing and how to
-get it; `./install.sh --check` does only that. It installs Go with Homebrew
-if you don't have it (an older Go fetches the one lazychat needs by
-itself), builds `~/.local/bin/lazychat` and adds Lazy's menu bar app to
-Applications.
+It checks your Mac, says what is missing, and builds
+`~/.local/bin/lazychat` and Lazy's menu bar app. To update, run
+`git pull && ./install.sh` in the same folder.
 
-### Update
-
-#### Homebrew
-
-```sh
-brew update && brew upgrade lazychat
-```
-
-#### From the source
-
-```sh
-cd lazychat
-git pull && ./install.sh
-```
+### Updates
 
 When a new release is out, a green `new` box shows on the left rail over
 Settings (and `↑ 1.0.5` beside the version at the bottom right). Click it,
-or press `U`: a small window shows the Homebrew command above — the same
-for every install; from the source you update as shown above — and `c`
+or press `U`: a small window shows the Homebrew command above, and `c`
 copies it. With Homebrew, `Enter` upgrades right there in the
 background, showing the step it is on, then offers to restart lazychat on
 the new version — running sessions stop and stay in the list. If the
