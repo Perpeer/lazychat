@@ -166,14 +166,14 @@ func (c *Core) Busy(tool, screen string) (short string, ok bool) {
 	return b.Busy(screen)
 }
 
-// Asking says whether a running session's screen shows its tool's question
-// to the user; a tool that cannot tell never says so.
-func (c *Core) Asking(tool, screen string) bool {
+// Asking says whether a running session's screen or title shows its tool's
+// question to the user; a tool that cannot tell never says so.
+func (c *Core) Asking(tool, screen, title string) bool {
 	r, err := capability[agent.AskReader](c, tool, "")
 	if err != nil {
 		return false
 	}
-	return r.Asking(screen)
+	return r.Asking(screen, title)
 }
 
 // capability is a tool's implementation of C, or an error naming what the

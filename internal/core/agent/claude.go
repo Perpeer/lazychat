@@ -213,7 +213,7 @@ func firstLine(out string, err error) string {
 // tells a question from a finished answer at once.
 var askMarks = []string{"Esc to cancel", "Do you want to proceed?"}
 
-func (c *Claude) Asking(screen string) bool {
+func (c *Claude) Asking(screen, _ string) bool {
 	plain := reANSI.ReplaceAllString(screen, "")
 	for _, m := range askMarks {
 		if strings.Contains(plain, m) {

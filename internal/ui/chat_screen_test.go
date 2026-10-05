@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"lazychat/internal/core/state"
@@ -240,6 +241,13 @@ func TestCodexSession(t *testing.T) {
 		t.Errorf("records %+v, want one of codex", s)
 	}
 	d.leave()
+	// Codex keeps no record lazychat reads: no details tab, and 3 stays put.
+	d.expect("[2] session")
+	d.expectNot("[3] details")
+	d.key("3")
+	d.holds(500*time.Millisecond, "3 opened details for codex", func() bool {
+		return !strings.Contains(d.screen(), "Claude Code has not said") && !strings.Contains(d.screen(), "[3] details")
+	})
 	d.quitApp()
 }
 

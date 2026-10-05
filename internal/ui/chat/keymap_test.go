@@ -22,7 +22,7 @@ func TestKeymapFooters(t *testing.T) {
 		{"no session", emptyRowKeys, "enter/n new · r resume · ? help"},
 		{"project", projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d remove"},
 		{"no project yet", emptyKeys, "o open · ? help"},
-		{"terminal", termKeys, "ctrl+q back to lazychat · click the tree: back there · wheel scroll · other keys go to claude"},
+		{"terminal", termKeys, "ctrl+q back to lazychat · click the tree: back there · wheel scroll · other keys go to the session"},
 		{"details", pageKeys, "↑↓ pick prompt · esc back · ? help"},
 		{"session chosen", paneKeys, "enter go in · esc back · ? help"},
 	}

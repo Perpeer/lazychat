@@ -103,7 +103,7 @@ var ChatKeys = struct {
 	PaneLeave:     Key{Hint: Hint{Key: LeaveLabel, Does: "back to lazychat"}, Help: "back to the tree, in every terminal; the session runs on, and Esc is claude's, which stops its answer"},
 	PaneClick:     Key{Hint: Hint{Key: "click", Does: "the tree: back there"}, Help: "a click beside the pane leaves the terminal and puts the cursor on the session clicked"},
 	PaneWheel:     Key{Hint: Hint{Key: "wheel", Does: "scroll"}},
-	PaneOther:     Key{Hint: Hint{Key: "other keys", Does: "go to claude"}, Help: "every other key, exactly as typed, goes to claude"},
+	PaneOther:     Key{Hint: Hint{Key: "other keys", Does: "go to the session"}, Help: "every other key, exactly as typed, goes to the session's program"},
 }
 
 // TerminalKeys are the Terminal tab's: the list, the shell's pane and copy mode.

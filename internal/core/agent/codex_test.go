@@ -55,3 +55,22 @@ func TestCodexCheck(t *testing.T) {
 		})
 	}
 }
+
+func TestCodexAsking(t *testing.T) {
+	c := &Codex{}
+	cases := []struct {
+		title string
+		want  bool
+	}{
+		{"[ ! ] Action Required | Create notes.txt | garden", true},
+		{"[ . ] Action Required | ⠼ | garden", true},
+		{"⠋ Create notes.txt | garden", false},
+		{"Create notes.txt | garden", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := c.Asking("Would you like to run the following command?", tc.title); got != tc.want {
+			t.Errorf("Asking(%q) = %v, want %v", tc.title, got, tc.want)
+		}
+	}
+}

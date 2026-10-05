@@ -354,7 +354,8 @@ whole screen while shown and `Esc` brings the tree back.
 The right side has two tabs in its top border, as a browser has:
 `[2] session` and `[3] details`; `2` and `3`, or a click on one, switch
 them, and the session runs on behind the details. `2` only chooses the
-session; `Enter` goes in.
+session; `Enter` goes in. A Codex session has the session tab alone: Codex
+keeps no record lazychat reads, so `3` does nothing there.
 
 ### Details
 
@@ -362,7 +363,8 @@ The tree cursor's Claude session prompt by prompt — on a project, its
 newest — read from Claude Code's own transcript (`~/.claude/projects/<folder>/<id>.jsonl`
 and its `subagents/agent-<id>.jsonl`, `.meta.json`) and followed every
 second while the details show: what each prompt took and what spent it.
-It only reads. Codex keeps no such usage yet.
+It only reads. Codex keeps no such usage yet, and its sessions show no
+details tab.
 
 The page has three parts. The first two stand side by side — the
 prompt's flow on the left taking 70 % of the box, the context on the
@@ -664,8 +666,8 @@ tabs never move; on a short terminal (80×24) it shrinks to one.
 ```
 
 - **typing** while a session works (claude leads its window title with ◐ ◑;
-  a program that sets no title, codex, counts as working while output came
-  in the last two seconds). One badge `●` on its top edge per session at
+  codex leads it with ⠋ ⠙; a program that sets no title counts as working
+  while output came in the last two seconds). One badge `●` on its top edge per session at
   work, the first by the right corner, three at most: as sessions finish
   their badges go one by one, and it types until none works.
 - **a party** when a session is done and you have not looked at it yet —
@@ -693,8 +695,10 @@ one at work — so a click after a click leads through every finished one.
 lazychat sees a question the moment claude draws it — a choice list ending
 in `Esc to cancel`, or `Do you want to proceed?` — so it is never taken for
 a finished answer; claude's Notification hook confirms it some six seconds
-later. The question goes when the session works again. Codex has no such
-hook and only waits.
+later. The question goes when the session works again. Codex says it in
+its window title, `[ ! ] Action Required`, for as long as an approval
+waits, with nothing to set up; it has no hook, and its first-start
+"Trust this folder?" is not seen as a question.
 
 What lazychat adds to a claude session — that hook, which writes a notice
 to a file in `$TMPDIR/lazychat-notices-<pid>-…`, a StopFailure hook that

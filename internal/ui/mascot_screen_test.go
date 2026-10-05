@@ -134,6 +134,31 @@ func TestMascotQuestions(t *testing.T) {
 	d.quitApp()
 }
 
+// Codex says it waits on an approval only in its title, "Action Required";
+// the session asks until the answer sets it to work again.
+func TestCodexQuestion(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 120, 32)
+	d.key("n", "tab", "right")
+	d.expect("‹ codex ›")
+	d.key("tab")
+	d.typ("cx")
+	d.key("enter")
+	d.expect("FAKE CODEX READY in", "(ctrl+q) back to lazychat")
+	d.raw("ask\r")
+	d.leave()
+	asks := func() bool { return strings.Contains(strings.Split(d.mascot(), "\n")[0], "?") }
+	d.until("codex's approval does not play in the mascot", asks)
+	d.expect("cx asks")
+	d.selectSession("cx")
+	d.key("enter")
+	d.expect("(ctrl+q) back to lazychat")
+	d.raw("work\r")
+	d.until("the question stayed once it was answered", func() bool { return !asks() && !strings.Contains(d.screen(), "cx asks") })
+	d.leave()
+	d.quitApp()
+}
+
 // While a session works the mascot types on a keyboard under its face;
 // when it is done it parties in its own frame, a star going round it;
 // nothing above it moves and the tabs stay put.

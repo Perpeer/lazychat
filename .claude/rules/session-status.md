@@ -25,7 +25,8 @@ it from there.
   holds the keys) and calls `Board.Step`. The keys Step returns had their
   question answered: their notice file is dropped (`actions.Answered`).
 - A tool adds signals through its capabilities in `internal/core/agent`:
-  `AskReader` (question on screen), the `--settings` Notification hook
+  `AskReader` (question on screen or in the window title — codex's
+  "Action Required"), the `--settings` Notification hook
   (`Hooked`). Working comes from the process (title spinner, else output
   in the last 2 s). A new tool touches only its own file; the board never
   names a tool.

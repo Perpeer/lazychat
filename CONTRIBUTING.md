@@ -97,7 +97,7 @@ fails when they part:
 | stop in the background | ✓ |   |
 | open elsewhere | ✓ |   |
 | session id | ✓ |   |
-| question on screen | ✓ |   |
+| question on screen | ✓ | ✓ |
 | settings per session | ✓ |   |
 | commit message | ✓ | ✓ |
 | usage report | ✓ |   |

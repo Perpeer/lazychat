@@ -15,13 +15,18 @@ import (
 
 // chatTabs are the right side's two tabs, named for what they hold
 // whatever the session is called — the tree already names it — the
-// session's with its pane's state when there is one.
+// session's with its pane's state when there is one; a session with no
+// details has the first alone.
 func (c *Chat) chatTabs(state string) string {
+	session := kit.PanelTitle(2, strings.TrimSuffix("session · "+state, " · "))
+	if !c.hasDetails() {
+		return kit.TabTitle("ctab", []string{session}, 0)
+	}
 	active := 0
 	if c.rep.shown {
 		active = 1
 	}
-	return kit.TabTitle("ctab", []string{kit.PanelTitle(2, strings.TrimSuffix("session · "+state, " · ")), kit.PanelTitle(3, "details")}, active)
+	return kit.TabTitle("ctab", []string{session, kit.PanelTitle(3, "details")}, active)
 }
 
 // num is a count the way the report writes it: 812, 12.4k, 1.3M.

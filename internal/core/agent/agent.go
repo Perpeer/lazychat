@@ -98,10 +98,11 @@ type (
 	Suggester interface {
 		Suggest(ctx context.Context, dir, request, input string) (string, error)
 	}
-	// AskReader recognises, on a running session's screen, that the tool
-	// has a question up for the user, the moment it is drawn.
+	// AskReader recognises, on a running session's screen or in the window
+	// title it set last, that the tool has a question up for the user, the
+	// moment it is drawn.
 	AskReader interface {
-		Asking(screen string) bool
+		Asking(screen, title string) bool
 	}
 	// IDLearner reads the session id a running process reports; "" until it
 	// has.

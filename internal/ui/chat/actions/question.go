@@ -114,8 +114,9 @@ func clearStaleNotices(tmp string) {
 	}
 }
 
-// ScreenAsks says a running session's screen shows its tool's question to
-// the user, which is known the moment it is drawn, before the tool's notice.
+// ScreenAsks says a running session's screen or title shows its tool's
+// question to the user, which is known the moment it is drawn, before the
+// tool's notice.
 func (a *Actions) ScreenAsks(r state.Session) bool {
 	s, ok := a.Live.Get(r.Key)
 	if !ok || !s.Alive() {
@@ -127,7 +128,7 @@ func (a *Actions) ScreenAsks(r state.Session) bool {
 	if seen, ok := a.asks[r.Key]; ok && seen.s == s && seen.gen == gen && gen != 0 {
 		return seen.asks
 	}
-	asks := a.core.Asking(r.Tool, s.Render())
+	asks := a.core.Asking(r.Tool, s.Render(), s.Title())
 	if a.asks == nil {
 		a.asks = map[string]screenAsk{}
 	}

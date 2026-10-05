@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"lazychat/internal/core/agent"
 	"lazychat/internal/core/sound"
 	"lazychat/internal/core/usage"
 	"lazychat/internal/ui/kit"
@@ -87,6 +88,19 @@ func (c *Chat) showReport() tea.Cmd {
 
 // showChat brings the session pane back.
 func (c *Chat) showChat() { c.rep.shown = false }
+
+// hasDetails says the cursor's session has a details page: its tool keeps
+// a record lazychat reads. Codex keeps none it can read, and its page was
+// an empty one asking for an id it never learns. A project shows its
+// newest Claude session's.
+func (c *Chat) hasDetails() bool {
+	r, ok := c.tree.Current()
+	if !ok || r.Session == nil {
+		return true
+	}
+	t, err := c.core.Tools.Get(r.Session.Tool)
+	return err == nil && agent.Has[agent.UsageReader](t)
+}
 
 // reportTarget is the tree cursor's session, or on a project its newest.
 func (c *Chat) reportTarget() (target, bool) {
@@ -198,6 +212,11 @@ func (c *Chat) reportTick(n int) tea.Cmd {
 // while the report shows.
 func (c *Chat) reportFollow() tea.Cmd {
 	if !c.rep.shown {
+		return nil
+	}
+	if !c.hasDetails() {
+		c.showChat()
+		c.repFocus = false
 		return nil
 	}
 	if t, ok := c.reportTarget(); ok && t != c.rep.shownFor {

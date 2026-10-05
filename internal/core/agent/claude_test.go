@@ -170,7 +170,7 @@ func TestAsking(t *testing.T) {
 		{"Bash command\n  date\nDo you want to proceed?\n❯ 1. Yes\n  2. No", true},
 		{"⏺ Hi!\n\n> \n  ? for shortcuts", false},
 	} {
-		if got := c.Asking(tc.screen); got != tc.want {
+		if got := c.Asking(tc.screen, ""); got != tc.want {
 			t.Errorf("Asking(%q) = %v, want %v", tc.screen, got, tc.want)
 		}
 	}

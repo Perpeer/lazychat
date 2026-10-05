@@ -159,6 +159,9 @@ func (c *Chat) toPanel(p int) tea.Cmd {
 		c.ToList()
 		return nil
 	case 3:
+		if !c.hasDetails() {
+			return nil
+		}
 		c.repFocus, c.PaneSel = true, false
 		return c.showReport()
 	}

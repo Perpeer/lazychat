@@ -21,6 +21,7 @@ var (
 	_ LastResumer = (*Codex)(nil)
 	_ Forker      = (*Codex)(nil)
 	_ Suggester   = (*Codex)(nil)
+	_ AskReader   = (*Codex)(nil)
 )
 
 func (c *Codex) ID() string   { return CodexID }
@@ -69,6 +70,14 @@ func (c *Codex) Check(ctx context.Context) Status {
 	}
 	st.Ready = true
 	return st
+}
+
+// Asking reads the title: codex leads it with "[ ! ] Action Required" (the
+// mark blinking to "[ . ]") for as long as an approval waits, with no
+// setting needed, and drops it once answered; its screen's wording moves
+// between releases.
+func (c *Codex) Asking(_, title string) bool {
+	return strings.Contains(title, "Action Required")
 }
 
 // Suggest is codex exec in a read-only sandbox: it prints its work as it
