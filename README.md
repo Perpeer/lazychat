@@ -71,7 +71,9 @@ Applications.
 ### Update
 
 lazychat tells you in green, beside its version at the bottom right, when
-a new release is out. With Homebrew:
+a new release is out (`v1.0.4  ↑ 1.0.5`). Click the `↑`, or press `U`: a
+small window shows the exact command for your install — `Enter` runs it in
+a new shell in the Terminal tab, `c` copies it. With Homebrew it is:
 
 ```sh
 brew update && brew upgrade lazychat

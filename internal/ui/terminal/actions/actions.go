@@ -105,6 +105,19 @@ func (a *Actions) open(p state.Project) (string, *term.Session, bool) {
 	return key, s, true
 }
 
+// Run opens a new shell in the project's folder and types command into it
+// with Enter, shown with the keys so the user watches it run.
+func (a *Actions) Run(p state.Project, command string) {
+	key, s, ok := a.open(p)
+	if !ok {
+		return
+	}
+	if err := s.Write([]byte(command + "\r")); err != nil {
+		a.host.Note("run: %v", err)
+	}
+	a.host.Show(key, s)
+}
+
 // Open shows a shell and gives it the keys.
 func (a *Actions) Open(sh Shell) {
 	if s, ok := a.Live.Get(sh.Key); ok && s.Alive() {

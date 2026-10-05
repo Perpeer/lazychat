@@ -1,6 +1,6 @@
 // Package update knows the newest lazychat release: it asks GitHub's
-// public API at most every few hours, keeps the answer in lazychat's
-// folder, and compares versions.
+// public API at every start and every hour, keeps the answer in lazychat's
+// folder with GitHub's ETag, and compares versions.
 package update
 
 import (
@@ -21,11 +21,13 @@ import (
 // LatestURL is GitHub's newest published release of lazychat.
 const LatestURL = "https://api.github.com/repos/Perpeer/lazychat/releases/latest"
 
-// Every is how long an answer is trusted before GitHub is asked again.
-const Every = 6 * time.Hour
+// Every is how often a running lazychat asks again. Asking costs nothing
+// while the release is unchanged: the kept ETag makes GitHub answer 304,
+// which its hourly limit does not count.
+const Every = time.Hour
 
 // Checker asks for the newest release. Home is lazychat's folder, where the
-// last answer is kept, so a restart asks no sooner than Every.
+// last answer and its ETag are kept for the next question.
 type Checker struct {
 	URL    string
 	Home   string
@@ -44,20 +46,21 @@ func New(home string) *Checker {
 
 type cached struct {
 	Latest  string    `json:"latest"`
+	ETag    string    `json:"etag,omitempty"`
 	Checked time.Time `json:"checked"`
 }
 
 func (c *Checker) path() string { return filepath.Join(c.Home, "update.json") }
 
-// Latest is the newest release's version, like 1.0.3: the kept answer
-// while it is younger than Every, else GitHub's, kept for next time. An
-// answer GitHub cannot give is an error; nothing is kept for it.
+// Latest is the newest release's version, like 1.0.3, asked of GitHub
+// every time: with the kept ETag an unchanged release is a 304 and the kept
+// answer, so a release is seen at the next question, never a window later.
+// When GitHub cannot be reached the kept answer stands; with none it is an
+// error, and a bad answer keeps nothing.
 func (c *Checker) Latest(ctx context.Context) (string, error) {
 	var kept cached
 	if c.Home != "" {
-		if _, err := files.LoadJSON(c.path(), &kept, files.SetAside); err == nil && kept.Latest != "" && c.Now().Sub(kept.Checked) < Every {
-			return kept.Latest, nil
-		}
+		_, _ = files.LoadJSON(c.path(), &kept, files.SetAside)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL, nil)
 	if err != nil {
@@ -66,11 +69,20 @@ func (c *Checker) Latest(ctx context.Context) (string, error) {
 	// Nothing about this Mac or this build goes with the question.
 	req.Header.Set("User-Agent", "lazychat")
 	req.Header.Set("Accept", "application/vnd.github+json")
+	if kept.ETag != "" && kept.Latest != "" {
+		req.Header.Set("If-None-Match", kept.ETag)
+	}
 	res, err := c.Client.Do(req)
 	if err != nil {
+		if kept.Latest != "" {
+			return kept.Latest, nil
+		}
 		return "", err
 	}
 	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotModified && kept.Latest != "" {
+		return kept.Latest, nil
+	}
 	if res.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("GitHub answered %s", res.Status)
 	}
@@ -85,7 +97,7 @@ func (c *Checker) Latest(ctx context.Context) (string, error) {
 		return "", errors.New("the newest release has no version like 1.0.3: " + body.Tag)
 	}
 	if c.Home != "" {
-		_ = files.SaveJSON(c.path(), cached{Latest: v, Checked: c.Now()}, 0o644)
+		_ = files.SaveJSON(c.path(), cached{Latest: v, ETag: res.Header.Get("ETag"), Checked: c.Now()}, 0o644)
 	}
 	return v, nil
 }

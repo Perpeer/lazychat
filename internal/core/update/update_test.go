@@ -37,20 +37,27 @@ func TestNewer(t *testing.T) {
 	}
 }
 
-// The answer is GitHub's newest release, kept for Every; a bad answer is an
-// error and keeps nothing; a kept answer spares the question.
+// The answer is GitHub's newest release, asked every time with the kept
+// ETag: an unchanged release is a 304 and the kept answer, a new one is seen
+// at the next question; a bad answer is an error and keeps nothing; with
+// GitHub out of reach the kept answer stands.
 func TestLatest(t *testing.T) {
-	asked := 0
-	body, status := `{"tag_name":"v1.0.3"}`, http.StatusOK
+	asked, notModified := 0, 0
+	body, status, etag := `{"tag_name":"v1.0.3"}`, http.StatusOK, `"one"`
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		asked++
 		if r.Header.Get("User-Agent") != "lazychat" {
 			t.Errorf("user agent %q", r.Header.Get("User-Agent"))
 		}
+		if status == http.StatusOK && r.Header.Get("If-None-Match") == etag {
+			notModified++
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		w.Header().Set("ETag", etag)
 		w.WriteHeader(status)
 		_, _ = w.Write([]byte(body))
 	}))
-	defer srv.Close()
 	now := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
 	c := &Checker{URL: srv.URL, Home: t.TempDir(), Client: srv.Client(), Now: func() time.Time { return now }}
 	ctx := context.Background()
@@ -71,18 +78,22 @@ func TestLatest(t *testing.T) {
 	if v, err := c.Latest(ctx); err != nil || v != "1.0.3" {
 		t.Fatalf("latest %q %v", v, err)
 	}
-	before := asked
-	now = now.Add(Every - time.Minute)
-	if v, _ := c.Latest(ctx); v != "1.0.3" || asked != before {
-		t.Errorf("a kept answer asked again: %q, %d asks", v, asked-before)
+	if v, _ := c.Latest(ctx); v != "1.0.3" || notModified != 1 {
+		t.Errorf("an unchanged release was not a 304 with the kept ETag: %q, %d 304s", v, notModified)
 	}
-	body = `{"tag_name":"v1.0.4"}`
-	now = now.Add(2 * time.Minute)
-	if v, _ := c.Latest(ctx); v != "1.0.4" || asked != before+1 {
-		t.Errorf("an old answer was not refreshed: %q", v)
+	// A release out a minute later is seen at once, with no window to wait.
+	body, etag = `{"tag_name":"v1.0.4"}`, `"two"`
+	now = now.Add(time.Minute)
+	if v, _ := c.Latest(ctx); v != "1.0.4" {
+		t.Errorf("a new release was not seen at the next question: %q", v)
+	}
+	srv.Close()
+	if v, err := c.Latest(ctx); err != nil || v != "1.0.4" {
+		t.Errorf("out of reach, the kept answer did not stand: %q %v", v, err)
 	}
 	slow := &Checker{URL: srv.URL, Client: &http.Client{Timeout: time.Nanosecond}, Now: time.Now}
 	if _, err := slow.Latest(ctx); err == nil {
-		t.Error("a timeout gave a version")
+		t.Error("a timeout with nothing kept gave a version")
 	}
+	_ = asked
 }

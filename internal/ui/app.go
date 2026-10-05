@@ -327,6 +327,10 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Action == tea.MouseActionPress {
 			a.wsSel = false
 		}
+		if a.latest != "" && kit.LeftClick(msg) && zone.Get(updateZone).InBounds(msg) {
+			a.openUpdate()
+			return a, nil
+		}
 		if msg.X < railW {
 			if msg.Action != tea.MouseActionPress {
 				return a, nil
@@ -444,6 +448,10 @@ func (a *App) route(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if kit.GlobalKeys.Inbox.Has(msg.String()) && !a.tab().Typing() {
 		a.openInbox()
+		return a, a.takePending()
+	}
+	if kit.GlobalKeys.Update.Has(msg.String()) && a.latest != "" && !a.tab().Typing() {
+		a.openUpdate()
 		return a, a.takePending()
 	}
 	return a, a.withPending(a.tab().Key(msg))

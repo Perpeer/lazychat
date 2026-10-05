@@ -31,6 +31,8 @@ paths:
   (`kit.Drag`, ui/kit/dragsel.go), copied on release; the alternate screen
   keeps the mouse for its program. Mouse tracking stays on for the wheel
   and clicks, so the terminal's own selection is not offered instead.
+- `U` (GlobalKeys.Update) opens the update window only while the corner
+  shows a newer release; otherwise the key goes to the tab.
 - `i` is the shell's inbox (GlobalKeys.Inbox, App.openInbox): a finder over
   the sessions the board says wait — asks first, then done — from any list;
   a click on Lazy opens it while two or more wait, else the one as before.

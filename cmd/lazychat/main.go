@@ -40,6 +40,10 @@ var version = "dev"
 // (v1.0.1), stamped by install.sh; "" for Homebrew's build, whose version is one.
 var releaseTag = ""
 
+// checkout is the folder a source build was built from, stamped by
+// install.sh, so its update command can run there; "" for Homebrew's.
+var checkout = ""
+
 func main() {
 	// LAZYCHAT_CPUPROFILE names a file for a CPU profile of this run, for
 	// finding what a screen costs with go tool pprof; off without it.
@@ -276,11 +280,17 @@ func updateCheck(c *update.Checker, base string) api.Check {
 
 // upgradeHow is how this build is brought up to date: Homebrew's by brew,
 // a source build by pulling and installing again.
+// upgradeHow is the command that brings this build up to date, to copy
+// or run as it is: Homebrew's (brew update first, or it may not know the
+// tap moved), or for a source build a pull and an install in its checkout.
 func upgradeHow() string {
-	if releaseTag != "" {
-		return "git pull, then ./install.sh"
+	if releaseTag == "" {
+		return "brew update && brew upgrade lazychat"
 	}
-	return "brew upgrade lazychat"
+	if checkout == "" {
+		return "git pull && ./install.sh"
+	}
+	return "cd '" + strings.ReplaceAll(checkout, "'", `'\''`) + "' && git pull && ./install.sh"
 }
 
 func projects(core *api.Core, args []string) error {

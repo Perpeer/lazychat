@@ -67,9 +67,15 @@ paths:
   installs formulae from taps only. The script's text says "push": write it with the editor, the git
   guard hook reads a shell command's text.
 - A newer release is told, never fetched by itself: core/update asks
-  GitHub's releases/latest (no identifier sent) at start and every six
-  hours, the answer kept in ~/.lazychat/update.json; the corner shows
-  "↑ X.Y.Z" in green and a note says how to upgrade once. A build compares
+  GitHub's releases/latest (no identifier sent) at every start and every
+  hour, with the kept ETag (a 304 is free); the answer and ETag are kept
+  in ~/.lazychat/update.json. A 6-hour window once hid 1.0.5 behind an
+  answer kept five minutes before it, restarts included. The corner shows
+  "↑ X.Y.Z" (a zone) in green; U or a click opens kit.UpdateBox with the
+  exact command (cmd/lazychat upgradeHow: brew update && brew upgrade, or
+  git pull && ./install.sh in main.checkout, which install.sh stamps),
+  Enter running it through kit.RunInShell in a new Terminal shell, c
+  copying it. Nothing runs without that key. A build compares
   from update.Base: Homebrew's own version, or the release a source build
   is past (install.sh stamps main.releaseTag from git describe). Tests set
   LAZYCHAT_NO_UPDATE_CHECK (testenv) so none asks GitHub; doctor's line is

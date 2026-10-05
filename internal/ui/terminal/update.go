@@ -22,8 +22,27 @@ func (t *Terminal) Update(msg tea.Msg) tea.Cmd {
 	case termMsg:
 		t.act.Live.AckAll()
 		t.act.Reap()
+	case kit.RunInShell:
+		t.runInShell(msg)
 	}
 	return nil
+}
+
+// runInShell runs a command the shell asked for (the update popup) in a
+// new shell of the cursor's project, else the first one, and brings this
+// tab forward so it is watched.
+func (t *Terminal) runInShell(msg kit.RunInShell) {
+	p, ok := t.tree.Project()
+	if !ok {
+		ps := t.core.Store.Projects
+		if len(ps) == 0 {
+			t.Screen.Note("open a project first: a shell runs in one")
+			return
+		}
+		p = ps[0]
+	}
+	t.Screen.Switch(t.Name())
+	t.act.Run(p, msg.Command)
 }
 
 func (t *Terminal) Key(msg tea.KeyMsg) tea.Cmd {

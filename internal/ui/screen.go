@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
+	zone "github.com/lrstanley/bubblezone"
 
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/text"
@@ -242,7 +243,8 @@ func (a *App) version() string {
 		return ""
 	}
 	if a.latest != "" {
-		return "v" + v + "  " + kit.StyleBusy.Render("↑ "+a.latest)
+		// A zone, so a click on it opens the update popup.
+		return "v" + v + "  " + zone.Mark(updateZone, kit.StyleBusy.Render("↑ "+a.latest))
 	}
 	return "v" + v
 }

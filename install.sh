@@ -177,7 +177,7 @@ else
   # -trimpath keeps the builder's directory names out of the binary. The
   # output is kept back and shown only when the build fails, with a hint.
   log="$(mktemp)"
-  if ! CGO_ENABLED="$cgo" go build -trimpath -ldflags "-X 'main.version=$version' -X 'main.releaseTag=$tag'" -o "$bin" ./cmd/lazychat >"$log" 2>&1; then
+  if ! CGO_ENABLED="$cgo" go build -trimpath -ldflags "-X 'main.version=$version' -X 'main.releaseTag=$tag' -X 'main.checkout=$PWD'" -o "$bin" ./cmd/lazychat >"$log" 2>&1; then
     tail -n 20 "$log" >&2
     if grep -qiE 'dial tcp|proxy|timeout|no such host|TLS' "$log"; then
       fail build "Go could not download what the build needs (see above)." \

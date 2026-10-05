@@ -7,7 +7,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lazychat/internal/core/update"
+	"lazychat/internal/ui/kit"
 )
+
+// updateZone is the corner's newer release, which a click opens.
+const updateZone = "update"
 
 // latestMsg is GitHub's answer for the newest release.
 type latestMsg struct{ version string }
@@ -41,9 +45,22 @@ func (a *App) gotLatest(msg latestMsg) {
 		return
 	}
 	a.latest = msg.version
-	how := a.opts.Upgrade
-	if how == "" {
-		how = "brew upgrade lazychat"
+	a.Note("lazychat %s is out: U, or a click on ↑ %s, shows how to update", msg.version, msg.version)
+}
+
+// upgrade is the command that brings this build up to date.
+func (a *App) upgrade() string {
+	if a.opts.Upgrade != "" {
+		return a.opts.Upgrade
 	}
-	a.Note("lazychat %s is out: %s", msg.version, how)
+	return "brew update && brew upgrade lazychat"
+}
+
+// openUpdate is the newer release's popup: Enter runs the command in a new
+// Terminal shell, through a message, since the Terminal tab owns shells.
+func (a *App) openUpdate() {
+	cmd := a.upgrade()
+	a.popups.Push(&kit.UpdateBox{Version: a.latest, Command: cmd, Run: func() {
+		a.Queue(func() tea.Msg { return kit.RunInShell{Command: cmd} })
+	}})
 }

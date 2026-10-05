@@ -270,13 +270,14 @@ var PanelNames = struct {
 // Bubble Tea as keys: the input router reads them from the bytes
 // (input.go), so they are named here only.
 var GlobalKeys = struct {
-	Quit, NextTab, PrevTab, Workspace, TabByNumber, CmdEnter, Inbox Key
+	Quit, NextTab, PrevTab, Workspace, TabByNumber, CmdEnter, Inbox, Update Key
 }{
 	Quit:        Key{Keys: []string{"ctrl+c"}, Name: "Ctrl+C", Help: "quit, asked, as q does; in a text field it copies"},
 	NextTab:     Key{Keys: []string{"tab"}, Name: "Tab", Help: "the next tab"},
 	PrevTab:     Key{Keys: []string{"shift+tab"}, Name: "Shift+Tab", Help: "the tab before"},
 	Workspace:   Key{Keys: []string{"ctrl+w"}, Name: "Ctrl+W", Help: "the workspace box at the top"},
 	Inbox:       Key{Keys: []string{"i"}, Name: "i", Help: "the inbox: every session waiting on you — asking first, then finished and not looked at — Enter opens one; a click on Lazy opens it too while two or more wait"},
+	Update:      Key{Keys: []string{"U"}, Name: "U", Help: "while the corner shows ↑ and a newer release, how to update: its command, run in a Terminal shell with Enter or copied with c; a click on the ↑ opens it too"},
 	TabByNumber: Key{Name: "⌘1–⌘9", Help: "the tab with that number, where the terminal passes ⌘ on"},
 	CmdEnter:    Key{Name: "Cmd+Enter", Help: "a paste in the session's prompt from the draft, where the terminal passes it on"},
 }
@@ -304,5 +305,6 @@ const SponsorURL = "https://github.com/sponsors/Perpeer"
 // sponsor Lazy — said there, never pushed on screen.
 var HelpFoot = append(append([]string(nil), WorkspaceHelp...),
 	"i          "+GlobalKeys.Inbox.Help,
+	"U          "+GlobalKeys.Update.Help,
 	"",
 	"Sponsor Lazy ♥ "+SponsorURL+" — lazychat is free; a coffee keeps Lazy awake")
