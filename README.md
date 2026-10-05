@@ -85,14 +85,14 @@ git pull && ./install.sh
 
 When a new release is out, a green `new` box shows on the left rail over
 Settings (and `↑ 1.0.5` beside the version at the bottom right). Click it,
-or press `U`: a small window shows the exact command for your install,
-and `c` copies it. With Homebrew, `Enter` upgrades right there in the
+or press `U`: a small window shows the Homebrew command above — the same
+for every install; from the source you update as shown above — and `c`
+copies it. With Homebrew, `Enter` upgrades right there in the
 background, showing the step it is on, then offers to restart lazychat on
 the new version — running sessions stop and stay in the list. If the
 upgrade fails it says so and shows the command to run by hand. Homebrew
 sees a release within the hour it comes out. From the source, `Enter`
-runs the command in a new shell in the Terminal tab, so you see `git pull`
-work; then quit lazychat (`q`) and start it again. If Lazy runs as a
+runs it in a new shell in the Terminal tab instead. If Lazy runs as a
 service, `brew services restart lazychat` brings the new menu bar app too.
 
 To remove lazychat, run `brew uninstall lazychat`, or `./uninstall.sh` for

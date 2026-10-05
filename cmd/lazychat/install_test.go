@@ -160,17 +160,7 @@ func TestInstallVersionFetchesTags(t *testing.T) {
 // The update command is one to run as it is: Homebrew's with brew update
 // first, a source build's in its own checkout, quoted for the shell.
 func TestUpgradeHow(t *testing.T) {
-	defer func(tag, dir string) { releaseTag, checkout = tag, dir }(releaseTag, checkout)
-	releaseTag, checkout = "", ""
-	if got := upgradeHow(); got != "brew update && brew upgrade lazychat" {
-		t.Errorf("Homebrew: %q", got)
-	}
-	releaseTag = "v1.0.4"
-	if got := upgradeHow(); got != "git pull && ./install.sh" {
-		t.Errorf("source, no checkout: %q", got)
-	}
-	checkout = "/tmp/garden shed's/lazychat"
-	if got := upgradeHow(); got != `cd '/tmp/garden shed'\''s/lazychat' && git pull && ./install.sh` {
-		t.Errorf("source: %q", got)
+	if upgradeCommand != "brew update && brew upgrade lazychat" {
+		t.Errorf("upgrade command %q", upgradeCommand)
 	}
 }

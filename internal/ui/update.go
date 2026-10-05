@@ -49,14 +49,6 @@ func (a *App) gotLatest(msg latestMsg) {
 	a.Note("lazychat %s is out: U, or a click on ↑ %s, shows how to update", msg.version, msg.version)
 }
 
-// upgradeCommand is the command that brings this build up to date.
-func (a *App) upgradeCommand() string {
-	if a.opts.Upgrade != "" {
-		return a.opts.Upgrade
-	}
-	return "brew update && brew upgrade lazychat"
-}
-
 // updateTabZone is the rail's new box, which a click opens.
 const updateTabZone = "updatetab"
 
@@ -80,7 +72,7 @@ const tailLines = 6
 // else running the command in a new Terminal shell, through a message,
 // since the Terminal tab owns shells.
 func (a *App) openUpdate() {
-	cmd := a.upgradeCommand()
+	cmd := a.opts.Upgrade
 	version := a.latest
 	if version == "" {
 		version = "the new release"

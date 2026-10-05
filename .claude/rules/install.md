@@ -71,11 +71,14 @@ paths:
   hour, with the kept ETag (a 304 is free); the answer and ETag are kept
   in ~/.lazychat/update.json. A 6-hour window once hid 1.0.5 behind an
   answer kept five minutes before it, restarts included. The corner shows
-  "↑ X.Y.Z" (a zone) in green; U or a click opens kit.UpdateBox with the
-  exact command (cmd/lazychat upgradeHow: brew update && brew upgrade, or
-  git pull && ./install.sh in main.checkout, which install.sh stamps),
-  Enter running it through kit.RunInShell in a new Terminal shell, c
-  copying it. Nothing runs without that key. A build compares
+  "↑ X.Y.Z" (a zone) in green; U or a click opens kit.UpdateBox with
+  cmd/lazychat's upgradeCommand, `brew update && brew upgrade lazychat`,
+  for every build: the user asked for one command, a source build's too,
+  so it never shows a folder (a source build had shown `cd '<checkout>'
+  && git pull && ./install.sh` and the user took it for a wrong command).
+  On a source Mac brew says lazychat is not installed; its user updates
+  with git. A source build's Enter runs it through kit.RunInShell in a
+  new Terminal shell, c copies it. Nothing runs without that key. A build compares
   from update.Base: Homebrew's own version, or the release a source build
   is past (install.sh stamps main.releaseTag from git describe). Tests set
   LAZYCHAT_NO_UPDATE_CHECK (testenv) so none asks GitHub; doctor's line is

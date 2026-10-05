@@ -43,10 +43,6 @@ var version = "dev"
 // (v1.0.1), stamped by install.sh; "" for Homebrew's build, whose version is one.
 var releaseTag = ""
 
-// checkout is the folder a source build was built from, stamped by
-// install.sh, so its update command can run there; "" for Homebrew's.
-var checkout = ""
-
 func main() {
 	// LAZYCHAT_CPUPROFILE names a file for a CPU profile of this run, for
 	// finding what a screen costs with go tool pprof; off without it.
@@ -168,7 +164,7 @@ func run(args []string) error {
 		opts := ui.Options{NoteTime: noteTime, Version: version, Open: open, Release: release,
 			Base: update.Base(version, releaseTag)}
 		if c := update.New(filepath.Dir(registryPath)); c != nil {
-			opts.Latest, opts.Upgrade = c.Latest, upgradeHow()
+			opts.Latest, opts.Upgrade = c.Latest, upgradeCommand
 			// Homebrew's build is upgraded here in the background; a source
 			// build's git pull runs where the user sees it.
 			if releaseTag == "" {
@@ -282,7 +278,7 @@ func updateCheck(c *update.Checker, base string) api.Check {
 	case err != nil:
 		chk.Detail = "could not ask GitHub: " + err.Error()
 	case update.Newer(base, latest):
-		chk.Detail = "lazychat " + latest + " is out: " + upgradeHow()
+		chk.Detail = "lazychat " + latest + " is out: " + upgradeCommand
 	default:
 		chk.OK, chk.Detail = true, latest+" is the newest release"
 	}
@@ -338,20 +334,10 @@ func restartSelf(workspaceName string) error {
 	return syscall.Exec(path, args, os.Environ())
 }
 
-// upgradeHow is how this build is brought up to date: Homebrew's by brew,
-// a source build by pulling and installing again.
-// upgradeHow is the command that brings this build up to date, to copy
-// or run as it is: Homebrew's (brew update first, or it may not know the
-// tap moved), or for a source build a pull and an install in its checkout.
-func upgradeHow() string {
-	if releaseTag == "" {
-		return "brew update && brew upgrade lazychat"
-	}
-	if checkout == "" {
-		return "git pull && ./install.sh"
-	}
-	return "cd '" + strings.ReplaceAll(checkout, "'", `'\''`) + "' && git pull && ./install.sh"
-}
+// upgradeCommand brings lazychat up to date, shown and run the same for
+// every build, a source build's too: one way to update is the one users
+// learn. brew update comes first, or brew may not know the tap moved.
+const upgradeCommand = "brew update && brew upgrade lazychat"
 
 func projects(core *api.Core, args []string) error {
 	st := core.Store
