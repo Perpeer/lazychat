@@ -595,3 +595,26 @@ func TestPromptWithImage(t *testing.T) {
 		t.Errorf("calls %d %d %d", turns[0].Calls, turns[1].Calls, turns[2].Calls)
 	}
 }
+
+// A background agent's news (a <task-notification> user line) is no
+// prompt: the prompt that started the agent goes on, one turn, ending at
+// its last end, its time counting the agent's work.
+func TestBackgroundNews(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s-9.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "paint every plank"}})
+	w.reply("c1", 10, 0, 5, use("a1", "Agent", map[string]any{"subagent_type": "Explore"}))
+	w.results(map[string]any{"toolUseResult": map[string]any{"status": "async_launched", "agentId": "bg1", "agentType": "Explore"}}, res("a1", 40))
+	w.reply("c2", 10, 10, 5)
+	w.add(map[string]any{"type": "system", "subtype": "turn_duration", "durationMs": 1})
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "<task-notification>\n<task-id>bg1</task-id>\n<status>completed</status>\n</task-notification>"}})
+	w.reply("c3", 10, 20, 5)
+	w.add(map[string]any{"type": "system", "subtype": "turn_duration", "durationMs": 1})
+	last := w.at
+	w.flush()
+	s, _ := Open(path).Update()
+	turns := s.Turns()
+	if len(turns) != 1 || turns[0].Text != "paint every plank" || !turns[0].End.Equal(last) || turns[0].Calls != 3 {
+		t.Fatalf("turns %+v", turns)
+	}
+}

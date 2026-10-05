@@ -56,6 +56,24 @@ type Signals struct {
 // round its frame.
 const CheerTime = 2 * time.Second
 
+// agentOutWithin is how lately a subagent with no result must have moved
+// to count as out: one that died silently holds no session at work.
+const agentOutWithin = 2 * time.Minute
+
+// agentsOut says a subagent of the turn has not brought its result yet and
+// its own transcript moved lately.
+func agentsOut(t *usage.Turn, now time.Time) bool {
+	if t == nil {
+		return false
+	}
+	for _, a := range t.Agents {
+		if a != nil && a.Back.IsZero() && !a.Done() && !a.Last.IsZero() && now.Sub(a.Last) <= agentOutWithin {
+			return true
+		}
+	}
+	return false
+}
+
 // stopGrace is how long a session that stopped working is watched before
 // it counts as done: claude's title stops spinning a moment before its
 // question is drawn, and a question is no finished answer.
@@ -125,6 +143,10 @@ func (b *Board) Step(now time.Time, live map[string]Signals) (answered []string)
 	b.init()
 	for key, s := range live {
 		onScreen := !s.Working && s.ScreenAsks
+		// Subagents still out keep the session at work while its own agent
+		// waits on them quietly: claude's turn ends and its title stops, and
+		// the session was called done, then started again by their news.
+		busy := s.Working || !onScreen && !s.Hooked && agentsOut(s.Last, now)
 		turn := b.turn(key)
 		b.lasts[key] = s.Last
 		if b.procs[key] != s.Proc {
@@ -132,19 +154,19 @@ func (b *Board) Step(now time.Time, live map[string]Signals) (answered []string)
 			*turn = Turn{}
 		}
 		switch {
-		case s.Working && turn.State() == TurnHeld:
+		case busy && turn.State() == TurnHeld:
 			turn.Go(now)
 			b.inputs[key] = s.Inputs
-		case s.Working && s.Inputs != b.inputs[key]:
+		case busy && s.Inputs != b.inputs[key]:
 			turn.Start(now)
 			b.inputs[key] = s.Inputs
-		case s.Working:
+		case busy:
 			turn.Go(now)
 		case onScreen || s.Hooked:
 			turn.Hold(now)
 		}
 		switch {
-		case s.Working:
+		case busy:
 			b.working[key] = true
 			b.unwait(key)
 			delete(b.stopped, key)

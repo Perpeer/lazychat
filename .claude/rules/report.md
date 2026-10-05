@@ -118,6 +118,11 @@ paths:
   user saw such prompts missing, their work under the prompt before. A
   line of tool_result blocks is none, nor "[Request interrupted …]"; an
   image alone reads "(an image)". `<pasted_content …>` tags are dropped.
+  A `<task-notification>` line — a background agent's news, written as a
+  user line — is no prompt: it carries on the prompt that started the
+  agent. Counted as one it began a new turn and set the prompt's clock to
+  zero (the user's "agentlardan geri dönüş olduğunda süre sıfırlanıyor");
+  the turn's Idle spans already cover it waking again.
 - A prompt's own tokens (Turn.Own) are its first main call's In: the
   transcript counts no message alone. Prompt text is flattened (line
   breaks and runs of spaces to one space): a newline cut it off.

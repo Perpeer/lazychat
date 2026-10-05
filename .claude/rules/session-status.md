@@ -39,6 +39,12 @@ it from there.
   starting or a resume loading, not an answer.
 - Done waits `stopGrace` (1 s): claude's title stops spinning a moment
   before its question is drawn, and a question is no finished answer.
+- Subagents still out keep a session working (agentsOut over Signals.Last:
+  an agent of the newest turn with no result whose transcript moved
+  within agentOutWithin, 2 min): with background agents claude's own turn
+  ends and its title stops while they work, and the user heard the done
+  sound, then the start one at their news. A question on screen or from
+  the hook still wins; an agent silent for two minutes holds nothing.
 - A question on screen counts only while the session does not work; it
   ends when the session works again (that is the answer) or leaves the
   screen with no word from the hook.

@@ -395,7 +395,10 @@ func prompt(text string) (Prompt, bool) {
 		}
 		text = name
 	case strings.HasPrefix(text, "<task-notification>"):
-		text = "(a background task finished)"
+		// A background agent's news, written as a user line: it carries on
+		// the prompt that started the agent. Counted as a prompt it began a
+		// new turn and set the prompt's clock back to zero.
+		return Prompt{}, false
 	}
 	line, _, _ := strings.Cut(text, "\n")
 	return Prompt{Text: line}, true

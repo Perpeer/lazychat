@@ -166,3 +166,41 @@ func TestBoardTurnFromRecord(t *testing.T) {
 		t.Fatalf("before lazychat: %v %v", d, st)
 	}
 }
+
+// A session whose own agent went quiet while a subagent of its prompt is
+// still out — no result, its transcript moving — stays at work: no done
+// in between, so no done sound nor a start one at the news. Once the
+// agent is back, or silent past agentOutWithin, the stop counts again.
+func TestAgentsOut(t *testing.T) {
+	c := newClock(t)
+	agent := &usage.Agent{ID: "bg1", Type: "Explore"}
+	turn := &usage.Turn{Agents: []*usage.Agent{agent}}
+	c.tick(Signals{Working: true, Given: true, Inputs: 1, Last: turn})
+	for range 5 {
+		agent.Last = c.now
+		c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+		c.want("quiet, its agent out", Working)
+	}
+	agent.Back = c.now
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("the agent back, the grace over", Done)
+
+	// An agent that went silent for good holds nothing.
+	c = newClock(t)
+	stale := &usage.Agent{ID: "bg2", Last: c.now.Add(-time.Hour)}
+	turn = &usage.Turn{Agents: []*usage.Agent{stale}}
+	c.tick(Signals{Working: true, Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("a silent agent", Done)
+
+	// A question on screen is still a question, agents out or not.
+	c = newClock(t)
+	out := &usage.Agent{ID: "bg3"}
+	turn = &usage.Turn{Agents: []*usage.Agent{out}}
+	c.tick(Signals{Working: true, Given: true, Inputs: 1, Last: turn})
+	out.Last = c.now
+	c.tick(Signals{Given: true, Inputs: 1, ScreenAsks: true, Last: turn})
+	c.want("asking with an agent out", Asks)
+}
