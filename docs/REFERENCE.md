@@ -366,11 +366,9 @@ second while the details show: what each prompt took and what spent it.
 It only reads. Codex keeps no such usage yet, and its sessions show no
 details tab.
 
-The page has three parts. The first two stand side by side — the
-prompt's flow on the left taking 70 % of the box, the context on the
-right taking 30 % (never less than its grid and legend need) — and one
-under the other in a box too narrow for both; the prompts' table is under
-them. The page opens on the flow: the tree already names the session.
+The page has two parts: the prompt's flow across the box's width, and the
+prompts' table under it. The page opens on the flow: the tree already
+names the session.
 
 **The flow.** The picked prompt, step by step, drawn as `git log --graph`
 draws branches: the prompt on top with when it started (`❯`), then one
@@ -378,7 +376,10 @@ row per tool call in time order, and the end (`●`) with how long it was
 active and its tokens — `in`, `used`, the API price — or `running` with
 a spinner while it runs. Calls of one tool in a row fold into one (`Read
 ×3`), the files they read or edited beside it, relative to the session's
-folder, or a shell call's commands by their first words; the right column
+folder, or what a shell call was for, in the few words Claude Code wrote
+with it (its commands by their first words when it wrote none; a
+heredoc's script is never read as commands). A folded row names its
+first two and `+N more`, and no row takes more than two lines; the right column
 is what the call's results added to the context (`+2.1k`), measured as a
 skill's tokens are. A subagent is one row (`⌂` its type, the job it was
 given, how long it took and what it used), and under the prompt's flow
@@ -387,59 +388,29 @@ type and job on top, its calls, and its end — `done`, or `running` with
 a spinner while it works — so several out at once each read on their
 own. A
 skill is `≡ name`, an MCP call `▭ server` with its tool, a question to
-you `? asked you` with how long you took. A call still out turns the
+you `? asked you` with how long you took. A skill opens a lane and
+every step after it, until the next skill, hangs in it (`├─┬ ≡ pilot`,
+then `│ ├`): the transcript does not say which calls a skill made, but
+a skill loaded — a slash command's above all — drives the prompt from
+there on. A call still out turns the
 spinner; one that never got its answer shows a dim `·`. At most fourteen
 steps show; the earlier ones are one dim row, `⋮ N earlier steps`.
 
 ```
- ❯ paint the garden shed                          14:02:10
- ├ Read ×3       door.go · hinge.go                  +2.1k
- ├ Bash ×2       go test · go vet                      +9k
- ├ ⌂ Explore     find the brushes                11s · 21k
- ├ ≡ brush-care                                      +1.5k
- ├ ▭ paint-shop  list_colours · mix                  +3.0k
- ├ Edit ×4       door.go
- ├ Bash          go test                                 ◐
- ● done · 2m10s · in 12k · used 13k · $0.42
+ ❯   paint the garden shed                        14:02:10
+ ├   Read ×3       door.go · hinge.go                +2.1k
+ ├   Bash ×2       Run the tests · Vet the shed        +9k
+ ├   ⌂ Explore     find the brushes              11s · 21k
+ ├─┬ ≡ brush-care                                    +1.5k
+ │ ├ ▭ paint-shop  list_colours · mix                +3.0k
+ │ ├ Edit ×4       door.go
+ │ ├ Bash          Run the tests again                   ◐
+ ●   done · 2m10s · in 12k · used 13k · $0.42
 
  ❯ ⌂ Explore find the brushes                     14:02:31
  ├ Grep ×4
  ├ Read ×6
  ● done · 11s · 21k
-```
-
-**The context.** The session's, as its newest call sent it, drawn as
-Claude Code's `/context` draws it: a hundred cells, each a hundredth of
-the window, coloured by what fills them, the free ones hollow; beside
-them the model, the context in use out of its window (a million tokens
-for Opus 4.6 and later, Sonnet 4.6 and later, Fable; 200k for the rest),
-and its parts. Every figure is measured from the transcript:
-
-- `base`, what the session began with — the system prompt, tools, MCP,
-  memory, the skills listed and its first prompt — or, after a
-  compaction, the summary it left;
-- `messages`, everything since;
-- `skills, MCP`, what skills' texts and MCP results put in;
-- `free`, what the window still holds.
-
-Under it, `timeline` is the session's life in one row — `▮` a prompt, `↻`
-a resume after a long quiet, `│` a compaction — the newest kept when the
-row is short, with the counts. `went to` names what grew the context since the last compaction,
-by the tool whose results brought it in, the largest first — each call's
-growth shared among the results before it by their size — and warns when
-one tool's results pass a tenth of it, with what to do (`Bash results are
-18% of the context: pipe output through head, tail or grep`). `grows` says
-how much the last prompt added and, at the pace of the last five, about
-how many more prompts fit before the window fills.
-
-```
- ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Opus 5.5
- ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   793k / 1M tokens (79.3%)
- ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁
- ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ base          39k  3.9%
- ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ messages     748k  74.8%
- ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ skills, MCP   6k  0.6%
- ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛶   ⛶ free         207k  20.7%
 ```
 
 At the box's bottom, held there while the rest scrolls above it, five

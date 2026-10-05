@@ -34,6 +34,9 @@ type flowEvent struct {
 	n     int
 	notes []string
 	added int64
+	// skill marks a skill loading: what comes after it in the flow hangs
+	// under it.
+	skill bool
 }
 
 // flowOf is the turn's own flow at now — the main agent's steps, each
@@ -135,6 +138,7 @@ func stepEvents(t usage.Turn, agent string, now time.Time, running bool, dir str
 				name = "≡ " + tu.Detail
 			}
 			add(tu.Time, kit.FlowNode{Kind: kit.FlowStep, Name: name, State: state}, name, "", tu.Added)
+			events[len(events)-1].skill = true
 		case strings.HasPrefix(tu.Name, "mcp__"):
 			server, tool, _ := strings.Cut(strings.TrimPrefix(tu.Name, "mcp__"), "__")
 			add(tu.Time, kit.FlowNode{Kind: kit.FlowStep, Name: "▭ " + server, State: state}, "mcp:"+server, tool, tu.Added)
@@ -147,7 +151,12 @@ func stepEvents(t usage.Turn, agent string, now time.Time, running bool, dir str
 			}
 			add(tu.Time, kit.FlowNode{Kind: kit.FlowStep, Name: "? asked you", Right: right, State: state}, "", "", 0)
 		default:
-			note := strings.Join(tu.Commands, " · ")
+			// A shell call's own description says what it was for; its
+			// commands, by their first words, only when it has none.
+			note := tu.Detail
+			if note == "" {
+				note = strings.Join(tu.Commands, " · ")
+			}
 			if len(tu.Files) > 0 {
 				note = strings.Join(relFiles(tu.Files, dir), " · ")
 			}
@@ -162,12 +171,20 @@ func stepEvents(t usage.Turn, agent string, now time.Time, running bool, dir str
 			continue
 		}
 		add(u.Time, kit.FlowNode{Kind: kit.FlowStep, Name: "≡ " + u.Name}, "", "", u.Added)
+		events[len(events)-1].skill = true
 	}
 	return events
 }
 
-// fold merges rows of one tool that follow each other: ×N,
-// their notes joined, their growth summed, busy while one of them is.
+// foldNotes is how many of a folded row's notes it names before "+N
+// more": nine calls' notes joined filled three rows and still were cut.
+const foldNotes = 2
+
+// fold merges rows of one tool that follow each other: ×N, their first
+// notes joined, their growth summed, busy while one of them is. A skill
+// opens a lane and every step after it, until the next skill, hangs in
+// it: the transcript does not say which calls a skill made, but a skill
+// loaded drives the prompt from there on, as a slash command's does.
 func fold(events []flowEvent) []kit.FlowNode {
 	var out []flowEvent
 	for _, e := range events {
@@ -190,13 +207,27 @@ func fold(events []flowEvent) []kit.FlowNode {
 		out = append(out, e)
 	}
 	nodes := make([]kit.FlowNode, len(out))
+	lane, opened := 0, 0
 	for i, e := range out {
 		n := e.node
+		switch {
+		case e.skill && i < len(out)-1:
+			opened++
+			lane = opened
+			n.Kind, n.To = kit.FlowFork, lane
+		case e.skill:
+			lane = 0
+		default:
+			n.Lane = lane
+		}
 		if e.n > 1 {
 			n.Name += fmt.Sprintf(" ×%d", e.n)
 		}
 		if n.Note == "" {
-			n.Note = strings.Join(e.notes, " · ")
+			n.Note = strings.Join(e.notes[:min(len(e.notes), foldNotes)], " · ")
+			if more := len(e.notes) - foldNotes; more > 0 {
+				n.Note += fmt.Sprintf(" · +%d more", more)
+			}
 		}
 		if n.Right == "" && e.added > 0 && n.State != kit.FlowBusy {
 			n.Right = "+" + num(e.added)

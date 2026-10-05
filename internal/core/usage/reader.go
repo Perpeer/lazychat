@@ -548,6 +548,8 @@ func (r *Reader) assistant(run *stream, rec *record, counts map[string]int) {
 			}
 		}
 		switch b.Name {
+		case "Bash":
+			step.Detail = b.Input.Description
 		case "Skill":
 			step.Detail = b.Input.Skill
 		case "Agent", "Task":
@@ -737,7 +739,7 @@ func (r *Reader) agentLine(f *agentFile, line []byte) {
 // cd or an env assignment before it left out: what was run, not with what.
 func commandHeads(line string) []string {
 	var out []string
-	for _, part := range strings.FieldsFunc(line, func(r rune) bool { return r == ';' || r == '|' || r == '&' || r == '\n' }) {
+	for _, part := range shellParts(line) {
 		words := strings.Fields(part)
 		for len(words) > 0 && (strings.Contains(words[0], "=") || words[0] == "sudo" || words[0] == "env") {
 			words = words[1:]
@@ -746,10 +748,79 @@ func commandHeads(line string) []string {
 			continue
 		}
 		head := words[0]
-		if len(words) > 1 && !strings.HasPrefix(words[1], "-") && !strings.ContainsAny(words[1], "/.\"'$") {
+		if len(words) > 1 && !strings.HasPrefix(words[1], "-") && !strings.ContainsAny(words[1], "/.\"'$<>") {
 			head += " " + words[1]
 		}
 		out = append(out, head)
 	}
 	return out
+}
+
+// shellParts splits a shell line into its commands at ; | & and line
+// ends, but not inside quotes, and leaves a heredoc's body out: a script
+// fed through <<'EOF' had every line of it, its quotes and semicolons,
+// listed as a command of its own.
+func shellParts(line string) []string {
+	var parts []string
+	var cur strings.Builder
+	flush := func() {
+		if strings.TrimSpace(cur.String()) != "" {
+			parts = append(parts, cur.String())
+		}
+		cur.Reset()
+	}
+	rs := []rune(line)
+	var quote rune
+	var bodies []string // the heredoc delimiters whose bodies start at the next line end
+	for i := 0; i < len(rs); i++ {
+		r := rs[i]
+		switch {
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			}
+			cur.WriteRune(r)
+		case r == '\'' || r == '"':
+			quote = r
+			cur.WriteRune(r)
+		case r == '<' && i+1 < len(rs) && rs[i+1] == '<':
+			j := i + 2
+			if j < len(rs) && rs[j] == '-' {
+				j++
+			}
+			for j < len(rs) && rs[j] == ' ' {
+				j++
+			}
+			k := j
+			for k < len(rs) && !strings.ContainsRune(" \t\n;|&<>()", rs[k]) {
+				k++
+			}
+			if d := strings.Trim(string(rs[j:k]), `'"`); d != "" {
+				bodies = append(bodies, d)
+			}
+			i = k - 1
+		case r == '\n' && len(bodies) > 0:
+			flush()
+			for _, d := range bodies {
+				for i < len(rs) {
+					end := i + 1
+					for end < len(rs) && rs[end] != '\n' {
+						end++
+					}
+					body := strings.TrimSpace(string(rs[i+1 : min(end, len(rs))]))
+					i = end
+					if body == d {
+						break
+					}
+				}
+			}
+			bodies = nil
+		case strings.ContainsRune(";|&\n", r):
+			flush()
+		default:
+			cur.WriteRune(r)
+		}
+	}
+	flush()
+	return parts
 }

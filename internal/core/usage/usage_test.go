@@ -448,6 +448,9 @@ func TestCommandHeads(t *testing.T) {
 		"echo hi; ls -la":                           {"ls"},
 		"":                                          nil,
 		`grep -rn "blue door" .`:                    {"grep"},
+		`grep -n "a; b | c" shed.txt`:               {"grep"},
+		"python3 - <<'EOF'\nimport re\np='door'; s=open(p).read()\nprint(s)\nEOF\nprintf 'a\\tb' | sort": {"python3", "printf", "sort"},
+		"cat > notes.md <<EOF\n# fence; gate | shed\nEOF\ngit status":                                    {"cat", "git status"},
 	}
 	for line, want := range cases {
 		if got := commandHeads(line); fmt.Sprint(got) != fmt.Sprint(want) {
@@ -457,13 +460,16 @@ func TestCommandHeads(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s-7.jsonl")
 	w := newTranscript(t, path)
 	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "test the shed"}})
-	w.reply("b1", 10, 0, 5, use("t1", "Bash", map[string]any{"command": "go test ./... && git status"}), use("t2", "Read", map[string]any{}))
+	w.reply("b1", 10, 0, 5, use("t1", "Bash", map[string]any{"command": "go test ./... && git status", "description": "Test the shed"}), use("t2", "Read", map[string]any{}))
 	w.reply("b2", 10, 10, 5, use("t3", "Bash", map[string]any{"command": "go test ./shed"}))
 	w.flush()
 	s, _ := Open(path).Update()
 	turns := s.Clone().Turns()
 	if len(turns) != 1 || turns[0].Tools["Bash"] != 2 || turns[0].Tools["Read"] != 1 || turns[0].Commands["go test"] != 2 || turns[0].Commands["git status"] != 1 {
 		t.Errorf("turn %+v %+v", turns[0].Tools, turns[0].Commands)
+	}
+	if d := turns[0].Steps[0].Detail; d != "Test the shed" {
+		t.Errorf("a shell call's description %q", d)
 	}
 }
 

@@ -97,8 +97,8 @@ const (
 )
 
 // pageView is the session prompt by prompt: on top the picked prompt's
-// flow and the session's context, which scroll; under them the prompts as
-// a table, held at the box's bottom.
+// flow, which scrolls; under it the prompts as a table, held at the box's
+// bottom.
 func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	now := time.Now()
 	working := c.working(s, now)
@@ -118,10 +118,9 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	running := picked == last && working
 	c.rep.moving = running
 	costs := c.rep.page.costs
-	// The picked prompt's flow beside the session's context, over the
-	// prompts' table held at the bottom.
+	// The picked prompt's flow over the prompts' table held at the bottom.
 	flows := append([][]kit.FlowNode{flowOf(t, now, running, costs[picked], s.Dir)}, agentFlows(t, now, running, s.Dir)...)
-	top = append(top, flowAndContext(flows, c.beat, c.rep.page, s.Fed, w)...)
+	top = append(top, flowPart(flows, c.beat, w-1)...)
 	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
 		c.promptTable(turns, picked, working, now, costs, w)...)
 	return top, table
@@ -151,49 +150,17 @@ func head(s string, n int) string {
 	return s
 }
 
-// The context takes 30 % of the box and the flow the rest (the user's
-// split), the context never under contextMinW — its grid and legend's
-// width — and the two side by side only when the flow keeps flowMinW.
-const (
-	contextShare = 30
-	contextMinW  = 52
-	flowMinW     = 48
-)
-
-// flowAndContext are the page's first two parts: the picked prompt's flows
-// — its own, then each subagent's under it — on the left and the
-// session's context on the right, top-aligned; one under the other in a
-// box too narrow for both.
-func flowAndContext(flows [][]kit.FlowNode, beat int, pg page, fed map[string]int64, w int) []string {
-	drawn := func(w int) []string {
-		out := []string{"", section("flow", "what the picked prompt did, step by step")}
-		for i, nodes := range flows {
-			if i > 0 {
-				out = append(out, "")
-			}
-			for _, row := range kit.DrawFlow(nodes, beat, w) {
-				out = append(out, " "+row)
-			}
+// flowPart is the page's first part: the picked prompt's flows — its own,
+// then each subagent's under it — across the box's width.
+func flowPart(flows [][]kit.FlowNode, beat int, w int) []string {
+	out := []string{"", section("flow", "what the picked prompt did, step by step")}
+	for i, nodes := range flows {
+		if i > 0 {
+			out = append(out, "")
 		}
-		return out
-	}
-	ctxW := max(w*contextShare/100, contextMinW)
-	flowW := w - ctxW
-	if flowW < flowMinW {
-		return append(drawn(w-1), contextPart(pg, fed, w)...)
-	}
-	left := drawn(flowW - 2)
-	right := contextPart(pg, fed, ctxW)
-	out := make([]string, max(len(left), len(right)))
-	for i := range out {
-		l, r := "", ""
-		if i < len(left) {
-			l = left[i]
+		for _, row := range kit.DrawFlow(nodes, beat, w) {
+			out = append(out, " "+row)
 		}
-		if i < len(right) {
-			r = right[i]
-		}
-		out[i] = text.Pad(text.Fit(l, flowW), flowW) + text.Fit(r, ctxW)
 	}
 	return out
 }

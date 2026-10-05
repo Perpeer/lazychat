@@ -25,21 +25,16 @@ paths:
   skipped, bad lines counted. Subagent tokens are only in their own files;
   a background agent first writes `async_launched` with no totals, and
   its result's totalTokens is the last call's context, not a sum.
-- The page is three parts (the user's): the picked prompt's flow and the
-  context side by side — the context 30 %, the flow the rest (the user's
-  split; half each before), the context never under its grid and legend
-  (contextMinW 52), side by side only while the flow keeps 48 columns, one
-  under the other below that. No title row over them: the page opens on a
-  blank row, then the flow (the user took out "name · working");
-  the session's context, /context-like, measured only (usage.Context: the
-  newest main call; base = the first call since the start or the last
-  compaction; skills/MCP added; Fed by tool for "went to"; growth per
-  prompt); the prompts' table. Nothing of a prompt sits above the context
-  — its time and tokens are the table's. The per-prompt report under
-  them (workers, tools, commands, files) was taken out at the user's
-  word: the flow says what a prompt did. /context's categories are not in
-  the transcript: no estimate stands in for them.
-- The context part's `timeline` row is usage.Session.Timeline(): prompts,
+- The page is two parts: the picked prompt's flow across the box's width
+  (chat/view_report.go flowPart), then the prompts' table. The context
+  part beside the flow (a /context-like grid, "went to", "grows", the
+  timeline row) was taken out at the user's word, to give the flow room;
+  usage still measures Context, Timeline and Fed, nothing on the page
+  reads them. No title row: the page opens on a blank row, then the flow
+  (the user took out "name · working"). The per-prompt report under the
+  flow (workers, tools, commands, files) was taken out earlier: the flow
+  says what a prompt did.
+- The context part's `timeline` row (gone with the part) was usage.Session.Timeline(): prompts,
   Resumes (a quiet longer than ResumeGap) and Compacts in time order; it
   is a row, not a fourth part. It is drawn from the newest events that
   fit, a dim … before them: the first version built a styled glyph per
@@ -60,7 +55,7 @@ paths:
   taken out (noise under the heading), and the pool with it. Nothing on
   the tree sums usage now.
 - The report is the tree cursor's session prompt by prompt: the picked
-  prompt's flow, the context and its report on top, which scroll, and the
+  prompt's flow on top, which scrolls, and the
   prompts as a three-row table held at the box's bottom — five showing,
   ↑↓ picking among the newest ten with the table scrolling to the pick
   (the user's "en altta 10 tane sabit", then "son on taneyi", then "son 5,
@@ -71,7 +66,7 @@ paths:
   keeps the selection's colours), started, duration (the active time, the
   user's word for it), tokens, API cost. The newest is followed. On a
   project, its newest session.
-- The page's data — turns, context, timeline, costs — is derived once per
+- The page's data — turns, costs — is derived once per
   read, in the read goroutine (chat/report.go derive → page), and View
   only draws it. Deriving in View froze the app on a long session: Turns
   and Context cost 27 ms a frame at 300 prompts / 4k calls, and Bubble
@@ -84,8 +79,14 @@ paths:
 - The flow (chat/flow.go flowOf → kit.DrawFlow) is the prompt's steps as
   git log draws branches, the user's choice over a roster of workers and a
   ring of building plots before it: the main agent's Turn.Steps in time
-  order, calls of one tool in a row folded ×N with their files or command
-  heads joined, a subagent one row (job, time, tokens), a question with its
+  order, calls of one tool in a row folded ×N with their first two notes
+  and "+N more" (nine joined filled three rows and were cut), a step at
+  most two rows (kit flowWrap). A shell row's note is the call's own
+  `description` (ToolUse.Detail), else commandHeads, which splits only
+  outside quotes and leaves a heredoc's body out (a python script fed
+  through <<'EOF' showed its every line as a command). A skill opens a
+  lane: the steps after it hang in it until the next skill (fold), since
+  the transcript links no call to a skill. A subagent one row (job, time, tokens), a question with its
   wait, the end row with the turn's time and tokens. Each subagent then
   has its own flow under it (agentFlows, in start order): its type and job,
   its steps, its end — the user wanted several agents' flows shown apart,

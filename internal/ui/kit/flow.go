@@ -55,8 +55,9 @@ const flowNameW = 20
 
 // flowWrap is how many rows a node's text may take: a long prompt or a
 // step's files and commands wrap under it rather than being cut, the
-// last row ending in … past that.
-const flowWrap = 3
+// last row ending in … past that. Two: three rows of one step pushed the
+// rest of the flow off the page.
+const flowWrap = 2
 
 // DrawFlow draws nodes w columns wide, in their order, one row each and up
 // to flowWrap when a node's text is longer than its room; frame turns the

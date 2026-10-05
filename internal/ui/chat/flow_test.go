@@ -1,9 +1,13 @@
 package chat
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/charmbracelet/x/ansi"
 
 	"lazychat/internal/core/sound"
 	"lazychat/internal/core/usage"
@@ -114,6 +118,65 @@ func TestFlowNodes(t *testing.T) {
 	// An empty turn still draws: the prompt and its end.
 	if empty := flowOf(usage.Turn{}, at, false, "", ""); len(empty) != 2 || !strings.HasPrefix(empty[1].Name, "stopped") {
 		t.Errorf("empty turn: %+v", empty)
+	}
+}
+
+// A shell call reads as Claude described it, a heredoc's script never as
+// commands; nine calls in a row name their first two then "+7 more" and
+// keep to two rows; everything after a skill hangs in its lane.
+func TestFlowReadable(t *testing.T) {
+	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	s := func(d int) time.Time { return at.Add(time.Duration(d) * time.Second) }
+	steps := []usage.ToolUse{
+		{ID: "b0", Name: "Bash", Time: s(1), Back: s(2), Detail: "Fetch and check the branch", Commands: []string{"git fetch"}},
+		{ID: "w0", Name: "Write", Time: s(3), Back: s(4), Files: []string{"/garden/shed/plan.md"}},
+		{ID: "q0", Name: "AskUserQuestion", Time: s(5), Back: s(9)},
+	}
+	for i := range 9 {
+		steps = append(steps, usage.ToolUse{ID: fmt.Sprintf("b%d", i+1), Name: "Bash", Time: s(10 + 2*i), Back: s(11 + 2*i), Detail: fmt.Sprintf("Paint board %d of the blue door", i+1)})
+	}
+	turn := usage.Turn{
+		Prompt: usage.Prompt{Time: at, Text: "/paint-plan the blue door"},
+		Uses:   []*usage.Use{{Kind: usage.Skill, Name: "paint-plan", Time: at}},
+		Steps:  steps,
+	}
+	nodes := flowOf(turn, s(40), false, "", "/garden/shed")
+	want := []struct {
+		kind       kit.FlowKind
+		lane       int
+		name, note string
+	}{
+		{kit.FlowHead, 0, "/paint-plan the blue door", ""},
+		{kit.FlowFork, 0, "≡ paint-plan", ""},
+		{kit.FlowStep, 1, "Bash", "Fetch and check the branch"},
+		{kit.FlowStep, 1, "Write", "plan.md"},
+		{kit.FlowStep, 1, "? asked you", ""},
+		{kit.FlowStep, 1, "Bash ×9", "Paint board 1 of the blue door · Paint board 2 of the blue door · +7 more"},
+	}
+	for i, w := range want {
+		if i >= len(nodes) {
+			t.Fatalf("%d nodes: %+v", len(nodes), nodes)
+		}
+		n := nodes[i]
+		if n.Kind != w.kind || n.Lane != w.lane || n.Name != w.name || n.Note != w.note {
+			t.Errorf("node %d: %+v, want %+v", i, n, w)
+		}
+	}
+	rows := kit.DrawFlow(nodes, 0, 70)
+	plain := make([]string, len(rows))
+	for i, r := range rows {
+		plain[i] = ansi.Strip(r)
+	}
+	out := strings.Join(plain, "\n")
+	if !strings.Contains(out, "├─┬ ≡ paint-plan") || !strings.Contains(out, "│ ├ Bash ×9") {
+		t.Errorf("not nested:\n%s", out)
+	}
+	at9 := slices.IndexFunc(plain, func(r string) bool { return strings.Contains(r, "Bash ×9") })
+	if at9 < 0 || at9+2 >= len(plain) || !strings.HasPrefix(plain[at9+2], "●") {
+		t.Errorf("the ×9 row takes more than two rows:\n%s", out)
+	}
+	if strings.Contains(out, "EOF") {
+		t.Errorf("a heredoc shows:\n%s", out)
 	}
 }
 

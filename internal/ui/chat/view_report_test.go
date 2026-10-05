@@ -59,40 +59,6 @@ func TestPromptTableFits(t *testing.T) {
 	}
 }
 
-// The timeline row is one glyph per event in time order, the newest kept
-// when the row is short, and the counts; a session with no event has none.
-func TestTimelineRow(t *testing.T) {
-	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
-	events := []usage.Event{{Kind: usage.PromptEvent, Time: at}, {Kind: usage.PromptEvent, Time: at.Add(time.Minute)}, {Kind: usage.CompactEvent, Time: at.Add(2 * time.Minute)}, {Kind: usage.ResumeEvent, Time: at.Add(time.Hour)}, {Kind: usage.PromptEvent, Time: at.Add(2 * time.Hour)}}
-	row := ansi.Strip(timelineRow(events, 80))
-	if !strings.Contains(row, "▮▮│↻▮") || !strings.Contains(row, "3 prompts · 1 resume · 1 compaction") {
-		t.Errorf("timeline %q", row)
-	}
-	if short := ansi.Strip(timelineRow(events, 50)); !strings.HasSuffix(strings.TrimSpace(strings.Split(short, "  ")[0]), "│↻▮") {
-		t.Errorf("a short row keeps the newest: %q", short)
-	}
-	if timelineRow(nil, 80) != "" {
-		t.Error("no events, yet a row")
-	}
-	// A long session: thousands of events draw in no time, the newest kept.
-	var many []usage.Event
-	for i := range 5000 {
-		kind := usage.PromptEvent
-		if i%97 == 0 {
-			kind = usage.CompactEvent
-		}
-		many = append(many, usage.Event{Kind: kind, Time: at.Add(time.Duration(i) * time.Minute)})
-	}
-	began := time.Now()
-	long := ansi.Strip(timelineRow(many, 80))
-	if took := time.Since(began); took > time.Millisecond {
-		t.Errorf("5000 events took %v", took)
-	}
-	if !strings.Contains(long, "4948 prompts · 52 compactions") || !strings.Contains(long, "…▮") || ansi.StringWidth(long) > 80 {
-		t.Errorf("long timeline %q", long)
-	}
-}
-
 // A prompt's state: running while it is the newest and the session works,
 // asking while a question of it is open then, done once ended, stopped
 // for an answer cut short.
@@ -115,29 +81,22 @@ func TestTurnState(t *testing.T) {
 	}
 }
 
-// The flow takes 70 % of a wide page and the context 30 %, the context
-// never narrower than its grid and legend; a box too narrow for both
-// stacks them.
-func TestFlowAndContextSplit(t *testing.T) {
+// The flow takes the box's whole width: nothing stands beside it.
+func TestFlowFullWidth(t *testing.T) {
 	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
-	nodes := flowOf(usage.Turn{Prompt: usage.Prompt{Time: at, Text: "paint the shed"}, End: at.Add(time.Minute)}, at.Add(time.Hour), false, "", "")
-	pg := page{ctx: usage.ContextUse{Model: "model-x", Used: 100, Window: 1000, Base: 100}}
-	col := func(rows []string) int {
+	nodes := flowOf(usage.Turn{Prompt: usage.Prompt{Time: at, Text: strings.Repeat("paint the shed ", 20)}, End: at.Add(time.Minute)}, at.Add(time.Hour), false, "", "")
+	for _, w := range []int{90, 200} {
+		rows := flowPart([][]kit.FlowNode{nodes}, 0, w)
+		widest := 0
 		for _, r := range rows {
-			if i := strings.Index(ansi.Strip(r), "context  "); i >= 0 {
-				return len([]rune(ansi.Strip(r)[:i]))
+			if strings.Contains(r, "context") {
+				t.Errorf("width %d: a context part beside the flow: %q", w, ansi.Strip(r))
 			}
+			widest = max(widest, ansi.StringWidth(r))
 		}
-		return -1
-	}
-	if c := col(flowAndContext([][]kit.FlowNode{nodes}, 0, pg, nil, 200)); c != 140+1 { // the heading's margin
-		t.Errorf("wide: the context starts at %d, want 140 (70 %%)", c)
-	}
-	if c := col(flowAndContext([][]kit.FlowNode{nodes}, 0, pg, nil, 120)); c != 120-contextMinW+1 {
-		t.Errorf("medium: the context starts at %d, want %d (its least width)", c, 120-contextMinW)
-	}
-	if c := col(flowAndContext([][]kit.FlowNode{nodes}, 0, pg, nil, 90)); c != 1 { // the section heading's margin
-		t.Errorf("narrow: the context starts at %d, want stacked", c)
+		if widest < w-2 || widest > w+1 {
+			t.Errorf("width %d: the flow's widest row is %d", w, widest)
+		}
 	}
 }
 

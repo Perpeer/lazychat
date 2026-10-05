@@ -55,16 +55,14 @@ type report struct {
 // session's size. A long session once took 27 ms a frame deriving it in
 // View, which Bubble Tea calls on every message.
 type page struct {
-	turns  []usage.Turn
-	ctx    usage.ContextUse
-	events []usage.Event
-	costs  []string // each turn's API price as the table writes it
+	turns []usage.Turn
+	costs []string // each turn's API price as the table writes it
 }
 
 // derive is the page's data for a session.
 func derive(s *usage.Session, prices usage.Prices) page {
 	turns := s.Turns()
-	return page{turns: turns, ctx: s.ContextOf(turns), events: s.Timeline(), costs: costsOf(s, turns, prices)}
+	return page{turns: turns, costs: costsOf(s, turns, prices)}
 }
 
 // reportMsg is a read's result.
