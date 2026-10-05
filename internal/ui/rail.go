@@ -55,6 +55,19 @@ func (a *App) rail(h int) []string {
 			top = append(top, box...)
 		}
 	}
+	// A newer release, or one installed and not run yet, is a box of its
+	// own over Settings, in the running colour: the user found the
+	// corner's ↑ too easy to miss. It is no tab: a click opens the popup.
+	if a.updateShown() {
+		style := kit.StyleBusy.Bold(true)
+		name := text.Pad("new", railInner)
+		box := kit.ZoneBlock(updateTabZone, []string{
+			style.Render("┌" + strings.Repeat("─", railInner) + "┐"),
+			style.Render("│" + name + "│"),
+			style.Render("└" + strings.Repeat("─", railInner) + "┘"),
+		}, railW)
+		bottom = append(box, bottom...)
+	}
 	// The mascot stands at the rail's top, the tabs right under it,
 	// Settings at its foot: its face, and under it the row of the keyboard
 	// it types on, kept whether used or not, so nothing it does moves the

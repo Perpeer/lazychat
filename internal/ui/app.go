@@ -58,6 +58,11 @@ type Options struct {
 	// (the tests). Upgrade says how to bring this build up to date.
 	Latest  func(ctx context.Context) (string, error)
 	Upgrade string
+	// RunUpgrade runs the upgrade command here, off the loop, each line of
+	// its output handed to line; nil when this build is not upgraded in
+	// place (a source build, whose git pull the user runs where they see
+	// it). The tests give a stand-in.
+	RunUpgrade func(ctx context.Context, command string, line func(string)) error
 }
 
 // focuser hands the raw input to a session and takes it back: the input
@@ -86,6 +91,9 @@ type App struct {
 	// asked is when the shell last asked for it.
 	latest string
 	asked  time.Time
+	// upRun is the upgrade run from the popup; a done one keeps the
+	// rail's new box until lazychat is restarted on the new build.
+	upRun kit.Upgrade
 	// play plays one of Lazy's sounds; nil in tests. heard is each
 	// session's state at the last tick, to hear only its changes; greeted
 	// says Lazy said hello, once a process, as the main screen first showed.
@@ -138,6 +146,9 @@ type Exit struct {
 	// start screen. It waits for the end so no session still running can
 	// write the state file back.
 	Delete bool
+	// Restart starts lazychat again on the same workspace: an upgrade was
+	// installed and the user asked for the new build.
+	Restart bool
 	// Workspace is the one open when the program ended, its lock let go.
 	Workspace workspace.Workspace
 }
@@ -266,6 +277,9 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case latestMsg:
 		a.gotLatest(msg)
 		return a, nil
+	case upgradeLineMsg, upgradeDoneMsg:
+		a.upgraded(msg)
+		return a, nil
 	case kit.PlaySound:
 		a.sound(msg.Name)
 		return a, nil
@@ -327,7 +341,7 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Action == tea.MouseActionPress {
 			a.wsSel = false
 		}
-		if a.latest != "" && kit.LeftClick(msg) && zone.Get(updateZone).InBounds(msg) {
+		if a.updateShown() && kit.LeftClick(msg) && (zone.Get(updateZone).InBounds(msg) || zone.Get(updateTabZone).InBounds(msg)) {
 			a.openUpdate()
 			return a, nil
 		}
@@ -450,7 +464,7 @@ func (a *App) route(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.openInbox()
 		return a, a.takePending()
 	}
-	if kit.GlobalKeys.Update.Has(msg.String()) && a.latest != "" && !a.tab().Typing() {
+	if kit.GlobalKeys.Update.Has(msg.String()) && a.updateShown() && !a.tab().Typing() {
 		a.openUpdate()
 		return a, a.takePending()
 	}

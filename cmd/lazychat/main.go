@@ -8,15 +8,18 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/pprof"
 	"strings"
+	"syscall"
 	"time"
 
 	"lazychat/internal/core/agent"
@@ -166,11 +169,19 @@ func run(args []string) error {
 			Base: update.Base(version, releaseTag)}
 		if c := update.New(filepath.Dir(registryPath)); c != nil {
 			opts.Latest, opts.Upgrade = c.Latest, upgradeHow()
+			// Homebrew's build is upgraded here in the background; a source
+			// build's git pull runs where the user sees it.
+			if releaseTag == "" {
+				opts.RunUpgrade = runUpgrade
+			}
 		}
 		if registryPath == workspace.DefaultRegistryPath() {
 			opts.MenuBar = startMenuBar
 		}
 		exit, err := ui.Run(core, opts)
+		if err == nil && exit.Restart {
+			return restartSelf(exit.Workspace.Name)
+		}
 		if err != nil || !exit.Delete {
 			return err
 		}
@@ -276,6 +287,55 @@ func updateCheck(c *update.Checker, base string) api.Check {
 		chk.OK, chk.Detail = true, latest+" is the newest release"
 	}
 	return chk
+}
+
+// runUpgrade runs the upgrade command in a shell, each line it prints —
+// stdout and stderr — handed to line as it comes.
+func runUpgrade(ctx context.Context, command string, line func(string)) error {
+	cmd := exec.CommandContext(ctx, "sh", "-c", command)
+	// No colours nor hints: the lines are read, not shown in a terminal.
+	cmd.Env = append(os.Environ(), "HOMEBREW_NO_COLOR=1", "HOMEBREW_NO_ENV_HINTS=1", "NO_COLOR=1")
+	pr, pw := io.Pipe()
+	cmd.Stdout, cmd.Stderr = pw, pw
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	read := make(chan struct{})
+	go func() {
+		defer close(read)
+		sc := bufio.NewScanner(pr)
+		sc.Buffer(make([]byte, 64*1024), 1024*1024)
+		for sc.Scan() {
+			line(sc.Text())
+		}
+	}()
+	err := cmd.Wait()
+	_ = pw.Close()
+	<-read
+	return err
+}
+
+// restartSelf starts lazychat again in place of this process, on the same
+// workspace: the lazychat on PATH, which after an upgrade is the new build
+// (Homebrew's link moves to it; the old version's folder may be gone).
+func restartSelf(workspaceName string) error {
+	path, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		if path, err = os.Executable(); err != nil {
+			return err
+		}
+	}
+	args := append([]string(nil), os.Args...)
+	named := false
+	for _, a := range args[1:] {
+		if a == "--workspace" || a == "-workspace" || strings.HasPrefix(a, "--workspace=") {
+			named = true
+		}
+	}
+	if !named && workspaceName != "" {
+		args = append(args, "--workspace", workspaceName)
+	}
+	return syscall.Exec(path, args, os.Environ())
 }
 
 // upgradeHow is how this build is brought up to date: Homebrew's by brew,

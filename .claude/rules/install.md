@@ -87,3 +87,14 @@ paths:
   number. `releaseTag` stays the newest tag the checkout is past, so
   update.Base compares the newer-release note from the release, not from
   the number the build will become. Tags are read locally, no fetch.
+- A newer release is a green `new` box on the rail over Settings (no
+  tab: a click or U opens kit.UpdateBox), kept after an upgrade until a
+  restart: the user found the corner's ↑ too easy to miss. A Homebrew
+  build (releaseTag empty, opts.RunUpgrade set) upgrades in the
+  background — `sh -c` the command, lines streamed back, the step is
+  brew's last `==>` line (no percentage exists, so no bar) — then asks to
+  restart: ClearRunning as `q`, Exit.Restart, main execs the lazychat on
+  PATH (Homebrew's link is the new build) with `--workspace` added. A
+  source build never runs `git pull` behind the user: Enter opens a
+  Terminal shell. The popup's Start returns its tea.Cmd: a queued one
+  waited for the next key.
