@@ -42,3 +42,11 @@ the app Lazy.
 - `--status [seconds]` prints what the icon would show and what a click
   opens — the first thing to read when the icon looks wrong. A lazychat
   started before the app was installed writes nothing.
+- One instance at a time: the app quits every older `dev.lazychat.app` as
+  it starts (main.swift quitOlder: launchDate, the pid breaking a tie;
+  terminate, forceTerminate after 2 s). Each path is its own app to macOS
+  — /Applications, Homebrew's Cellar folder that changes per version, brew
+  services' — and lazychat opens its own with `open -g`, so after an
+  upgrade the user saw two or three icons. The newest wins, so the
+  version just installed is the one that stays. Tried by hand: two builds
+  at two paths opened one after the other leave one process.

@@ -8,11 +8,12 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"lazychat/internal/core/usage"
+	"lazychat/internal/ui/kit"
 )
 
 // Every column but the prompt's text is as wide as its longest value: a
 // three-digit number, a twenty-minute turn and millions of tokens show
-// whole; the table keeps to its width and to promptRows prompts.
+// whole; the table keeps to its width and to promptShown prompts.
 func TestPromptTableFits(t *testing.T) {
 	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
 	var turns []usage.Turn
@@ -36,8 +37,8 @@ func TestPromptTableFits(t *testing.T) {
 	if took := time.Since(began); took > 20*time.Millisecond {
 		t.Errorf("the table took %v with a 200k-character prompt", took)
 	}
-	if len(rows) != 4+3*promptRows {
-		t.Fatalf("%d rows, want %d", len(rows), 4+3*promptRows)
+	if len(rows) != 4+3*promptShown {
+		t.Fatalf("%d rows, want %d", len(rows), 4+3*promptShown)
 	}
 	plain := ansi.Strip(strings.Join(rows, "\n"))
 	for _, want := range []string{"▶ 245", "state", "duration", "API cost", "done", "20m 50s", "prompt 12k", "in 1.2M", "used 1.3M", "paint the north wall of the garden shed blue", "123.45"} {
@@ -94,7 +95,7 @@ func TestTimelineRow(t *testing.T) {
 
 // A prompt's state: running while it is the newest and the session works,
 // asking while a question of it is open then, done once ended, stopped
-// for an answer cut short; an older prompt picked lights no table row.
+// for an answer cut short.
 func TestTurnState(t *testing.T) {
 	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
 	open := usage.Turn{Prompt: usage.Prompt{Time: at}}
@@ -111,16 +112,6 @@ func TestTurnState(t *testing.T) {
 	done := usage.Turn{Prompt: usage.Prompt{Time: at}, End: at.Add(time.Minute)}
 	if got := turnState(done, true, false); got != "done" {
 		t.Errorf("ended: %q", got)
-	}
-	var c Chat
-	turns := make([]usage.Turn, 12)
-	for i := range turns {
-		turns[i] = usage.Turn{Prompt: usage.Prompt{Time: at.Add(time.Duration(i) * time.Minute), Text: "plank"}, End: at.Add(time.Duration(i)*time.Minute + 30*time.Second)}
-	}
-	costs := make([]string, 12)
-	plain := ansi.Strip(strings.Join(c.promptTable(turns, 0, false, at, costs, 120), "\n"))
-	if strings.Contains(plain, "▶") || !strings.Contains(plain, "  12 ") || strings.Contains(plain, "│   1 ") {
-		t.Errorf("the newest ten, none lit for an older pick:\n%s", plain)
 	}
 }
 
@@ -139,13 +130,54 @@ func TestFlowAndContextSplit(t *testing.T) {
 		}
 		return -1
 	}
-	if c := col(flowAndContext(nodes, 0, pg, nil, 200)); c != 140+1 { // the heading's margin
+	if c := col(flowAndContext([][]kit.FlowNode{nodes}, 0, pg, nil, 200)); c != 140+1 { // the heading's margin
 		t.Errorf("wide: the context starts at %d, want 140 (70 %%)", c)
 	}
-	if c := col(flowAndContext(nodes, 0, pg, nil, 120)); c != 120-contextMinW+1 {
+	if c := col(flowAndContext([][]kit.FlowNode{nodes}, 0, pg, nil, 120)); c != 120-contextMinW+1 {
 		t.Errorf("medium: the context starts at %d, want %d (its least width)", c, 120-contextMinW)
 	}
-	if c := col(flowAndContext(nodes, 0, pg, nil, 90)); c != 1 { // the section heading's margin
+	if c := col(flowAndContext([][]kit.FlowNode{nodes}, 0, pg, nil, 90)); c != 1 { // the section heading's margin
 		t.Errorf("narrow: the context starts at %d, want stacked", c)
+	}
+}
+
+// Five prompts show; the window scrolls down with the pick through the
+// newest ten, never past them.
+func TestPromptWindow(t *testing.T) {
+	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	turns := make([]usage.Turn, 12)
+	for i := range turns {
+		turns[i] = usage.Turn{Prompt: usage.Prompt{Time: at.Add(time.Duration(i) * time.Minute), Text: "plank"}, End: at.Add(time.Duration(i)*time.Minute + 30*time.Second)}
+	}
+	costs := make([]string, 12)
+	var c Chat
+	shown := func(picked int) []string {
+		var nums []string
+		for _, r := range c.promptTable(turns, picked, false, at, costs, 120) {
+			cells := strings.Split(ansi.Strip(r), "│")
+			if len(cells) > 1 {
+				if n := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(cells[1]), "▶")); n != "" && n != "#" {
+					nums = append(nums, n)
+				}
+			}
+		}
+		return nums
+	}
+	if got := strings.Join(shown(11), " "); got != "12 11 10 9 8" {
+		t.Errorf("the newest picked: %s", got)
+	}
+	if got := strings.Join(shown(5), " "); got != "10 9 8 7 6" {
+		t.Errorf("the seventh newest picked: %s", got)
+	}
+	if got := strings.Join(shown(2), " "); got != "7 6 5 4 3" {
+		t.Errorf("the tenth newest picked: %s", got)
+	}
+	// ↑↓ stops at the tenth newest.
+	c.rep.s = &usage.Session{Prompts: make([]usage.Prompt, 12)}
+	for range 20 {
+		c.pickPrompt(1)
+	}
+	if c.rep.back != promptRows-1 {
+		t.Errorf("picked %d back, want %d", c.rep.back, promptRows-1)
 	}
 }

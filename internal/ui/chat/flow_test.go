@@ -12,8 +12,8 @@ import (
 
 // The flow is the prompt's steps in time order: calls of one tool in a row
 // fold to ×N with their files or tools joined and their growth summed, a
-// subagent forks a lane that its own calls sit in and a join closes when it
-// comes back, a question shows its wait, a call still out turns the
+// subagent is one row with its job, time and tokens and its calls are in
+// its own flow, a question shows its wait, a call still out turns the
 // spinner, and the end says running while the prompt runs.
 func TestFlowNodes(t *testing.T) {
 	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
@@ -44,11 +44,9 @@ func TestFlowNodes(t *testing.T) {
 	}{
 		{kit.FlowHead, 0, "paint the shed blue", ""},
 		{kit.FlowStep, 0, "Read ×2", "door.go · hinge.go"},
-		{kit.FlowFork, 0, "⌂ Explore", "find the brushes"},
-		{kit.FlowStep, 1, "Grep ×2", ""},
+		{kit.FlowStep, 0, "⌂ Explore", "find the brushes"},
 		{kit.FlowStep, 0, "? asked you", ""},
 		{kit.FlowStep, 0, "▭ paint-shop ×2", "list_colours · mix"},
-		{kit.FlowJoin, 0, "back", ""},
 		{kit.FlowStep, 0, "Bash", "go test"},
 		{kit.FlowEnd, 0, "running · 20s · in 12k · used 13k · $0.42", ""},
 	}
@@ -61,11 +59,21 @@ func TestFlowNodes(t *testing.T) {
 			t.Errorf("node %d: %+v, want %+v", i, n, w)
 		}
 	}
-	if nodes[1].Right != "+3.0k" || nodes[2].To != 1 || nodes[2].Right != "15s · 21k" || nodes[4].Right != "5s" || nodes[6].From != 1 || nodes[6].Right != "✓ · +1.2k" {
+	if nodes[1].Right != "+3.0k" || nodes[2].Right != "15s · 21k" || nodes[2].State != kit.FlowDone || nodes[3].Right != "5s" {
 		t.Errorf("right column: %+v", nodes)
 	}
-	if nodes[7].State != kit.FlowBusy || nodes[8].State != kit.FlowBusy || nodes[1].State != kit.FlowDone {
+	if nodes[5].State != kit.FlowBusy || nodes[6].State != kit.FlowBusy || nodes[1].State != kit.FlowDone {
 		t.Errorf("states: %+v", nodes)
+	}
+	// The subagent's own flow: its type and job, its calls, its end.
+	flows := agentFlows(turn, s(25), true, "/garden/shed")
+	if len(flows) != 1 {
+		t.Fatalf("%d agent flows", len(flows))
+	}
+	ag := flows[0]
+	if len(ag) != 3 || ag[0].Kind != kit.FlowHead || ag[0].Name != "⌂ Explore" || ag[0].Note != "find the brushes" ||
+		ag[1].Name != "Grep ×2" || ag[2].Kind != kit.FlowEnd || ag[2].Name != "done · 15s · 21k" {
+		t.Errorf("agent flow: %+v", ag)
 	}
 	// The same prompt over: the Bash never answered, the end says done.
 	turn.End = s(30)
@@ -92,12 +100,15 @@ func TestFlowNodes(t *testing.T) {
 		t.Errorf("%d rows, second %+v", len(cut), cut[1])
 	}
 
-	// Two subagents out at once take two lanes; one after the other, one.
-	at2 := usage.Turn{Agents: []*usage.Agent{
-		{ID: "x", Left: s(1), Back: s(10)}, {ID: "y", Left: s(2), Back: s(5)}, {ID: "z", Left: s(6), Back: s(8)},
-	}}
-	if lanes := laneMap(at2, s(20), false); lanes["x"] != 1 || lanes["y"] != 2 || lanes["z"] != 2 {
-		t.Errorf("lanes %v", lanes)
+	// Two subagents out at once: a flow each, in the order they started,
+	// the one still out running.
+	two := usage.Turn{Agents: []*usage.Agent{
+		{ID: "y", Type: "Plan", Left: s(2)}, {ID: "x", Type: "Explore", Left: s(1), Back: s(10), Status: "completed"},
+	}, Steps: []usage.ToolUse{{ID: "gx", Name: "Grep", Agent: "x", Time: s(3), Back: s(4)}, {ID: "ry", Name: "Read", Agent: "y", Time: s(3)}}}
+	fs := agentFlows(two, s(20), true, "")
+	if len(fs) != 2 || fs[0][0].Name != "⌂ Explore" || fs[1][0].Name != "⌂ Plan" || fs[0][1].Name != "Grep" || fs[1][1].Name != "Read" ||
+		fs[1][2].State != kit.FlowBusy || !strings.HasPrefix(fs[1][2].Name, "running") {
+		t.Errorf("two agents: %+v", fs)
 	}
 
 	// An empty turn still draws: the prompt and its end.

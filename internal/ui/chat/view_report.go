@@ -83,8 +83,13 @@ func section(title, note string) string {
 	return kit.StyleBold.Render(" "+title) + kit.StyleDim.Render("  "+note)
 }
 
-// promptRows is how many prompts the table at the page's bottom shows.
-const promptRows = 10
+// The table at the page's bottom shows promptShown prompts, and ↑↓ pick
+// among the newest promptRows, the table scrolling to keep the pick in
+// view (the user's "son 5, aşağı yukarı 10'a kadar").
+const (
+	promptShown = 5
+	promptRows  = 10
+)
 
 // pageView is the session prompt by prompt: on top the picked prompt's
 // flow and the session's context, which scroll; under them the prompts as
@@ -110,7 +115,8 @@ func (c *Chat) pageView(s *usage.Session, w int) (top, table []string) {
 	costs := c.rep.page.costs
 	// The picked prompt's flow beside the session's context, over the
 	// prompts' table held at the bottom.
-	top = append(top, flowAndContext(flowOf(t, now, running, costs[picked], s.Dir), c.beat, c.rep.page, s.Fed, w)...)
+	flows := append([][]kit.FlowNode{flowOf(t, now, running, costs[picked], s.Dir)}, agentFlows(t, now, running, s.Dir)...)
+	top = append(top, flowAndContext(flows, c.beat, c.rep.page, s.Fed, w)...)
 	table = append([]string{"", section("prompts", fmt.Sprintf("↑↓ picks one · newest first · %d in all", len(turns)))},
 		c.promptTable(turns, picked, working, now, costs, w)...)
 	return top, table
@@ -149,23 +155,29 @@ const (
 	flowMinW     = 48
 )
 
-// flowAndContext are the page's first two parts: the picked prompt's flow
-// on the left and the session's context on the right, top-aligned; one
-// under the other in a box too narrow for both.
-func flowAndContext(nodes []kit.FlowNode, beat int, pg page, fed map[string]int64, w int) []string {
+// flowAndContext are the page's first two parts: the picked prompt's flows
+// — its own, then each subagent's under it — on the left and the
+// session's context on the right, top-aligned; one under the other in a
+// box too narrow for both.
+func flowAndContext(flows [][]kit.FlowNode, beat int, pg page, fed map[string]int64, w int) []string {
+	drawn := func(w int) []string {
+		out := []string{"", section("flow", "what the picked prompt did, step by step")}
+		for i, nodes := range flows {
+			if i > 0 {
+				out = append(out, "")
+			}
+			for _, row := range kit.DrawFlow(nodes, beat, w) {
+				out = append(out, " "+row)
+			}
+		}
+		return out
+	}
 	ctxW := max(w*contextShare/100, contextMinW)
 	flowW := w - ctxW
 	if flowW < flowMinW {
-		out := []string{"", section("flow", "what the picked prompt did, step by step")}
-		for _, row := range kit.DrawFlow(nodes, beat, w-1) {
-			out = append(out, " "+row)
-		}
-		return append(out, contextPart(pg, fed, w)...)
+		return append(drawn(w-1), contextPart(pg, fed, w)...)
 	}
-	left := []string{"", section("flow", "what the picked prompt did, step by step")}
-	for _, row := range kit.DrawFlow(nodes, beat, flowW-2) {
-		left = append(left, " "+row)
-	}
+	left := drawn(flowW - 2)
 	right := contextPart(pg, fed, ctxW)
 	out := make([]string, max(len(left), len(right)))
 	for i := range out {
@@ -181,11 +193,12 @@ func flowAndContext(nodes []kit.FlowNode, beat int, pg page, fed map[string]int6
 	return out
 }
 
-// promptTable is the newest promptRows prompts, newest first, three rows
-// each, as a table: its number, its state, when, how long, its tokens —
-// its own, in, used — its cost, and its text over three rows. Each column
-// is as wide as its longest value; the text takes the rest. The picked
-// prompt is lit when it is among them; an older one picked shows above.
+// promptTable is promptShown prompts of the newest promptRows, newest
+// first, three rows each — the newest, or a window scrolled down to keep
+// the picked one in it — as a table: its number, its state, when, how
+// long, its tokens — its own, in, used — its cost, and its text over three
+// rows. Each column is as wide as its longest value; the text takes the
+// rest. The picked prompt is lit.
 func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now time.Time, costs []string, w int) []string {
 	last := len(turns) - 1
 	type entry struct {
@@ -199,7 +212,8 @@ func (c *Chat) promptTable(turns []usage.Turn, picked int, working bool, now tim
 	// that is cut before it is flattened and wrapped, so a pasted document
 	// of a prompt costs the frame nothing.
 	keep := 3*w + 3
-	for i := last; i >= 0 && i > last-promptRows; i-- {
+	top := last - kit.Clamp(last-picked-(promptShown-1), 0, promptRows-promptShown)
+	for i := top; i >= 0 && i > top-promptShown; i-- {
 		tn := turns[i]
 		end, _ := turnEnd(tn, i == last, working, now)
 		mark := "  "

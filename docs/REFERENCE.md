@@ -378,28 +378,32 @@ a spinner while it runs. Calls of one tool in a row fold into one (`Read
 ×3`), the files they read or edited beside it, relative to the session's
 folder, or a shell call's commands by their first words; the right column
 is what the call's results added to the context (`+2.1k`), measured as a
-skill's tokens are. A subagent forks a lane beside the main one (`├─┬`,
-its type and the job it was given, how long it took and what it used),
-its own calls sit in that lane (`│ ├`), and the lane joins back when its
-result comes (`├─┘ back ✓`); two subagents out at once take two lanes. A
+skill's tokens are. A subagent is one row (`⌂` its type, the job it was
+given, how long it took and what it used), and under the prompt's flow
+each subagent has a flow of its own, in the order they were started: its
+type and job on top, its calls, and its end — `done`, or `running` with
+a spinner while it works — so several out at once each read on their
+own. A
 skill is `≡ name`, an MCP call `▭ server` with its tool, a question to
 you `? asked you` with how long you took. A call still out turns the
 spinner; one that never got its answer shows a dim `·`. At most fourteen
 steps show; the earlier ones are one dim row, `⋮ N earlier steps`.
 
 ```
- ❯   paint the garden shed                        14:02:10
- ├   Read ×3       door.go · hinge.go                +2.1k
- ├   Bash ×2       go test · go vet                    +9k
- ├─┬ ⌂ Explore     find the brushes             11s · 21k
- │ ├ Grep ×4
- │ ├ Read ×6
- ├─┘ back                                                ✓
- ├   ≡ brush-care                                    +1.5k
- ├   ▭ paint-shop  list_colours · mix                +3.0k
- ├   Edit ×4       door.go
- ├   Bash          go test                               ◐
- ●   done · 2m10s · in 12k · used 13k · $0.42
+ ❯ paint the garden shed                          14:02:10
+ ├ Read ×3       door.go · hinge.go                  +2.1k
+ ├ Bash ×2       go test · go vet                      +9k
+ ├ ⌂ Explore     find the brushes                11s · 21k
+ ├ ≡ brush-care                                      +1.5k
+ ├ ▭ paint-shop  list_colours · mix                  +3.0k
+ ├ Edit ×4       door.go
+ ├ Bash          go test                                 ◐
+ ● done · 2m10s · in 12k · used 13k · $0.42
+
+ ❯ ⌂ Explore find the brushes                     14:02:31
+ ├ Grep ×4
+ ├ Read ×6
+ ● done · 11s · 21k
 ```
 
 **The context.** The session's, as its newest call sent it, drawn as
@@ -436,17 +440,16 @@ how many more prompts fit before the window fills.
  ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛶   ⛶ free         207k  20.7%
 ```
 
-At the box's bottom, held there while the rest scrolls above it, the
-newest ten prompts as a table, three rows each — its number (`▶` the
+At the box's bottom, held there while the rest scrolls above it, five
+prompts as a table, three rows each — its number (`▶` the
 picked one), its state (`running` and `asking` in the running colour,
 `done`, `stopped` for an answer cut short), when it started and `→` when
 it ended (where Claude Code wrote the turn's end, or `running`), its
 duration without the questions' waits, its tokens — `prompt` (its own),
 `in` and `used` (above) — its API cost, and its text over three rows,
 written over several lines or not: line breaks show as spaces. Each
-column is as wide as its longest value. `↑↓` picks one; the newest is
-followed, and an older prompt than the ten shows above while the table
-lights none.
+column is as wide as its longest value. `↑↓` picks one among the newest
+ten, the table scrolling to keep it in view; the newest is followed.
 
 ```
  ┌───────┬─────────┬─────────────┬──────────┬──────────┬──────────┬──────────────────┐

@@ -403,6 +403,27 @@ if args.count == 3, args[1] == "--open" {
         exit(1)
     }
 }
+// quitOlder quits every other Lazychat started before this one. Each path
+// is its own app to macOS — /Applications, Homebrew's Cellar folder that
+// changes with every upgrade, brew services' — so an upgrade left the old
+// one beside the new and the menu bar showed two or three. The newest
+// stays: two started at once keep the later one, the pid breaking a tie.
+func quitOlder() {
+    let me = NSRunningApplication.current
+    let mine = me.launchDate ?? Date()
+    let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "dev.lazychat.app").filter { other in
+        guard other.processIdentifier != me.processIdentifier else { return false }
+        let theirs = other.launchDate ?? .distantPast
+        return theirs < mine || theirs == mine && other.processIdentifier < me.processIdentifier
+    }
+    for other in others { other.terminate() }
+    // One that does not quit within two seconds is made to.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        for other in others where !other.isTerminated { other.forceTerminate() }
+    }
+}
+
+quitOlder()
 let app = NSApplication.shared
 let bar = Bar()
 app.delegate = bar

@@ -219,10 +219,11 @@ func (c *Chat) working(s *usage.Session, now time.Time) bool {
 }
 
 // pickPrompt moves the prompt shown in full: up to a newer one, as the
-// list runs, down to an older one; on the newest it follows the next.
+// list runs, down to an older one among the newest promptRows; on the
+// newest it follows the next.
 func (c *Chat) pickPrompt(d int) {
 	if r := &c.rep; r.s != nil {
-		r.back = kit.Clamp(r.back+d, 0, max(0, len(r.s.Prompts)-1))
+		r.back = kit.Clamp(r.back+d, 0, max(0, min(len(r.s.Prompts), promptRows)-1))
 	}
 }
 

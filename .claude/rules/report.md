@@ -61,14 +61,15 @@ paths:
   the tree sums usage now.
 - The report is the tree cursor's session prompt by prompt: the picked
   prompt's flow, the context and its report on top, which scroll, and the
-  newest ten prompts as a three-row table held at the box's bottom (the
-  user's "en altta 10 tane sabit", then "son on taneyi"); a box too short
+  prompts as a three-row table held at the box's bottom — five showing,
+  ↑↓ picking among the newest ten with the table scrolling to the pick
+  (the user's "en altta 10 tane sabit", then "son on taneyi", then "son 5,
+  aşağı yukarı 10'a kadar"; promptShown, promptRows); a box too short
   for both scrolls the whole page. Table columns are as wide as their
   longest value: fixed widths cut "245" and "20m 50s". Columns: #, state
   (turnState: running / asking in StyleBusy, done, stopped dim; a lit row
   keeps the selection's colours), started, duration (the active time, the
-  user's word for it), tokens, API cost. ↑↓ pick; the newest is followed;
-  an older prompt than the ten shows above, the table lighting none. On a
+  user's word for it), tokens, API cost. The newest is followed. On a
   project, its newest session.
 - The page's data — turns, context, timeline, costs — is derived once per
   read, in the read goroutine (chat/report.go derive → page), and View
@@ -82,12 +83,13 @@ paths:
   Nothing in chat/view*.go may call Turns, Context, Timeline or AllCalls.
 - The flow (chat/flow.go flowOf → kit.DrawFlow) is the prompt's steps as
   git log draws branches, the user's choice over a roster of workers and a
-  ring of building plots before it: Turn.Steps (every ToolUse, the
-  subagents' too) in time order, calls of one tool in a row folded ×N
-  with their files or command heads joined, a subagent a fork (its lane
-  from laneMap: the lowest free while it is out) with its own steps in
-  the lane and a join at Agent.Back, a question with its wait, the end
-  row with the turn's time and tokens. Fourteen steps at most, the rest
+  ring of building plots before it: the main agent's Turn.Steps in time
+  order, calls of one tool in a row folded ×N with their files or command
+  heads joined, a subagent one row (job, time, tokens), a question with its
+  wait, the end row with the turn's time and tokens. Each subagent then
+  has its own flow under it (agentFlows, in start order): its type and job,
+  its steps, its end — the user wanted several agents' flows shown apart,
+  not as lanes forked off one flow (the first version). Fourteen steps at most, the rest
   "⋮ N earlier steps" on top (the user picked the cap over a long page).
   A step's right column is ToolUse.Added, measured in the reader as a
   Use's Added is, in subagent streams too; Back comes from its
