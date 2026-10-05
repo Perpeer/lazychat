@@ -127,12 +127,21 @@ preflight() {
   fi
 }
 
-version=dev
+version=dev tag=""
 if git rev-parse --git-dir >/dev/null 2>&1 && git rev-parse --verify -q HEAD >/dev/null; then
   # The number GitHub gives this commit: the release it will be
   # (packaging/next-version.sh, from the newest vX.Y.Z tag), or the tag
   # it carries already — so the corner reads as the releases page does.
-  # A tag list behind GitHub's gives a lower number: git fetch --tags.
+  # The release workflow makes the tags on GitHub, so they are fetched
+  # first: with a list behind GitHub's this build would name a release it
+  # is already past, and the corner would offer that release as an update.
+  # Never a prompt and never long; offline the local tags stand.
+  if git remote get-url origin >/dev/null 2>&1; then
+    if ! GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=10" \
+      git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=10 fetch --tags --quiet origin 2>/dev/null; then
+      say "!" "version" "could not read GitHub's tags: the number comes from this checkout's, which may be behind"
+    fi
+  fi
   number="$(packaging/next-version.sh 2>/dev/null || true)"
   if [ -z "$number" ]; then
     number="$(git tag --points-at HEAD --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)"
@@ -140,6 +149,9 @@ if git rev-parse --git-dir >/dev/null 2>&1 && git rev-parse --verify -q HEAD >/d
   fi
   [ -z "$number" ] && number=0.0.0
   version="$number $(git rev-parse --short HEAD)"
+  # The newest release this checkout is past, so the build can tell when a
+  # newer one is out.
+  tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)"
   # A dirty tree gets a hash of its changes, so two builds of different
   # uncommitted work are told apart and a rebuild of the same one is not needed.
   if [ -n "$(git status --porcelain)" ]; then
@@ -150,7 +162,7 @@ fi
 
 preflight
 if [ "$check_only" = 1 ]; then
-  [ "$version" != dev ] && echo "ok    version     $version"
+  [ "$version" != dev ] && echo "ok    version     $version${tag:+ · past $tag}"
   exit 0
 fi
 
@@ -165,9 +177,6 @@ else
   # -trimpath keeps the builder's directory names out of the binary. The
   # output is kept back and shown only when the build fails, with a hint.
   log="$(mktemp)"
-  # The newest release this checkout is past, so the build can tell when a
-  # newer one is out.
-  tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)"
   if ! CGO_ENABLED="$cgo" go build -trimpath -ldflags "-X 'main.version=$version' -X 'main.releaseTag=$tag'" -o "$bin" ./cmd/lazychat >"$log" 2>&1; then
     tail -n 20 "$log" >&2
     if grep -qiE 'dial tcp|proxy|timeout|no such host|TLS' "$log"; then

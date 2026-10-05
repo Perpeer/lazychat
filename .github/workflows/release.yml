@@ -2,12 +2,10 @@
 # not), as one release of its newest commit: ./check.sh on a Mac first, then
 # the next version (packaging/next-version.sh: the next
 # patch, or [minor] / [major] in a commit message) tagged on the pushed
-# commit, a GitHub release whose notes are the commits since the last one,
-# and the tap's formula (Perpeer/homebrew-tap) moved to it, so
-# `brew upgrade lazychat` takes it. Nothing is committed to main, so a
-# release never starts another. The tap needs the HOMEBREW_TAP_TOKEN secret
-# (a fine-grained token, Contents: Read and write on Perpeer/homebrew-tap
-# only); without it the release is made and the tap is left as it was.
+# commit, and a GitHub release whose notes are the commits since the last
+# one. Nothing is committed to main, so a release never starts another. The
+# tap (Perpeer/homebrew-tap) follows by itself: its own workflow reads the
+# newest release every hour, so this one needs no token for it.
 name: Release
 
 on:
@@ -76,18 +74,3 @@ jobs:
         run: |
           v="${{ steps.version.outputs.v }}"
           gh release create "v$v" --title "lazychat $v" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
-      - name: Tap
-        if: steps.version.outputs.v != ''
-        env:
-          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: |
-          v="${{ steps.version.outputs.v }}"
-          if [ -z "$TAP_TOKEN" ]; then
-            echo "::warning::HOMEBREW_TAP_TOKEN is not set: the tap still has the last version; ./release.sh --formula $v updates it by hand"
-            exit 0
-          fi
-          git clone -q "https://x-access-token:$TAP_TOKEN@github.com/Perpeer/homebrew-tap.git" "$RUNNER_TEMP/tap"
-          git -C "$RUNNER_TEMP/tap" config user.name "github-actions[bot]"
-          git -C "$RUNNER_TEMP/tap" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          packaging/homebrew/update-tap.sh "$v" "$RUNNER_TEMP/tap"
-          git -C "$RUNNER_TEMP/tap" push origin HEAD

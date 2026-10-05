@@ -125,9 +125,12 @@ check compares from — so a build saying v1.0.3 while 1.0.2 is the newest
 release shows no `↑`. Releases are tags `vX.Y.Z`. A push to main that
 changes what users run (cmd, internal, macos, go.mod/sum, the formula)
 releases itself (`.github/workflows/release.yml`): `./check.sh` on a Mac,
-the next version, the tag, a GitHub release with the commits as notes, and
-the tap's formula (github.com/Perpeer/homebrew-tap, with the
-`HOMEBREW_TAP_TOKEN` secret). Nothing is committed back to main. By hand:
+the next version, the tag and a GitHub release with the commits as notes.
+The tap (github.com/Perpeer/homebrew-tap) follows by itself: its `update`
+workflow runs its `update.sh` every hour and moves the formula to the
+newest release with the tap's own token — no secret here; `update.sh` runs
+by hand when GitHub cannot. install.sh fetches GitHub's tags before naming
+the version. Nothing is committed back to main. By hand:
 `./release.sh X.Y.Z` tags here, `./release.sh --formula X.Y.Z` writes the
 tap (`../homebrew-tap`); pushing is the user's. Homebrew's build stamps
 `X.Y.Z` through the same `-X main.version`. `./install.sh --brew` installs

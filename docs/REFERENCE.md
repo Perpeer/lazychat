@@ -37,11 +37,14 @@ message of the push makes it 1.1.0 or 2.0.0), its tag on the pushed
 commit, a GitHub release listing the commits since the last one, and the
 tap's formula moved to it. One push is one release, of its newest commit;
 when pushes come close together, only the newest one is released, its
-notes listing the others' commits. The tap needs the
-`HOMEBREW_TAP_TOKEN` secret, a fine-grained token with Contents: Read and
-write on Perpeer/homebrew-tap only. By hand, `./release.sh 1.0.0` tags a
-clean, checked main here and `./release.sh --formula 1.0.0` moves the tap
-once the tag is on GitHub.
+notes listing the others' commits. The tap follows by itself:
+Perpeer/homebrew-tap's `update` workflow moves its formula to the newest
+release every hour (`gh workflow run update -R Perpeer/homebrew-tap` at
+once), and its `update.sh` does the same from a clone of the tap. By hand,
+`./release.sh 1.0.0` tags a clean, checked main here and `./release.sh
+--formula 1.0.0` writes the tap once the tag is on GitHub. `./install.sh`
+fetches GitHub's tags before it names a source build's version, so a build
+never offers as an update the release it is already past.
 
 ## Building from source
 

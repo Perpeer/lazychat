@@ -3,7 +3,7 @@ paths:
   - "install.sh"
   - "release.sh"
   - "packaging/**"
-  - ".github/workflows/homebrew.yml"
+  - ".github/workflows/release.yml"
   - "uninstall.sh"
   - "check.sh"
 ---
@@ -40,8 +40,8 @@ paths:
   takes the CLI only (no .app) and only past 225 stars for a self-submitted
   project; an official cask needs Apple's signing and notarization.
 - `packaging/homebrew/lazychat.rb` is the formula's source; the tap's copy
-  is written from it by packaging/homebrew/update-tap.sh (the release
-  workflow, homebrew.yml for a tag pushed by hand, release.sh --formula),
+  is written from it by packaging/homebrew/update-tap.sh (release.sh
+  --formula) and kept on the newest release by the tap's own update.sh,
   with the tag archive's url and sha256 — known only once the tag is on
   GitHub. The source keeps v1.0.0's values: a release commits nothing to
   main, or it would start another release.
@@ -51,8 +51,14 @@ paths:
   released: a run whose commit is no longer origin/main's tip stops, the
   newer run's release covering it. check.sh on macos-latest, the next
   version (next-version.sh: newest vX.Y.Z's next patch, [minor]/[major] in
-  a message of the push), tag, gh release with the commits as notes, the
-  tap with HOMEBREW_TAP_TOKEN. A tag pushed with GITHUB_TOKEN starts no
+  a message of the push), tag, gh release with the commits as notes. The
+  tap is not this repository's job: Perpeer/homebrew-tap's `update`
+  workflow reads the newest release hourly (`update.sh`, url and sha256
+  only), so no secret crosses repositories — the token step it replaced
+  was never set and three releases left the tap at 1.0.0. install.sh
+  fetches tags first: built from a checkout behind GitHub's tags, it named
+  itself the release it was past and offered it as an update. A tag
+  pushed with GITHUB_TOKEN starts no
   workflow, so all of it is one job; concurrency "release" keeps pushes in
   order. Pushing from this Mac is the user's.
 - `./install.sh --brew` (packaging/homebrew/brew-dev.sh) tests the formula

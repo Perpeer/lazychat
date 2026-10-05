@@ -82,3 +82,77 @@ func TestExtraChecks(t *testing.T) {
 		t.Errorf("both there: %+v", got)
 	}
 }
+
+// The version install.sh stamps comes from GitHub's tags, not only the
+// checkout's: the release workflow tags on GitHub, and a checkout that has
+// not fetched v1.0.3 would call a build past it 1.0.3 and offer 1.0.3 as an
+// update. Offline it goes on with the local tags and says so.
+func TestInstallVersionFetchesTags(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git")
+	}
+	gitIn := func(dir string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false"}, args...)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	origin, clone := t.TempDir(), t.TempDir()
+	gitIn(origin, "init", "-q", "-b", "main")
+	gitIn(origin, "commit", "-q", "--allow-empty", "-m", "first")
+	gitIn(origin, "tag", "v1.0.2")
+	gitIn(origin, "commit", "-q", "--allow-empty", "-m", "second")
+	gitIn(clone, "clone", "-q", origin, ".")
+	// GitHub tags the release after this checkout last fetched.
+	gitIn(origin, "tag", "v1.0.3")
+	gitIn(origin, "commit", "-q", "--allow-empty", "-m", "third")
+	gitIn(clone, "pull", "-q", "--no-tags", "origin", "main")
+
+	// The scripts run from the checkout, which they read as the repository.
+	for _, f := range []string{"install.sh", "packaging/next-version.sh"} {
+		b, err := os.ReadFile(filepath.Join("../..", f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(clone, f)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(clone, f), b, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bin := t.TempDir()
+	for name, body := range map[string]string{
+		"uname":   `[ "$1" = -m ] && echo arm64 || echo Darwin`,
+		"sw_vers": "echo 15.1",
+		"sysctl":  `case "$2" in hw.optional.arm64) echo 1 ;; *) echo 0 ;; esac`,
+		"go":      `case "$2" in GOVERSION) echo go1.26.1 ;; GOTOOLCHAIN) echo auto ;; esac`,
+	} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\n"+body+"\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func() string {
+		t.Helper()
+		cmd := exec.Command("bash", filepath.Join(clone, "install.sh"), "--check")
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "LAZYCHAT_HIDE=brew")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("install.sh --check: %v\n%s", err, out)
+		}
+		return string(out)
+	}
+	if out := check(); !strings.Contains(out, "version     1.0.4 ") || !strings.Contains(out, "past v1.0.3") {
+		t.Errorf("a checkout behind GitHub's tags did not read them:\n%s", out)
+	}
+
+	// Offline: the local tags stand, and the install says the number may be low.
+	gitIn(clone, "tag", "-d", "v1.0.3")
+	gitIn(clone, "remote", "set-url", "origin", filepath.Join(t.TempDir(), "gone"))
+	out := check()
+	if !strings.Contains(out, "could not read GitHub's tags") || !strings.Contains(out, "past v1.0.2") {
+		t.Errorf("offline:\n%s", out)
+	}
+}
