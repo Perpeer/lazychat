@@ -45,9 +45,10 @@ paths:
   with the tag archive's url and sha256 — known only once the tag is on
   GitHub. The source keeps v1.0.0's values: a release commits nothing to
   main, or it would start another release.
-- release.yml releases each push to main that changes cmd, internal,
-  macos, go.mod/sum or the formula, tests (*_test.go) left out — a commit
-  adding release_test.go once released 1.0.1. Only main's newest commit is
+- release.yml releases every push to main, whatever it changed (the
+  user's word): a paths filter (cmd, internal, macos, go.mod/sum, the
+  formula, tests left out) made pushes of docs or tests release nothing,
+  and the user kept asking why no version came. Only main's newest commit is
   released: a run whose commit is no longer origin/main's tip stops, the
   newer run's release covering it. check.sh on macos-latest, the next
   version (next-version.sh: newest vX.Y.Z's next patch, [minor]/[major] in

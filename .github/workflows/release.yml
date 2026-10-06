@@ -1,5 +1,6 @@
-# Releases every push to main that changes what users run (tests alone do
-# not), as one release of its newest commit: ./check.sh on a Mac first, then
+# Releases every push to main, whatever it changed, as one release of its
+# newest commit — a push that touched only docs or tests and made no
+# version left the user asking why: ./check.sh on a Mac first, then
 # the next version (packaging/next-version.sh: the next
 # patch, or [minor] / [major] in a commit message) tagged on the pushed
 # commit, and a GitHub release whose notes are the commits since the last
@@ -13,15 +14,6 @@ name: Release
 on:
   push:
     branches: [main]
-    paths:
-      - "cmd/**"
-      - "internal/**"
-      - "macos/**"
-      - "go.mod"
-      - "go.sum"
-      - "packaging/homebrew/lazychat.rb"
-      # Tests change nothing users run.
-      - "!**/*_test.go"
 
 permissions:
   contents: write

@@ -29,8 +29,7 @@ checkout: a local tap (`lazychat/dev`) whose formula is
 `packaging/homebrew/lazychat.rb` pointed at an archive of HEAD, version
 `1.0.N-dev`, installed from source, then `brew test` and `brew audit`.
 `./install.sh --brew --remove` takes it and the tap away. Releases
-make themselves: a push to main that changes what users run (`cmd/`,
-`internal/`, `macos/`, `go.mod`, `go.sum`, the formula; not tests alone) runs
+make themselves: every push to main, whatever it changed, runs
 `.github/workflows/release.yml` — `./check.sh` on a Mac, then the next
 version (the next patch, 1.0.1, 1.0.2…; `[minor]` or `[major]` in a commit
 message of the push makes it 1.1.0 or 2.0.0), its tag on the pushed
