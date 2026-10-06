@@ -270,6 +270,9 @@ func TestNewsSounds(t *testing.T) {
 	if len(got) != 1 || got[0] != sound.Start {
 		t.Fatalf("an answer is quiet, a new prompt starts the keys: %v", got)
 	}
+	if got, _ := newsSounds(was, news(status.Working, status.Working)); len(got) != 0 {
+		t.Fatalf("still working is no news: %v", got)
+	}
 	got, _ = newsSounds(was, news(status.Asks, status.Idle))
 	if len(got) != 2 || got[0] != sound.Ask || got[1] != sound.Done {
 		t.Fatalf("asks and finished while looked at: %v", got)

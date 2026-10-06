@@ -656,9 +656,11 @@ tabs never move; on a short terminal (80×24) it shrinks to one.
         work    work    more     a party
 ```
 
-- **typing** while a session works (claude leads its window title with ◐ ◑;
-  codex leads it with ⠋ ⠙; a program that sets no title counts as working
-  while output came in the last two seconds). One badge `●` on its top edge per session at
+- **typing** while a session works: claude's own record says its prompt
+  is still being answered (its end not written, its calls moving in the
+  last two minutes, or a tool call out); an older claude leads its window
+  title with ◐ ◑, codex with ⠋ ⠙, and a program that sets no title counts
+  as working while output came in the last two seconds. One badge `●` on its top edge per session at
   work, the first by the right corner, three at most: as sessions finish
   their badges go one by one, and it types until none works.
 - **a party** when a session is done and you have not looked at it yet —

@@ -204,3 +204,54 @@ func TestAgentsOut(t *testing.T) {
 	c.tick(Signals{Given: true, Inputs: 1, ScreenAsks: true, Last: turn})
 	c.want("asking with an agent out", Asks)
 }
+
+// A session whose title never spins — Claude Code 2.1 keeps "✳ name" —
+// works while its transcript has the prompt's turn open and moving, or a
+// call out: no done, so no done sound, until the turn's end is written.
+// An open turn gone quiet, or a call out past callOutWithin, holds nothing,
+// and a question on screen is still a question.
+func TestTurnOpen(t *testing.T) {
+	c := newClock(t)
+	turn := &usage.Turn{Prompt: usage.Prompt{Time: c.now}}
+	for i := range 10 {
+		turn.Last = c.now
+		if i == 4 {
+			turn.Steps = append(turn.Steps, usage.ToolUse{ID: "ping", Name: "Bash", Time: c.now})
+		}
+		c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+		c.want("the turn open, the title still", Working)
+	}
+	turn.Steps[0].Back = c.now
+	turn.End = c.now
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("the turn's end written, the grace over", Done)
+
+	// A long call keeps it working past the quiet; one out too long does not.
+	c = newClock(t)
+	call := usage.ToolUse{ID: "test", Name: "Bash", Time: c.now.Add(-10 * time.Minute)}
+	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now.Add(-11 * time.Minute)}, Last: c.now.Add(-10 * time.Minute), Steps: []usage.ToolUse{call}}
+	for range 3 {
+		c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+		c.want("a ten-minute call out", Working)
+	}
+	turn.Steps[0].Time = c.now.Add(-time.Hour)
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("a call out an hour", Done)
+
+	// An open turn quiet for long — an answer cut short — holds nothing.
+	c = newClock(t)
+	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now.Add(-time.Hour)}, Last: c.now.Add(-time.Hour)}
+	c.tick(Signals{Working: true, Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("an open turn quiet for an hour", Done)
+
+	// A question while the turn is open.
+	c = newClock(t)
+	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now}, Last: c.now}
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.tick(Signals{Given: true, Inputs: 1, ScreenAsks: true, Last: turn})
+	c.want("asking with the turn open", Asks)
+}

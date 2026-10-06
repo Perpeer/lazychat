@@ -28,7 +28,13 @@ it from there.
   `AskReader` (question on screen or in the window title — codex's
   "Action Required"), the `--settings` Notification hook
   (`Hooked`). Working comes from the process (title spinner, else output
-  in the last 2 s). A new tool touches only its own file; the board never
+  in the last 2 s) or from the tool's record (turnOpen over Signals.Last:
+  the newest turn's end unwritten and its calls moved within
+  turnOpenWithin, 2 min, or a main-agent call with no result within
+  callOutWithin, 30 min). Claude Code 2.1.291 sets "✳ name" once and
+  never spins it (recorded: an 18 s answer, one OSC 0 in 46 kB), so the
+  title alone called a working claude done or never working, and the
+  done sound played while it ran. A new tool touches only its own file; the board never
   names a tool.
 - States: `working`, `done` (finished, not looked at), `idle` (finished,
   looked at), `asks`, `rest`. These words are also the menu bar's wire

@@ -74,6 +74,37 @@ func agentsOut(t *usage.Turn, now time.Time) bool {
 	return false
 }
 
+// turnOpenWithin is how lately a turn the transcript has not ended must
+// have moved to count as at work: an answer cut short never writes its end,
+// and an open turn left behind must not hold a session at work for good.
+const turnOpenWithin = 2 * time.Minute
+
+// callOutWithin bounds a tool call with no result yet: a test run or a
+// build may take many minutes, one out longer is taken as lost.
+const callOutWithin = 30 * time.Minute
+
+// turnOpen says the transcript has the newest prompt still being answered:
+// its end not written and its calls moving lately, or a call of the main
+// agent still out. Claude Code 2.1 stopped turning a spinner in its window
+// title — it set "✳ name" once and kept it through an 18 s answer — so the
+// title alone called a working session done and the done sound played
+// while it ran.
+func turnOpen(t *usage.Turn, now time.Time) bool {
+	if t == nil || t.Ended() || t.Time.IsZero() {
+		return false
+	}
+	for _, s := range t.Steps {
+		if s.Agent == "" && s.Back.IsZero() && !s.Time.IsZero() && now.Sub(s.Time) <= callOutWithin {
+			return true
+		}
+	}
+	moved := t.Time
+	if t.Last.After(moved) {
+		moved = t.Last
+	}
+	return now.Sub(moved) <= turnOpenWithin
+}
+
 // stopGrace is how long a session that stopped working is watched before
 // it counts as done: claude's title stops spinning a moment before its
 // question is drawn, and a question is no finished answer.
@@ -146,7 +177,7 @@ func (b *Board) Step(now time.Time, live map[string]Signals) (answered []string)
 		// Subagents still out keep the session at work while its own agent
 		// waits on them quietly: claude's turn ends and its title stops, and
 		// the session was called done, then started again by their news.
-		busy := s.Working || !onScreen && !s.Hooked && agentsOut(s.Last, now)
+		busy := s.Working || !onScreen && !s.Hooked && (agentsOut(s.Last, now) || turnOpen(s.Last, now))
 		turn := b.turn(key)
 		b.lasts[key] = s.Last
 		if b.procs[key] != s.Proc {
