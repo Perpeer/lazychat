@@ -41,7 +41,7 @@ paths:
   project; an official cask needs Apple's signing and notarization.
 - `packaging/homebrew/lazychat.rb` is the formula's source; the tap's copy
   is written from it by packaging/homebrew/update-tap.sh (release.sh
-  --formula) and kept on the newest release by the tap's own update.sh,
+  --formula, follow-tap.sh in the release), the tap's own update.sh a backup,
   with the tag archive's url and sha256 — known only once the tag is on
   GitHub. The source keeps v1.0.0's values: a release commits nothing to
   main, or it would start another release.
@@ -51,11 +51,16 @@ paths:
   released: a run whose commit is no longer origin/main's tip stops, the
   newer run's release covering it. check.sh on macos-latest, the next
   version (next-version.sh: newest vX.Y.Z's next patch, [minor]/[major] in
-  a message of the push), tag, gh release with the commits as notes. The
-  tap is not this repository's job: Perpeer/homebrew-tap's `update`
-  workflow reads the newest release hourly (`update.sh`, url and sha256
-  only), so no secret crosses repositories — the token step it replaced
-  was never set and three releases left the tap at 1.0.0. install.sh
+  a message of the push), tag, gh release with the commits as notes, then
+  the tap: packaging/homebrew/follow-tap.sh clones Perpeer/homebrew-tap
+  with HOMEBREW_TAP_TOKEN, writes the formula through update-tap.sh (the
+  whole template, so a formula change travels too) and pushes. The tap's
+  own hourly `update` workflow was meant to make the token needless, but
+  its schedule never fired (0 of 40 runs; 1.0.8 never reached the tap,
+  1.0.11 was moved by hand): GitHub's schedules are best-effort. The
+  token is the user's to make; a missing one, a failed clone, archive or
+  push is a `::warning::` with the fix and exit 0 — the first token step
+  failed silently and three releases left the tap at 1.0.0. install.sh
   fetches tags first: built from a checkout behind GitHub's tags, it named
   itself the release it was past and offered it as an update. A tag
   pushed with GITHUB_TOKEN starts no

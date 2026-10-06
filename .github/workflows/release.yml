@@ -3,9 +3,11 @@
 # the next version (packaging/next-version.sh: the next
 # patch, or [minor] / [major] in a commit message) tagged on the pushed
 # commit, and a GitHub release whose notes are the commits since the last
-# one. Nothing is committed to main, so a release never starts another. The
-# tap (Perpeer/homebrew-tap) follows by itself: its own workflow reads the
-# newest release every hour, so this one needs no token for it.
+# one, and the tap's formula (Perpeer/homebrew-tap) moved to it with the
+# HOMEBREW_TAP_TOKEN secret (packaging/homebrew/follow-tap.sh): the tap's
+# own hourly schedule never fired. Without the secret, or when the move
+# fails, the run warns and the release stands. Nothing is committed to
+# main, so a release never starts another.
 name: Release
 
 on:
@@ -74,3 +76,8 @@ jobs:
         run: |
           v="${{ steps.version.outputs.v }}"
           gh release create "v$v" --title "lazychat $v" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+      - name: Homebrew tap
+        if: steps.version.outputs.v != ''
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: packaging/homebrew/follow-tap.sh "${{ steps.version.outputs.v }}"
