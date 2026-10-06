@@ -28,6 +28,16 @@ func (c *clock) tick(s Signals) []string {
 	return c.b.Step(c.now, map[string]Signals{"a": s})
 }
 
+// past ticks with s until a stop seen on the tick before has outlasted
+// stopGrace.
+func (c *clock) past(s Signals) []string {
+	var answered []string
+	for range int(stopGrace / time.Second) {
+		answered = c.tick(s)
+	}
+	return answered
+}
+
 func (c *clock) want(step string, st State) {
 	c.t.Helper()
 	if got := c.b.State("a"); got != st {
@@ -43,7 +53,7 @@ func TestBoardDoneSeen(t *testing.T) {
 	c.want("prompted", Working)
 	c.tick(Signals{Given: true, Inputs: 1})
 	c.want("stopped, within the grace", Working)
-	c.tick(Signals{Given: true, Inputs: 1})
+	c.past(Signals{Given: true, Inputs: 1})
 	c.want("after the grace", Done)
 	c.tick(Signals{Given: true, Inputs: 1, Looking: true})
 	c.want("looked at", Idle)
@@ -57,7 +67,7 @@ func TestBoardStartIsNoNews(t *testing.T) {
 	c := newClock(t)
 	c.tick(Signals{Working: true})
 	c.tick(Signals{})
-	c.tick(Signals{})
+	c.past(Signals{})
 	c.want("startup work over", Rest)
 }
 
@@ -84,7 +94,7 @@ func TestBoardHookOnlyTool(t *testing.T) {
 	c.tick(Signals{Working: true, Given: true, Inputs: 1})
 	told := c.now
 	c.tick(Signals{Given: true, Inputs: 1, Hooked: true, HookSince: told})
-	c.tick(Signals{Given: true, Inputs: 1, Hooked: true, HookSince: told})
+	c.past(Signals{Given: true, Inputs: 1, Hooked: true, HookSince: told})
 	c.want("hooked", Asks)
 	c.tick(Signals{Given: true, Inputs: 1})
 	if c.b.Asking("a") {
@@ -115,8 +125,9 @@ func TestSummary(t *testing.T) {
 	if sum.Mood() != Busy || len(sum.Working) != 2 {
 		t.Fatalf("two at work: %+v", sum)
 	}
-	step(map[string]Signals{"x": {Proc: p, Given: true, Inputs: 1}, "y": {Proc: q, Working: true, Given: true, Inputs: 1}})
-	step(map[string]Signals{"x": {Proc: p, Given: true, Inputs: 1}, "y": {Proc: q, Working: true, Given: true, Inputs: 1}})
+	for range int(stopGrace/time.Second) + 1 {
+		step(map[string]Signals{"x": {Proc: p, Given: true, Inputs: 1}, "y": {Proc: q, Working: true, Given: true, Inputs: 1}})
+	}
 	sum = b.Summary([]string{"x", "y"}, now)
 	if sum.Mood() != Busy || !sum.Cheer || !slices.Equal(sum.News, []string{"x"}) {
 		t.Fatalf("x done while y works: %+v", sum)
@@ -156,7 +167,7 @@ func TestBoardTurnFromRecord(t *testing.T) {
 	done := *last
 	done.End = start.Add(50 * time.Second)
 	c.tick(Signals{Given: true, Inputs: 1, Last: &done})
-	c.tick(Signals{Given: true, Inputs: 1, Last: &done})
+	c.past(Signals{Given: true, Inputs: 1, Last: &done})
 	if d, st := c.b.Turn("a", c.now); st != TurnDone || d != 30*time.Second {
 		t.Fatalf("done: %v %v", d, st)
 	}
@@ -183,7 +194,7 @@ func TestAgentsOut(t *testing.T) {
 	}
 	agent.Back = c.now
 	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
-	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("the agent back, the grace over", Done)
 
 	// An agent that went silent for good holds nothing.
@@ -192,7 +203,7 @@ func TestAgentsOut(t *testing.T) {
 	turn = &usage.Turn{Agents: []*usage.Agent{stale}}
 	c.tick(Signals{Working: true, Given: true, Inputs: 1, Last: turn})
 	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
-	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("a silent agent", Done)
 
 	// A question on screen is still a question, agents out or not.
@@ -224,7 +235,7 @@ func TestTurnOpen(t *testing.T) {
 	turn.Steps[0].Back = c.now
 	turn.End = c.now
 	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
-	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("the turn's end written, the grace over", Done)
 
 	// A long call keeps it working past the quiet; one out too long does not.
@@ -237,7 +248,7 @@ func TestTurnOpen(t *testing.T) {
 	}
 	turn.Steps[0].Time = c.now.Add(-time.Hour)
 	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
-	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("a call out an hour", Done)
 
 	// An open turn quiet for long — an answer cut short — holds nothing.
@@ -245,7 +256,7 @@ func TestTurnOpen(t *testing.T) {
 	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now.Add(-time.Hour)}, Last: c.now.Add(-time.Hour)}
 	c.tick(Signals{Working: true, Given: true, Inputs: 1, Last: turn})
 	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
-	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("an open turn quiet for an hour", Done)
 
 	// A question while the turn is open.
@@ -254,4 +265,25 @@ func TestTurnOpen(t *testing.T) {
 	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
 	c.tick(Signals{Given: true, Inputs: 1, ScreenAsks: true, Last: turn})
 	c.want("asking with the turn open", Asks)
+}
+
+// A work signal that drops for less than stopGrace — a title resting a
+// moment, a transcript read late — is no done: the session stays at work,
+// so no done sound nor a start one after, and its turn's time goes on
+// instead of starting again at 0.
+func TestShortPause(t *testing.T) {
+	c := newClock(t)
+	c.tick(Signals{Working: true, Given: true, Inputs: 1})
+	for range 3 {
+		c.tick(Signals{Working: true, Given: true, Inputs: 1})
+	}
+	before, _ := c.b.Turn("a", c.now)
+	c.tick(Signals{Given: true, Inputs: 1})
+	c.tick(Signals{Given: true, Inputs: 1})
+	c.want("a pause of a second and more", Working)
+	c.tick(Signals{Working: true, Given: true, Inputs: 1})
+	c.want("at work again", Working)
+	if after, st := c.b.Turn("a", c.now); st != TurnRunning || after < before {
+		t.Fatalf("the turn's time went from %v to %v (%v): it started again", before, after, st)
+	}
 }

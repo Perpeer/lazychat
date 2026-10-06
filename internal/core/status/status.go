@@ -107,8 +107,11 @@ func turnOpen(t *usage.Turn, now time.Time) bool {
 
 // stopGrace is how long a session that stopped working is watched before
 // it counts as done: claude's title stops spinning a moment before its
-// question is drawn, and a question is no finished answer.
-const stopGrace = time.Second
+// question is drawn, and a question is no finished answer. Two seconds, not
+// one: a work signal that dropped for a moment — codex's title resting just
+// after a prompt, a transcript read late — made a done sound and a start
+// sound in a row and set the turn's timer back to 0 while the session ran.
+const stopGrace = 2 * time.Second
 
 // Board keeps every live session's state from tick to tick.
 type Board struct {

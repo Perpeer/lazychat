@@ -44,8 +44,12 @@ it from there.
 
 - Done needs input: work before the user typed anything is the tool
   starting or a resume loading, not an answer.
-- Done waits `stopGrace` (1 s): claude's title stops spinning a moment
-  before its question is drawn, and a question is no finished answer.
+- Done waits `stopGrace` (2 s): claude's title stops spinning a moment
+  before its question is drawn, and a question is no finished answer. It
+  was 1 s: a work signal that dropped for a moment (codex's title resting
+  just after a prompt, a transcript read late) played done and start in a
+  row and set the turn's timer back to 0 while the session ran; the user
+  asked for a longer wait (2 s, their pick over 4 and 8).
 - Subagents still out keep a session working (agentsOut over Signals.Last:
   an agent of the newest turn with no result whose transcript moved
   within agentOutWithin, 2 min): with background agents claude's own turn
