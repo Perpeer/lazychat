@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"io"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 	zone "github.com/lrstanley/bubblezone"
 
@@ -56,6 +58,24 @@ func (a *App) View() string {
 	// Zones are read before the cut: the cut never moves what is kept.
 	return fitFrame(zone.Scan(body), a.width, a.height)
 }
+
+// noWrap runs a program with the terminal's line wrap off, and turns it
+// back on however run ends. Terminal.app draws some scripts wider than
+// x/ansi counts them — Bengali's vowel signs take cells of their own, a line
+// counted 40 wide took 45 — and a wrapped line pushed the whole screen up a
+// row on every frame. Without wrap such a line is cut at the window's edge.
+func noWrap(w io.Writer, run func() error) error {
+	_, _ = io.WriteString(w, "\x1b[?7l")
+	defer func() { _, _ = io.WriteString(w, "\x1b[?7h") }()
+	return run()
+}
+
+// clearOnResize wipes the screen before the next frame: Terminal.app keeps
+// a narrowed window's cells past the new width and draws them in the part
+// of a column the window's edge leaves, so every wider frame's right border
+// stood beside the new one. Bubble Tea's repaint rewrites the lines but
+// erases a line's end only when the line is shorter than the width.
+func clearOnResize() tea.Cmd { return tea.ClearScreen }
 
 // fitFrame cuts every line to w columns and the frame to h rows. A line
 // wider than the terminal wraps there and a frame taller than it scrolls

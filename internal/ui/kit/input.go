@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 	"unicode/utf8"
 
 	"lazychat/internal/core/keylayout"
@@ -61,18 +62,19 @@ func leaveAt(data []byte, i int) int {
 // reports (SGR, ESC [ < b ; x ; y M|m), whose coordinates are the whole
 // screen's: they go to the mouse callback, which moves them into the pane.
 type InputRouter struct {
-	src     io.Reader
-	toTerm  atomic.Bool
-	mu      sync.Mutex
-	write   func([]byte)                       // the focused session's input
-	leave   func()                             // runs when the leave key arrives
-	mouse   func(code, x, y int, release bool) // x, y one-based, as the terminal sent them
-	tab     func(n int)                        // runs when a tab key arrives, captured or not
-	ch      chan []byte                        // what Bubble Tea gets to read
-	buf     []byte
-	pending []byte // an unfinished mouse report, completed by the next read
-	last    atomic.Pointer[[]byte]
-	option  func(rune) (rune, bool) // what Option types on the key that types a rune
+	src      io.Reader
+	toTerm   atomic.Bool
+	mu       sync.Mutex
+	write    func([]byte)                       // the focused session's input
+	leave    func()                             // runs when the leave key arrives
+	mouse    func(code, x, y int, release bool) // x, y one-based, as the terminal sent them
+	tab      func(n int)                        // runs when a tab key arrives, captured or not
+	ch       chan []byte                        // what Bubble Tea gets to read
+	buf      []byte
+	pending  []byte      // an unfinished mouse report, completed by the next read
+	escTimer *time.Timer // sends a lone Esc held in pending when no report follows
+	last     atomic.Pointer[[]byte]
+	option   func(rune) (rune, bool) // what Option types on the key that types a rune
 	// CmdEnter runs when Cmd+Enter arrives while no session has the keys:
 	// Bubble Tea v1 has no Cmd modifier, so it never sees the key itself.
 	CmdEnter func()
@@ -202,11 +204,35 @@ func (r *InputRouter) loop() {
 
 var mousePrefix = []byte("\x1b[<")
 
+// escWait is how long a read ending in a lone Esc is held for the rest of a
+// mouse report: a busy terminal cut "ESC [<65;67;49M" after the Esc and the
+// rest reached claude as text, "<65;67;49M" in its prompt on every wheel
+// step. A key's Esc comes on its own and goes on once the wait is over.
+const escWait = 25 * time.Millisecond
+
+// flushEsc sends a lone Esc held for a report that did not come.
+func (r *InputRouter) flushEsc() {
+	r.mu.Lock()
+	held, write := r.pending, r.write
+	if !bytes.Equal(held, []byte{esc}) {
+		r.mu.Unlock()
+		return
+	}
+	r.pending = nil
+	r.mu.Unlock()
+	if write != nil {
+		write(held)
+	}
+}
+
 func (r *InputRouter) toTerminal(chunk []byte) {
 	r.mu.Lock()
 	write, leave, mouse := r.write, r.leave, r.mouse
 	data := append(r.pending, chunk...)
 	r.pending = nil
+	if r.escTimer != nil {
+		r.escTimer.Stop()
+	}
 	r.mu.Unlock()
 
 	var out []byte
@@ -257,6 +283,17 @@ func (r *InputRouter) toTerminal(chunk []byte) {
 				}
 			}
 			i += len(mousePrefix) + end + 1
+		case len(data)-i < len(mousePrefix) && bytes.HasPrefix(mousePrefix, data[i:]):
+			// The read ended inside a report's start: hold it for the
+			// next read, a lone Esc only for escWait.
+			flush()
+			r.mu.Lock()
+			r.pending = append([]byte(nil), data[i:]...)
+			if len(r.pending) == 1 {
+				r.escTimer = time.AfterFunc(escWait, r.flushEsc)
+			}
+			r.mu.Unlock()
+			return
 		default:
 			out = append(out, data[i])
 			i++

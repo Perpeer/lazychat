@@ -68,6 +68,37 @@ func TestRouterMouse(t *testing.T) {
 	pw.Close()
 }
 
+// A wheel report cut by the terminal's reads after its Esc, after Esc [,
+// or after Esc [ < reaches the mouse, never the session as "<65;67;49M"; a
+// lone Esc, a key, still reaches the session once escWait is over.
+func TestRouterSplitMouse(t *testing.T) {
+	pr, pw := io.Pipe()
+	defer pw.Close()
+	r := NewInputRouter(pr, nil)
+	var mu sync.Mutex
+	var got bytes.Buffer
+	var codes []int
+	r.Focus(func(b []byte) { mu.Lock(); got.Write(b); mu.Unlock() }, nil, func(code, x, y int, release bool) {
+		mu.Lock()
+		codes = append(codes, code)
+		mu.Unlock()
+	})
+	for _, cut := range [][2]string{{"a\x1b", "[<65;67;49Mb"}, {"c\x1b[", "<65;67;49Md"}, {"e\x1b[<", "65;67;49Mf"}} {
+		r.toTerminal([]byte(cut[0]))
+		r.toTerminal([]byte(cut[1]))
+	}
+	r.toTerminal([]byte("\x1b"))
+	time.Sleep(4 * escWait)
+	mu.Lock()
+	defer mu.Unlock()
+	if got.String() != "abcdef\x1b" {
+		t.Errorf("session got %q; want the typed bytes and the lone Esc, no report text", got.String())
+	}
+	if want := []int{65, 65, 65}; fmt.Sprint(codes) != fmt.Sprint(want) {
+		t.Errorf("mouse codes = %v; want %v", codes, want)
+	}
+}
+
 func TestListWindow(t *testing.T) {
 	var l List
 	l.Sel = 7

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -42,7 +43,7 @@ type SetupOptions struct {
 // was left with Esc.
 func Setup(o SetupOptions) (ans SetupAnswer, ok bool, err error) {
 	m := newSetup(o)
-	if _, err := tea.NewProgram(m, tea.WithAltScreen()).Run(); err != nil {
+	if err := noWrap(os.Stdout, func() error { _, err := tea.NewProgram(m, tea.WithAltScreen()).Run(); return err }); err != nil {
 		return SetupAnswer{}, false, err
 	}
 	return m.ans, m.ok, nil
@@ -131,6 +132,7 @@ func (m *setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		return m, clearOnResize()
 	case splashMsg:
 		if !m.splash.on {
 			return m, nil

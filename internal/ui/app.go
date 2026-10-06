@@ -191,7 +191,7 @@ func Run(core *api.Core, opts Options) (exit Exit, err error) {
 	p := tea.NewProgram(a, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithInput(router))
 	a.send = p.Send
 	a.resize()
-	_, err = p.Run()
+	err = noWrap(os.Stdout, func() error { _, err := p.Run(); return err })
 	in.Cancel()
 	a.SetKitty(0) // leave the terminal as it was found
 	// Whatever is still running dies with lazychat: no orphaned claude.
@@ -307,6 +307,7 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width, a.height = msg.Width, msg.Height
 		a.footerRows = 1
 		a.resize()
+		return a, clearOnResize()
 	case tabMsg:
 		// A tab taking text keeps the screen until it lets go, as it keeps the keys.
 		if !a.tab().Typing() {

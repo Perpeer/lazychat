@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	tea "github.com/charmbracelet/bubbletea"
 	"strings"
 	"testing"
 
@@ -47,5 +51,39 @@ func TestAppFrameFits(t *testing.T) {
 			}
 		}
 		d.quitApp()
+	}
+}
+
+// A resize clears the screen, the start screen's too: Terminal.app keeps a
+// narrowed window's cells past the new width and showed the wider frame's
+// right border beside the new one.
+func TestResizeClears(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 120, 32)
+	_, cmd := d.app.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	if cmd == nil || fmt.Sprintf("%T", cmd()) != fmt.Sprintf("%T", tea.ClearScreen()) {
+		t.Errorf("the app's resize does not clear the screen")
+	}
+	d.quitApp()
+	m := &setupModel{}
+	if _, cmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30}); cmd == nil || fmt.Sprintf("%T", cmd()) != fmt.Sprintf("%T", tea.ClearScreen()) {
+		t.Errorf("the start screen's resize does not clear the screen")
+	}
+}
+
+// A program runs with the terminal's line wrap off and gets it back however
+// it ends: Terminal.app draws Bengali wider than counted, and a wrapped line
+// pushed the whole screen up on every frame.
+func TestNoWrap(t *testing.T) {
+	var out bytes.Buffer
+	failed := errors.New("the program ended badly")
+	err := noWrap(&out, func() error {
+		if out.String() != "\x1b[?7l" {
+			t.Errorf("before the program: %q, want the wrap turned off", out.String())
+		}
+		return failed
+	})
+	if err != failed || out.String() != "\x1b[?7l\x1b[?7h" {
+		t.Errorf("after the program: %q, %v; want the wrap back and its error", out.String(), err)
 	}
 }

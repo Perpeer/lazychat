@@ -24,6 +24,11 @@ paths:
   for a project; the user asked for one key. Chat's draft is `w`
   ("write"). Keep one meaning per key: n new, e rename/edit, m move,
   o open, d delete, ? help, q quit.
+- A mouse report the terminal's reads cut is held whole (kit/input.go
+  toTerminal: Esc [ or Esc [ < at a read's end waits for the next read, a
+  lone Esc only escWait, 25 ms, so a key's Esc still reaches claude): cut
+  after its Esc, a wheel step reached claude as "<65;67;49M" in its prompt,
+  one per step, under a busy screen.
 - Cmd+Enter reaches lazychat only as the kitty report CSI 13;9u, which the
   input router turns into `kit.CmdEnter` (Bubble Tea v1 has no Cmd);
   Terminal.app keeps the key, so every Cmd+Enter has Option+Enter beside it.
@@ -79,3 +84,18 @@ paths:
   recorded (the user chose the guard alone); if it comes back, a character
   Terminal.app draws wider than x/ansi counts is the next suspect —
   record it with LAZYCHAT_TRACE and replay. It costs about 0.07 ms a frame.
+  It came back: Terminal.app draws Bengali wider than x/ansi counts (its
+  vowel signs take cells of their own; a line counted 40 wide took 45 and
+  wrapped), and a session showing an Android strings diff slid the whole
+  screen on every frame. Both programs now run with the terminal's line
+  wrap off (layout.go noWrap: ESC[?7l, ESC[?7h however they end), so a
+  line drawn too wide is cut at the window's edge; fitFrame stays for the
+  height and for every terminal that keeps wrap on anyway.
+- Every resize clears the screen (layout.go clearOnResize, in App and the
+  start screen). Terminal.app keeps a narrowed window's cells past the new
+  width — each line stayed 160 wide after narrowing to 130, holding every
+  wider frame's right border — and draws them in the part of a column the
+  window's edge leaves, so the user saw a second right edge. Bubble Tea's
+  repaint erases a line's end only when the line is shorter than the width.
+  Read a Terminal.app window's text with AppleScript (`contents of
+  selected tab`) to see it; screencapture cannot take Terminal's window ids.
