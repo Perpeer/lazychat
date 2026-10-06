@@ -208,3 +208,27 @@ func TestHeardBack(t *testing.T) {
 		t.Fatal("the same agent ticked twice")
 	}
 }
+
+// A file outside the session's folder is named by its last two parts: a
+// whole path has no space to wrap at and ran off the row, its name cut.
+// One inside stays relative; a short one stays whole.
+func TestFlowOutsideFiles(t *testing.T) {
+	got := relFiles([]string{
+		"/garden/shed/door.go",
+		"/var/tmp/sheds/a0-7f306052/scratchpad/blue-door-probe.png",
+		"/tmp/fence.txt",
+	}, "/garden/shed")
+	want := []string{"door.go", "…/scratchpad/blue-door-probe.png", "/tmp/fence.txt"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("files %q, want %q", got, want)
+	}
+	at := time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)
+	turn := usage.Turn{Prompt: usage.Prompt{Time: at, Text: "look at the probe"}, Steps: []usage.ToolUse{
+		{ID: "r1", Name: "Read", Time: at.Add(time.Second), Back: at.Add(2 * time.Second), Files: []string{"/var/tmp/sheds/a0-7f306052-3233-495c-99a0-7f306052a91a/scratchpad/blue-door-probe.png"}},
+	}}
+	for _, row := range kit.DrawFlow(flowOf(turn, at.Add(time.Minute), false, "", "/garden/shed"), 0, 70) {
+		if strings.Contains(ansi.Strip(row), "Read") && !strings.Contains(ansi.Strip(row), "blue-door-probe.png") {
+			t.Errorf("the Read row lost the file's name: %q", ansi.Strip(row))
+		}
+	}
+}

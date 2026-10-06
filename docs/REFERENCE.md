@@ -379,7 +379,8 @@ row per tool call in time order, and the end (`●`) with how long it was
 active and its tokens — `in`, `used`, the API price — or `running` with
 a spinner while it runs. Calls of one tool in a row fold into one (`Read
 ×3`), the files they read or edited beside it, relative to the session's
-folder, or what a shell call was for, in the few words Claude Code wrote
+folder (a file elsewhere by its last two parts, `…/scratchpad/probe.png`),
+or what a shell call was for, in the few words Claude Code wrote
 with it (its commands by their first words when it wrote none; a
 heredoc's script is never read as commands). A folded row names its
 first two and `+N more`, and no row takes more than two lines; the right column

@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -323,14 +324,21 @@ func endNode(t usage.Turn, now time.Time, running bool, cost string) kit.FlowNod
 }
 
 // relFiles are paths as the page names them: relative to the session's
-// folder when under it, else as written.
+// folder when under it, else by their last two parts after "…/" — a path
+// has no space to wrap at, so a whole one ran off the row and lost the file's
+// name.
 func relFiles(files []string, dir string) []string {
 	out := make([]string, 0, len(files))
 	for _, f := range files {
+		rel, inside := "", false
 		if dir != "" {
-			if rel, ok := strings.CutPrefix(f, strings.TrimSuffix(dir, "/")+"/"); ok {
-				f = rel
-			}
+			rel, inside = strings.CutPrefix(f, strings.TrimSuffix(dir, "/")+"/")
+		}
+		switch {
+		case inside:
+			f = rel
+		case strings.Count(strings.Trim(f, "/"), "/") >= 2:
+			f = "…/" + filepath.Join(filepath.Base(filepath.Dir(f)), filepath.Base(f))
 		}
 		if f != "" && !slices.Contains(out, f) {
 			out = append(out, f)

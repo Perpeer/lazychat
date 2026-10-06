@@ -95,7 +95,9 @@ paths:
   A step's right column is ToolUse.Added, measured in the reader as a
   Use's Added is, in subagent streams too; Back comes from its
   tool_result. Files are `file_path` / `notebook_path` of the tool_use
-  input, shown relative to Session.Dir; Grep's and Glob's paths are not
+  input, shown relative to Session.Dir, a file elsewhere by its last two
+  parts after "…/" (relFiles): a whole path has no space to wrap at and
+  ran off the row, the file's name cut. Grep's and Glob's paths are not
   files. A step still out turns the spinner (busy only while the turn
   runs), one never answered a dim ·. A background agent never joins: its
   lane ends at its last step.
