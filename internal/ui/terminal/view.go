@@ -89,7 +89,7 @@ func (t *Terminal) list(w, h int, focused bool) []string {
 			entry := kit.TitleRows(first, rest, glyph+" ", plain+" ", r.Conn.Name, kit.StyleBold, w-2, nameLines)
 			target := "ssh " + ssh.Target(actions.Conn(*r.Conn))
 			entry = append(entry, kit.TreeLine{Prefix: rest, Styled: "  " + kit.StyleDim.Render(target), Plain: "  " + target})
-			b.Rows = kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, shell), kit.DrawEntry(entry, w, b.Selected, focused), w)
+			b.Rows = kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, shell), kit.DrawChosen(entry, w, b.Selected), w)
 			shell++
 		default:
 			b.Lead = []string{kit.ChildGap()}
@@ -109,7 +109,7 @@ func (t *Terminal) list(w, h int, focused bool) []string {
 			if b.Selected && t.tree.Moving && !t.tree.Whole {
 				entry = kit.Picked(entry)
 			}
-			b.Rows = kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, shell), kit.DrawEntry(entry, w, b.Selected, focused), w)
+			b.Rows = kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, shell), kit.DrawChosen(entry, w, b.Selected), w)
 			shell++
 		}
 	}

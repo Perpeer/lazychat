@@ -65,6 +65,13 @@ func DrawEntry(lines []TreeLine, w int, selected, focused bool) []string {
 	return out
 }
 
+// DrawChosen lays out a row of a project tree — a session, a branch, a
+// shell: the chosen one stays filled wherever the keys are, so the row whose
+// pane is on the right is still plain to see once the pane has them.
+func DrawChosen(lines []TreeLine, w int, chosen bool) []string {
+	return DrawEntry(lines, w, chosen, true)
+}
+
 // WithScrollbar draws a thumb on a box's right border over the rows it covers
 // (rows count from the first inner row), so one sees where in the history the
 // pane is and how much of it is on screen.

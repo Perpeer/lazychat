@@ -636,8 +636,10 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | Integrations | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 
 One accent colour, the theme's, marks the focused frame, fills the selected
-entry as one band (only its text is coloured while a pane has the keys) and
-points at the field a popup is on; everything else is neutral or dim, and a
+entry as one band and points at the field a popup is on. The chosen session,
+branch or shell stays filled while its pane or another panel has the keys,
+so the row the right side shows is always plain to see; in Settings and in
+Git's commit list only the selected entry's text is coloured then; everything else is neutral or dim, and a
 running spinner stays green.
 
 ## Mascot

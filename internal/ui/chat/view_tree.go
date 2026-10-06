@@ -159,7 +159,7 @@ func (t *treeView) view(w, h int, focused bool) []string {
 			if b.Selected && t.tree.Moving && !t.tree.Whole {
 				entry = kit.Picked(entry)
 			}
-			b.Rows = kit.ZoneBlock(fmt.Sprintf("row-%d", session), kit.DrawEntry(entry, w, b.Selected, focused), w)
+			b.Rows = kit.ZoneBlock(fmt.Sprintf("row-%d", session), kit.DrawChosen(entry, w, b.Selected), w)
 			session++
 		}
 	}

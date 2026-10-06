@@ -45,6 +45,12 @@ paths:
   ShowProject, App.switchTo): the leaving tab's project is shown in the
   next; only the project, never the row under it. Git's ShowProject loads
   the row as a move does; the command is queued in App.pending.
+- A project tree's chosen row — Chat's session, Git's branch, Terminal's
+  shell — stays filled wherever the keys are (kit.DrawChosen): with the fill
+  only on the focused list the user lost track of which project and
+  session or shell the right side showed. Settings and Git's commit list
+  keep kit.DrawEntry's focus-bound fill. The chosen session's names in the
+  right box's title were tried and taken out at the user's word.
 - Rail order Chat, Git, Terminal, Settings (⌘1–4); tabs can be hidden in
   Settings.
 - The projects column is `kit.ListWidth`: 28 %, 32–40 columns, in every

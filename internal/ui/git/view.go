@@ -104,7 +104,7 @@ func (g *Git) projectsBox(w, h int) string {
 			_, isProject := g.projectAt(r.path)
 			entry = worktreeEntry(r, st, repo, w-2, last, isProject)
 		}
-		blocks[r.index] = append(blocks[r.index], kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), kit.DrawEntry(entry, w-2, i == g.projects.Sel, focused), w-2)...)
+		blocks[r.index] = append(blocks[r.index], kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, i), kit.DrawChosen(entry, w-2, i == g.projects.Sel), w-2)...)
 	}
 	for i := range blocks {
 		heights[i] = len(blocks[i])
