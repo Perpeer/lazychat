@@ -1,7 +1,8 @@
 // Package model is the Terminal tab's state: every project as a heading,
-// the shells opened in it under it, in the order the user keeps, and the
-// cursor. Shells live in memory only; they go when lazychat quits, as their
-// processes do.
+// the shells opened in it under it, in the order the user keeps, its saved
+// SSH connections after them, and the cursor. Shells live in memory only;
+// they go when lazychat quits, as their processes do. Connections are the
+// state file's, so they come back with the workspace.
 package model
 
 import (
@@ -20,16 +21,28 @@ type Shell struct {
 	Key, Name, Project, Dir string
 }
 
-// Row is a project heading, the empty row of a project with no shell, or
-// one of its shells.
+// Row is a project heading, the empty row of a project with no shell or
+// connection, one of its shells, or one of its saved connections.
 type Row struct {
 	Project state.Project
 	Shell   *Shell
+	Conn    *state.SSH
 	Empty   bool
 }
 
 // Heading says the row is a project's heading, which takes no cursor.
-func (r Row) Heading() bool { return r.Shell == nil && !r.Empty }
+func (r Row) Heading() bool { return r.Shell == nil && r.Conn == nil && !r.Empty }
+
+// Key is the shell's or the connection's, the key its live terminal has.
+func (r Row) Key() string {
+	switch {
+	case r.Shell != nil:
+		return r.Shell.Key
+	case r.Conn != nil:
+		return r.Conn.Key
+	}
+	return ""
+}
 
 // Tree is the projects of the state file and the shells under them.
 type Tree struct {
@@ -39,6 +52,9 @@ type Tree struct {
 	Whole   bool // in move mode, the cursor's project is carried, not its row
 	shells  []Shell
 	next    int
+	// conns are the saved connections' keys at the last Prune, so one
+	// deleted since — with its project, in Chat — is told as gone.
+	conns map[string]bool
 }
 
 // Rows is every project, its shells after it, or an empty row when it has
@@ -51,6 +67,11 @@ func (t *Tree) Rows() []Row {
 		for i := range t.shells {
 			if t.shells[i].Project == p.Name {
 				rows = append(rows, Row{Project: p, Shell: &t.shells[i]})
+			}
+		}
+		for i := range t.Store.SSH {
+			if t.Store.SSH[i].Project == p.Name {
+				rows = append(rows, Row{Project: p, Conn: &t.Store.SSH[i]})
 			}
 		}
 		if len(rows) == n {
@@ -85,10 +106,19 @@ func (t *Tree) Shell() (Shell, bool) {
 	return *r.Shell, true
 }
 
+// Conn is the saved connection under the cursor.
+func (t *Tree) Conn() (state.SSH, bool) {
+	r, ok := t.Current()
+	if !ok || r.Conn == nil {
+		return state.SSH{}, false
+	}
+	return *r.Conn, true
+}
+
 // OnProject says the cursor is on a project's empty row.
 func (t *Tree) OnProject() bool {
 	r, ok := t.Current()
-	return ok && r.Shell == nil
+	return ok && r.Empty
 }
 
 // Project is the cursor's project: the empty row's, or the shell's.
@@ -97,11 +127,16 @@ func (t *Tree) Project() (state.Project, bool) {
 	return r.Project, ok
 }
 
-// Count is how many shells a project has open.
+// Count is how many shells a project has open and connections saved.
 func (t *Tree) Count(project string) int {
 	n := 0
 	for _, s := range t.shells {
 		if s.Project == project {
+			n++
+		}
+	}
+	for _, c := range t.Store.SSH {
+		if c.Project == project {
 			n++
 		}
 	}
@@ -140,6 +175,26 @@ func (t *Tree) Rename(key, name string) {
 	if i := t.index(key); i >= 0 {
 		t.shells[i].Name = name
 	}
+}
+
+// Saved says key is a saved connection's.
+func (t *Tree) Saved(key string) bool {
+	for _, c := range t.Store.SSH {
+		if c.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveSaved forgets a saved connection; the cursor stays on the row now
+// there.
+func (t *Tree) RemoveSaved(key string) error {
+	if err := t.Store.RemoveSSH(key); err != nil {
+		return err
+	}
+	t.ClampTo(len(t.Rows()))
+	return nil
 }
 
 // Remove forgets a shell; the cursor stays on the row now there.
@@ -187,18 +242,18 @@ func (t *Tree) MoveProject(d int) error {
 	if err := t.Store.MoveProject(r.Project.Name, d); err != nil {
 		return err
 	}
-	if r.Shell != nil {
-		t.SelectKey(r.Shell.Key)
+	if r.Key() != "" {
+		t.SelectKey(r.Key())
 	} else {
 		t.SelectProject(r.Project.Name)
 	}
 	return nil
 }
 
-// SelectKey puts the cursor on a shell.
+// SelectKey puts the cursor on a shell or a connection.
 func (t *Tree) SelectKey(key string) {
 	for i, r := range t.Rows() {
-		if r.Shell != nil && r.Shell.Key == key {
+		if key != "" && r.Key() == key {
 			t.Sel = i
 			return
 		}
@@ -217,8 +272,19 @@ func (t *Tree) SelectProject(name string) {
 
 // Prune follows the projects: a shell whose project was renamed in Chat
 // moves to the new name, found by its folder; one whose project is gone is
-// forgotten and its key returned, so its process can be stopped.
+// forgotten and its key returned, so its process can be stopped. A saved
+// connection gone from the state since the last call is returned too.
 func (t *Tree) Prune() (gone []string) {
+	now := map[string]bool{}
+	for _, c := range t.Store.SSH {
+		now[c.Key] = true
+	}
+	for key := range t.conns {
+		if !now[key] {
+			gone = append(gone, key)
+		}
+	}
+	t.conns = now
 	names, byDir := map[string]bool{}, map[string]string{}
 	for _, p := range t.Store.Projects {
 		names[p.Name], byDir[p.Path] = true, p.Name

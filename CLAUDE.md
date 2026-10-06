@@ -89,6 +89,7 @@ are read; add a rule there, with its why, when a change settles one.
 | `git-tab.md` | push, pull, branch, what git may never do |
 | `keys-and-layout.md` | leave key, footers, widths |
 | `tests.md` | the test layers' traps |
+| `ssh.md` | the Terminal tab's SSH connections |
 | `install.md` | install and uninstall, nothing legacy |
 | `report.md` | Chat's report tab, the usage parser, what a prompt spent |
 

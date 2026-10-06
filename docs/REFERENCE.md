@@ -593,6 +593,23 @@ keeps them. They run without Terminal.app's `TERM_PROGRAM` and
 `TERM_SESSION_ID`, so macOS does not restore a Terminal window's session
 into them.
 
+**SSH.** `s` makes an SSH connection under the cursor's project: a Host
+of `~/.ssh/config` (its own settings then apply), or a host, user and port
+(22 when empty), and how it signs in — a key file, picked among the keys
+in `~/.ssh` (any file with its `.pub` beside it: ed25519, rsa, ecdsa), the
+ssh agent's keys, or a password. `Enter` moves through the fields and
+saves on the last. The connection is saved with the workspace and opened
+with OpenSSH's own `ssh` in the pane, so `known_hosts`, the agent,
+ProxyJump and your config work as in any terminal; a password is never
+kept: ssh asks for it each time. Its row says `⇄` while it is open, `○`
+while it is only saved, with `ssh user@host` under the name. When the
+workspace opens its connections are listed, not opened: `Enter` opens one,
+or goes back into it while it runs. A connection that closes stays listed
+with its last screen. `e` edits one, `d` deletes it (asked; an open session
+is stopped); a project removed in Chat takes its connections with it, a
+renamed one keeps them. The keys are looked for under your home's `.ssh`,
+the same on Linux.
+
 ## Settings
 
 What is set for this machine, in `~/.lazychat/settings.json`, which holds

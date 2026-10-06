@@ -301,3 +301,50 @@ func TestDraft(t *testing.T) {
 		t.Error("a draft for no session was taken")
 	}
 }
+
+// A saved connection comes back from the file, an edit keeps its key and
+// place, a project's rename takes its connections along and its removal
+// takes them away; a nameless one is refused.
+func TestSSH(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	s, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AddProject(t.TempDir(), "shed"); err != nil {
+		t.Fatal(err)
+	}
+	c, err := s.SaveSSH(SSH{Name: "shed-pi", Project: "shed", Host: "garden-shed", User: "gardener", Auth: "key", KeyFile: "~/.ssh/id_ed25519"})
+	if err != nil || c.Key == "" {
+		t.Fatalf("save: %+v %v", c, err)
+	}
+	if _, err := s.SaveSSH(SSH{Name: "  ", Project: "shed"}); err == nil {
+		t.Error("a nameless connection was saved")
+	}
+	c.Port = 2222
+	if _, err := s.SaveSSH(c); err != nil {
+		t.Fatal(err)
+	}
+	again, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(again.SSH) != 1 || again.SSH[0] != c {
+		t.Fatalf("loaded %+v, want %+v", again.SSH, c)
+	}
+	if _, err := again.UpdateProject("shed", "", "fence"); err != nil {
+		t.Fatal(err)
+	}
+	if again.SSH[0].Project != "fence" {
+		t.Errorf("the rename left the connection under %q", again.SSH[0].Project)
+	}
+	if err := again.RemoveProject("fence"); err != nil {
+		t.Fatal(err)
+	}
+	if len(again.SSH) != 0 {
+		t.Errorf("the project's removal left %+v", again.SSH)
+	}
+	if err := again.RemoveSSH(c.Key); err == nil {
+		t.Error("removed a connection that was gone")
+	}
+}

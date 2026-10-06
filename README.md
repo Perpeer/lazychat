@@ -161,7 +161,9 @@ branch: (c) commit · (p) pull · (shift+p) push · (b) branches · (w) worktree
 ### Terminal: a shell in every project
 
 Plain shells in your projects' folders, for the things the agents don't
-do.
+do, and SSH connections saved with the workspace: `s` takes a host from
+your `~/.ssh/config` or a host, user and key, and opens it with your own
+`ssh`.
 
 ```
 ┌ [1] projects ──────┐┌ [2] sh 1 ──────────────────────────────┐
@@ -172,7 +174,7 @@ do.
 │  │                 ││                                        │
 │  └─ ○ server       ││                                        │
 └────────────────────┘└────────────────────────────────────────┘
-terminal: (enter) continue · (n) new · (e) rename · (v) copy · (d) close
+terminal: (enter) continue · (n) new · (s) new ssh · (e) rename · (d) close
 ```
 
 Settings holds the theme, which tabs show and which agent writes your

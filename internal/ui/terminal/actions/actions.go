@@ -1,5 +1,6 @@
 // Package actions is what the Terminal tab's keys do: start a shell in a
-// project's folder, show it, rename it, close it. It sees the screen only
+// project's folder, show it, rename it, close it; open a saved SSH
+// connection, delete one. It sees the screen only
 // through Host, so it imports no Bubble Tea and runs under test with a fake.
 package actions
 
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"lazychat/internal/core/ssh"
 	"lazychat/internal/core/state"
 	"lazychat/internal/term"
 )
@@ -41,6 +43,10 @@ type Shells interface {
 	Rename(key, name string)
 	Remove(key string)
 	Prune() (gone []string)
+	// Saved says key is a saved connection's, which stays in the list
+	// when its session ends; RemoveSaved forgets one.
+	Saved(key string) bool
+	RemoveSaved(key string) error
 }
 
 // Shell names one terminal for an action.
@@ -154,11 +160,56 @@ func (a *Actions) forget(key string) {
 	a.host.Hide(key)
 }
 
-// Reap drops the shells whose process exited (exit, a killed shell).
+// Reap drops the shells whose process exited (exit, a killed shell). A
+// connection that ended stays listed, its last screen in the pane, so what
+// ssh said on its way out can be read and Enter dials again.
 func (a *Actions) Reap() {
-	a.Live.Reap(func(key string, _ *term.Session, _ error) {
+	a.Live.Reap(func(key string, s *term.Session, _ error) {
 		a.host.Ended(key)
+		if a.tree.Saved(key) {
+			a.host.Note("%s: the connection closed — Enter opens it again", s.Name)
+			return
+		}
 		a.forget(key)
+	})
+}
+
+// Connect shows a saved connection's session, opening it first when none
+// runs: OpenSSH's ssh in a pty, in the project's folder.
+func (a *Actions) Connect(c state.SSH, p state.Project) {
+	if s, ok := a.Live.Get(c.Key); ok && s.Alive() {
+		a.host.Show(c.Key, s)
+		return
+	}
+	cols, rows := a.host.PaneSize()
+	a.nextID++
+	s, err := term.Start(a.nextID, c.Name, p.Name, p.Path, ssh.Argv(Conn(c)), cols, rows, a.onOutput)
+	if err != nil {
+		a.host.Note("ssh %s: %v", c.Name, err)
+		return
+	}
+	a.Live.Put(c.Key, s)
+	a.host.Show(c.Key, s)
+}
+
+// Conn is a saved connection as core/ssh takes it.
+func Conn(c state.SSH) ssh.Conn {
+	return ssh.Conn{Host: c.Host, User: c.User, Alias: c.Alias, Port: c.Port, Auth: c.Auth, Key: c.KeyFile}
+}
+
+// Delete forgets a saved connection, asked first; a session it has open is
+// stopped.
+func (a *Actions) Delete(c state.SSH) {
+	a.host.Ask(fmt.Sprintf("delete the connection %s (%s)? its session, if open, is stopped", c.Name, ssh.Target(Conn(c))), func() {
+		if s, ok := a.Live.Get(c.Key); ok && s.Alive() {
+			a.host.Later(func() { term.StopAll([]*term.Session{s}, 3*time.Second) })
+		}
+		if err := a.tree.RemoveSaved(c.Key); err != nil {
+			a.host.Note("delete %s: %v", c.Name, err)
+			return
+		}
+		a.host.Hide(c.Key)
+		a.host.Note("deleted %s", c.Name)
 	})
 }
 

@@ -3,7 +3,10 @@ package terminal
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	"lazychat/internal/core/ssh"
+	"lazychat/internal/core/state"
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/terminal/actions"
 	"lazychat/internal/ui/text"
@@ -22,7 +25,11 @@ func (t *Terminal) View() string {
 		return hits.Panel(1, kit.Box(kit.PanelTitle(1, "projects"), rows, lw, h, focused, false))
 	}
 	pane := func(w int) string {
-		if r, ok := t.tree.Current(); ok && r.Shell == nil || t.Pane.Session == nil {
+		r, ok := t.tree.Current()
+		if ok && r.Conn != nil && (t.Pane.Session == nil || t.Pane.Key != r.Conn.Key) {
+			return hits.Panel(2, t.connPanel(*r.Conn, w, h))
+		}
+		if ok && r.Key() == "" || t.Pane.Session == nil {
 			return hits.Panel(2, t.projectPanel(w, h))
 		}
 		box := kit.Box(kit.PanelTitle(2, t.Pane.Title()), kit.ZoneBlock(hits.Pane, t.Pane.View(w-2, h-2, t.Capture.Held(), t.Tick%2 == 0), w-2), w, h, t.Capture.Held() || t.PaneSel, true)
@@ -66,6 +73,24 @@ func (t *Terminal) list(w, h int, focused bool) []string {
 			}
 			empty := i+1 < len(rows) && rows[i+1].Empty
 			b.Rows = kit.HeadingRows(entry, empty, "no terminals yet", empty && hasCur && cur.Empty && cur.Project.Name == r.Project.Name, w, focused, fmt.Sprintf("%s-%d", hits.Heading, project))
+		case r.Conn != nil:
+			b.Lead = []string{kit.ChildGap()}
+			last := i+1 == len(rows) || rows[i+1].Heading()
+			b.Selected = hasCur && cur.Key() == r.Conn.Key
+			first, rest := "   ├─ ", "   │  "
+			if last {
+				first, rest = "   └─ ", "      "
+			}
+			// ⇄ while the connection is open, ○ while it is only saved.
+			glyph, plain := kit.StyleDim.Render("○"), "○"
+			if t.act.Live.Running(r.Conn.Key) {
+				glyph, plain = kit.StyleBusy.Render("⇄"), "⇄"
+			}
+			entry := kit.TitleRows(first, rest, glyph+" ", plain+" ", r.Conn.Name, kit.StyleBold, w-2, nameLines)
+			target := "ssh " + ssh.Target(actions.Conn(*r.Conn))
+			entry = append(entry, kit.TreeLine{Prefix: rest, Styled: "  " + kit.StyleDim.Render(target), Plain: "  " + target})
+			b.Rows = kit.ZoneBlock(fmt.Sprintf("%s-%d", hits.Row, shell), kit.DrawEntry(entry, w, b.Selected, focused), w)
+			shell++
 		default:
 			b.Lead = []string{kit.ChildGap()}
 			last := i+1 == len(rows) || rows[i+1].Heading()
@@ -112,6 +137,21 @@ func (t *Terminal) projectPanel(w, h int) string {
 		}
 	}
 	return kit.Box(kit.PanelTitle(2, fmt.Sprintf("%s · terminals (%d)", p.Name, n)), append([]string{""}, lines...), w, h, false, false)
+}
+
+// connPanel is the right side on a saved connection that is not open: what
+// it opens and how; Enter dials.
+func (t *Terminal) connPanel(c state.SSH, w, h int) string {
+	how := map[string]string{ssh.KeyFile: "the key " + c.KeyFile, ssh.Agent: "the ssh agent's keys", ssh.Password: "a password ssh asks for"}[c.Auth]
+	if c.Alias != "" {
+		how = "~/.ssh/config's settings for " + c.Alias
+	}
+	text1 := "Not connected: (enter) opens " + strings.Join(ssh.Argv(actions.Conn(c)), " ") + ", signed in with " + how + "."
+	var lines []string
+	for _, l := range text.Wrap(text1, w-4, "") {
+		lines = append(lines, kit.StyleDim.Render(" "+l))
+	}
+	return kit.Box(kit.PanelTitle(2, c.Name+" · ssh "+ssh.Target(actions.Conn(c))), append([]string{""}, lines...), w, h, false, false)
 }
 
 // section is the rows under the projects: the shell n starts and how many

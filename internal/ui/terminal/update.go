@@ -1,8 +1,15 @@
 package terminal
 
 import (
+	"cmp"
+	"path/filepath"
+	"slices"
+	"strconv"
+
 	tea "github.com/charmbracelet/bubbletea"
 
+	"lazychat/internal/core/ssh"
+	"lazychat/internal/core/state"
 	"lazychat/internal/ui/kit"
 )
 
@@ -61,9 +68,9 @@ func (t *Terminal) move(d int) {
 // follow makes the pane show the shell under the cursor, so browsing the
 // list switches terminals.
 func (t *Terminal) follow() {
-	if sh, ok := t.tree.Shell(); ok {
-		if s, ok := t.act.Live.Get(sh.Key); ok {
-			t.Point(sh.Key, s)
+	if r, ok := t.tree.Current(); ok && r.Key() != "" {
+		if s, ok := t.act.Live.Get(r.Key()); ok {
+			t.Point(r.Key(), s)
 		}
 	}
 }
@@ -82,11 +89,21 @@ func (t *Terminal) carry(d int) {
 	}
 }
 
-// enter gives the shell under the cursor the keys.
+// enter gives the shell under the cursor the keys; on a connection it
+// opens it first when it is not open.
 func (t *Terminal) enter() {
 	t.PaneSel = false
-	if sh, ok := t.tree.Shell(); ok && !t.Capture.Held() {
+	if t.Capture.Held() {
+		return
+	}
+	if sh, ok := t.tree.Shell(); ok {
 		t.act.Open(asShell(sh))
+		return
+	}
+	if c, ok := t.tree.Conn(); ok {
+		if p, ok := t.tree.Project(); ok {
+			t.act.Connect(c, p)
+		}
 	}
 }
 
@@ -109,16 +126,121 @@ func (t *Terminal) toPanel(p int) {
 	t.Choose()
 }
 
-// shellRows are the rows that are shells, in list order, as the view
-// numbers their click zones.
+// shellRows are the rows that are shells or connections, in list order,
+// as the view numbers their click zones.
 func (t *Terminal) shellRows() []int {
 	var out []int
 	for i, r := range t.tree.Rows() {
-		if r.Shell != nil {
+		if r.Key() != "" {
 			out = append(out, i)
 		}
 	}
 	return out
+}
+
+// newSSH asks for a new connection under the cursor's project, saves it
+// and opens it.
+func (t *Terminal) newSSH() {
+	p, ok := t.tree.Project()
+	if !ok {
+		return
+	}
+	t.sshForm("new ssh", state.SSH{Project: p.Name, Auth: ssh.KeyFile}, func(c state.SSH) {
+		saved, err := t.core.Store.SaveSSH(c)
+		if err != nil {
+			t.Note("new ssh: %v", err)
+			return
+		}
+		t.tree.SelectKey(saved.Key)
+		t.act.Connect(saved, p)
+	})
+}
+
+// editSSH changes the connection under the cursor; an open session goes on.
+func (t *Terminal) editSSH() {
+	c, ok := t.tree.Conn()
+	if !ok {
+		return
+	}
+	t.sshForm("edit ssh", c, func(next state.SSH) {
+		if _, err := t.core.Store.SaveSSH(next); err != nil {
+			t.Note("edit ssh: %v", err)
+			return
+		}
+		t.tree.SelectKey(next.Key)
+		t.Note("saved %s", next.Name)
+	})
+}
+
+// signIns are the form's sign-in choices, in the order shown.
+var signIns = []struct{ label, auth string }{{"key file", ssh.KeyFile}, {"agent", ssh.Agent}, {"password", ssh.Password}}
+
+// sshForm is the connection's form, filled from c: a host of the user's ssh
+// config, or a host, user and port; how it signs in; the key file, picked
+// among the keys in ~/.ssh when there are any. submit gets c changed.
+func (t *Terminal) sshForm(title string, c state.SSH, submit func(state.SSH)) {
+	hosts := append([]string{"none"}, ssh.ConfigHosts(filepath.Join(ssh.Dir(), "config"))...)
+	alias := max(0, slices.Index(hosts, c.Alias))
+	auth := max(0, slices.IndexFunc(signIns, func(s struct{ label, auth string }) bool { return s.auth == c.Auth }))
+	labels := make([]string, len(signIns))
+	for i, s := range signIns {
+		labels[i] = s.label
+	}
+	port := ""
+	if c.Port != 0 {
+		port = strconv.Itoa(c.Port)
+	}
+	key := kit.TextField("key file", c.KeyFile)
+	if keys := ssh.Keys(ssh.Dir()); len(keys) > 0 {
+		if c.KeyFile != "" && !slices.Contains(keys, c.KeyFile) {
+			keys = append(keys, c.KeyFile)
+		}
+		key = kit.ChooserField("key file", keys, max(0, slices.Index(keys, c.KeyFile)))
+	}
+	fields := []kit.Field{
+		kit.ChooserField("from ~/.ssh/config", hosts, alias),
+		kit.TextField("name", c.Name),
+		kit.TextField("host", c.Host),
+		kit.TextField("user", c.User),
+		kit.TextField("port (22 when empty)", port),
+		kit.ChooserField("sign in", labels, auth),
+		key,
+	}
+	f := kit.NewForm(title, fields, func(v []string) {
+		next := c
+		next.Alias, next.Host, next.User = "", v[2], v[3]
+		if v[0] != "none" {
+			next.Alias = v[0]
+		}
+		next.Name = v[1]
+		if next.Name == "" {
+			next.Name = cmp.Or(next.Alias, next.Host)
+		}
+		if next.Alias == "" && next.Host == "" {
+			t.Note("%s: a host, or one of ~/.ssh/config's", title)
+			return
+		}
+		next.Port = 0
+		if v[4] != "" {
+			n, err := strconv.Atoi(v[4])
+			if err != nil || n <= 0 || n > 65535 {
+				t.Note("%s: the port is a number up to 65535", title)
+				return
+			}
+			next.Port = n
+		}
+		for _, s := range signIns {
+			if s.label == v[5] {
+				next.Auth = s.auth
+			}
+		}
+		next.KeyFile = ""
+		if next.Auth == ssh.KeyFile {
+			next.KeyFile = v[6]
+		}
+		submit(next)
+	})
+	t.Screen.Push(&f)
 }
 
 func (t *Terminal) selectShell(n int) {

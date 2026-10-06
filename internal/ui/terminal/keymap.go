@@ -16,10 +16,11 @@ var act = kit.Act[*Terminal]
 // the project's own row under either, no project, move mode, copy mode,
 // and the shell holding the keys, whose keys only label the footer. Filled
 // in init, since the help reads them all.
-var shellKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, copyKeys, termKeys, paneKeys []binding
+var shellKeys, connKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, copyKeys, termKeys, paneKeys []binding
 
 func init() {
 	keyNew := binding{Key: kit.TerminalKeys.New, Run: act(func(t *Terminal) { t.newShell() })}
+	keySSH := binding{Key: kit.TerminalKeys.NewSSH, Run: act(func(t *Terminal) { t.newSSH() })}
 	screen := func(t *Terminal) kit.Screen { return t.Screen }
 	keyHelp := kit.HelpKey(screen, helpText)
 	keyQuit := kit.QuitKey(kit.TerminalKeys.Quit, screen)
@@ -38,7 +39,7 @@ func init() {
 	moves = append(moves, panels...)
 	shellKeys = append([]binding{
 		{Key: kit.TerminalKeys.Continue, Run: act(func(t *Terminal) { t.enter() })},
-		keyNew,
+		keyNew, keySSH,
 		{Key: kit.TerminalKeys.Rename, Run: act(func(t *Terminal) {
 			if sh, ok := t.tree.Shell(); ok {
 				t.act.Rename(asShell(sh))
@@ -53,7 +54,19 @@ func init() {
 		{Key: kit.TerminalKeys.CopyMode, Run: act(func(t *Terminal) { _, rows := t.PaneSize(); t.Pane.StartCopy(rows) })},
 		keyHelp, keyQuit,
 	}, moves...)
-	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyHelp, keyQuit}, moves...)
+	connKeys = append([]binding{
+		{Key: kit.TerminalKeys.Connect, Run: act(func(t *Terminal) { t.enter() })},
+		keyNew, keySSH,
+		{Key: kit.TerminalKeys.EditSSH, Run: act(func(t *Terminal) { t.editSSH() })},
+		{Key: kit.TerminalKeys.DeleteSSH, Run: act(func(t *Terminal) {
+			if c, ok := t.tree.Conn(); ok {
+				t.act.Delete(c)
+			}
+		})},
+		{Key: kit.TerminalKeys.CopyMode, Run: act(func(t *Terminal) { _, rows := t.PaneSize(); t.Pane.StartCopy(rows) })},
+		keyHelp, keyQuit,
+	}, moves...)
+	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keySSH, keyHelp, keyQuit}, moves...)
 	projectKeys = kit.ProjectRow(func(t *Terminal) string { p, _ := t.tree.Project(); return p.Name }, func(t *Terminal) { t.tree.Moving, t.tree.Whole = true, true })
 	emptyKeys = []binding{kit.ProjectOpen[*Terminal](), keyHelp, keyQuit}
 	moveKeys = kit.ReorderKeys(func(t *Terminal, d int) { t.carry(d) }, func(t *Terminal) { t.tree.Moving = false })
@@ -83,6 +96,7 @@ func init() {
 // own and, under a shell or a project's empty row, the project's.
 func (t *Terminal) tables() (top, below []binding) {
 	_, onShell := t.tree.Shell()
+	_, onConn := t.tree.Conn()
 	switch {
 	case t.Capture.Held():
 		return termKeys, nil
@@ -94,6 +108,8 @@ func (t *Terminal) tables() (top, below []binding) {
 		return moveKeys, nil
 	case onShell:
 		return shellKeys, projectKeys
+	case onConn:
+		return connKeys, projectKeys
 	case t.tree.OnProject():
 		return emptyRowKeys, projectKeys
 	}
@@ -131,9 +147,11 @@ func helpText() string {
 	lines := []string{
 		"The Terminal tab: every project, the shells opened in it underneath; the one shown is on the right, and takes every key once opened.",
 		"A shell starts in its project's folder and lives while lazychat runs; exit closes it. Projects are opened, edited and removed in Chat.",
+		"An SSH connection is saved with the workspace under its project and opened with OpenSSH's ssh; a password is never kept, ssh asks for it.",
 		"",
 	}
 	lines = append(lines, kit.HelpSection("Terminal", shellKeys)...)
+	lines = append(lines, kit.HelpSection("SSH connection", connKeys)...)
 	lines = append(lines, kit.HelpSection("Terminal chosen", paneKeys)...)
 	lines = append(lines, kit.HelpSection("No terminal", emptyRowKeys)...)
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)

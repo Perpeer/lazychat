@@ -58,6 +58,9 @@ type State struct {
 	// The order of both lists is the order on screen: new ones go first among
 	// sessions and last among projects, and only a move changes it.
 	Sessions []Session `json:"sessions"`
+	// SSH are the saved connections, each under its project, in the order
+	// they were made; a password is never among them.
+	SSH []SSH `json:"ssh,omitempty"`
 }
 
 type Store struct {
@@ -212,6 +215,11 @@ func (s *Store) UpdateProject(name, newPath, newName string) (Project, error) {
 			s.Sessions[i].Project = next.Name
 		}
 	}
+	for i := range s.SSH {
+		if s.SSH[i].Project == s.Projects[idx].Name {
+			s.SSH[i].Project = next.Name
+		}
+	}
 	s.Projects[idx] = next
 	return next, s.Save()
 }
@@ -221,7 +229,9 @@ func (s *Store) RemoveProject(pathOrName string) error {
 	if idx < 0 {
 		return fmt.Errorf("no project named %q", pathOrName)
 	}
+	gone := s.Projects[idx].Name
 	s.Projects = append(s.Projects[:idx], s.Projects[idx+1:]...)
+	s.SSH = slices.DeleteFunc(s.SSH, func(c SSH) bool { return c.Project == gone })
 	return s.Save()
 }
 
@@ -416,4 +426,47 @@ func sign(n int) int {
 		return -1
 	}
 	return 1
+}
+
+// SSH is a saved connection: what the Terminal tab's form took, so it can
+// be opened again in a later run. Auth is core/ssh's KeyFile, Agent or
+// Password; Alias a Host of the user's ssh config.
+type SSH struct {
+	Key     string `json:"key"`
+	Name    string `json:"name"`
+	Project string `json:"project"`
+	Host    string `json:"host,omitempty"`
+	User    string `json:"user,omitempty"`
+	Port    int    `json:"port,omitempty"`
+	Auth    string `json:"auth,omitempty"`
+	KeyFile string `json:"key_file,omitempty"`
+	Alias   string `json:"alias,omitempty"`
+}
+
+// SaveSSH keeps a connection: one with a known key in its place, any other
+// last under a new key.
+func (s *Store) SaveSSH(c SSH) (SSH, error) {
+	c.Name = strings.TrimSpace(c.Name)
+	if c.Name == "" {
+		return SSH{}, fmt.Errorf("a connection needs a name")
+	}
+	for i := range s.SSH {
+		if s.SSH[i].Key == c.Key {
+			s.SSH[i] = c
+			return c, s.Save()
+		}
+	}
+	c.Key = fmt.Sprintf("ssh-%d", time.Now().UnixNano())
+	s.SSH = append(s.SSH, c)
+	return c, s.Save()
+}
+
+// RemoveSSH forgets a saved connection.
+func (s *Store) RemoveSSH(key string) error {
+	n := len(s.SSH)
+	s.SSH = slices.DeleteFunc(s.SSH, func(c SSH) bool { return c.Key == key })
+	if len(s.SSH) == n {
+		return fmt.Errorf("no connection with key %s", key)
+	}
+	return s.Save()
 }

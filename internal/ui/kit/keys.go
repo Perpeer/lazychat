@@ -109,6 +109,10 @@ var ChatKeys = struct {
 // TerminalKeys are the Terminal tab's: the list, the shell's pane and copy mode.
 var TerminalKeys = struct {
 	New       Key
+	NewSSH    Key
+	Connect   Key
+	EditSSH   Key
+	DeleteSSH Key
 	Quit      Key
 	PageDown  Key
 	Up        Key
@@ -128,6 +132,10 @@ var TerminalKeys = struct {
 	PaneOther Key
 }{
 	New:       Key{Keys: []string{"n"}, Hint: Hint{Key: "n", Does: "new"}, Help: "a new shell ($SHELL, as a login shell) in the cursor's project's folder, named on its own; any number per project"},
+	NewSSH:    Key{Keys: []string{"s"}, Hint: Hint{Key: "s", Does: "new ssh"}, Help: "a new SSH connection under the cursor's project: a host of ~/.ssh/config or a host, user and port, signed in by a key file, the agent or a password ssh asks for; saved with the workspace, then opened"},
+	Connect:   Key{Keys: []string{"enter"}, Hint: Hint{Key: "enter", Does: "connect"}, Help: "open the connection with OpenSSH's ssh, or go back into it while it is open · " + LeaveLabel + " comes back, it runs on"},
+	EditSSH:   Key{Keys: []string{"e"}, Hint: Hint{Key: "e", Does: "edit"}, Help: "edit the connection: the same form, filled in; an open session goes on as it was"},
+	DeleteSSH: Key{Keys: []string{"d"}, Hint: Hint{Key: "d", Does: "delete"}, Help: "delete the connection, asked first; its session, if open, is stopped"},
 	Quit:      Key{Keys: []string{"q"}, Hint: Hint{Key: "q", Does: "quit"}, Quiet: true, Help: "quit, Ctrl+C too, always asked; the shells are stopped, nothing survives lazychat"},
 	PageDown:  Key{Keys: []string{"pgdown"}, Name: "Fn+↑↓", Help: "scroll the shown terminal; the wheel and the trackpad too"},
 	Up:        Key{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from terminal to terminal, across the projects; the headings take no cursor; on a terminal the right side shows it"},

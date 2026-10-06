@@ -66,7 +66,7 @@ func TestChildCursor(t *testing.T) {
 	d.expect("(enter) continue") // opening brought Chat forward
 
 	d.tab(3) // Terminal: no terminals anywhere, one empty row per project
-	d.expect("└─ no terminals yet", "(enter/n) new · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("└─ no terminals yet", "(enter/n) new · (s) new ssh · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 	d.key("G")
 	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
 
