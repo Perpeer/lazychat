@@ -188,7 +188,8 @@ commit messages. Every key and screen is in the
 </p>
 
 Lazy watches your agents all day and has never asked for anything.
-lazychat is free and stays free; if it saves you time, keep Lazy going:
+lazychat is free and stays free; if it saves you time, keep Lazy going
+(the ♥ line under the AI tools in Chat opens this page too):
 
 <p align="center">
   ☕ <b>$3</b> a coffee · 🍩 <b>$10</b> a snack · 🛋️ <b>$50</b> a comfy cushion · 🚀 <b>$100+</b> super sponsor

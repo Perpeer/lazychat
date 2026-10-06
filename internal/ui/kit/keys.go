@@ -306,13 +306,14 @@ var WorkspaceHelp = func() []string {
 }()
 
 // SponsorURL is where lazychat, and Lazy, are sponsored; the menu bar app
-// has the same link.
+// has the same link, and a click on the sponsor line under the AI tools
+// opens it.
 const SponsorURL = "https://github.com/sponsors/Perpeer"
 
 // HelpFoot ends every tab's help: the workspace box's keys, and where to
-// sponsor Lazy — said there, never pushed on screen.
+// sponsor Lazy.
 var HelpFoot = append(append([]string(nil), WorkspaceHelp...),
 	"i          "+GlobalKeys.Inbox.Help,
 	"U          "+GlobalKeys.Update.Help,
 	"",
-	"Sponsor Lazy ♥ "+SponsorURL+" — lazychat is free; a coffee keeps Lazy awake")
+	"Sponsor Lazy ♥ "+SponsorURL+" — lazychat is free; a coffee keeps Lazy awake; a click on the ♥ line under Chat's AI tools opens it")

@@ -71,7 +71,7 @@ func toolRows(states []api.ToolState, w int) []string {
 		id := s.Tool.ID()
 		items = append(items, SectionItem{Mark: mark, Name: id, Styled: ToolBadge(id), Detail: detail})
 	}
-	return SectionRows("AI tools", items, w)
+	return append(SectionRows("AI tools", items, w), sponsorRow(w))
 }
 
 // VersionNumber is the number out of a --version line.

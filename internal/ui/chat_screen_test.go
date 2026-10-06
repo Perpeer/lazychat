@@ -584,3 +584,28 @@ func TestNoGitHeading(t *testing.T) {
 	d.expectNot("not a git repo")
 	d.quitApp()
 }
+
+// Under Chat's AI tools a sponsor line; a click on it opens the sponsor page
+// and says so.
+func TestSponsorLine(t *testing.T) {
+	var opened []string
+	was := kit.OpenURL
+	kit.OpenURL = func(url string) error { opened = append(opened, url); return nil }
+	t.Cleanup(func() { kit.OpenURL = was })
+	e, _ := seeded(t)
+	d := start(t, e, 120, 32)
+	d.expect("AI tools", "♥ sponsor lazychat")
+	sc := d.screen()
+	y := lineOf(sc, "♥ sponsor lazychat")
+	row := strings.Split(sc, "\n")[y]
+	x := utf8.RuneCountInString(row[:strings.Index(row, "♥")])
+	if lineOf(sc, "AI tools") > y {
+		t.Fatalf("the sponsor line is not under the AI tools:\n%s", sc)
+	}
+	d.click(x+3, y)
+	d.expect("opened github.com/sponsors/Perpeer")
+	if len(opened) != 1 || opened[0] != kit.SponsorURL {
+		t.Errorf("opened %q, want the sponsor page", opened)
+	}
+	d.quitApp()
+}

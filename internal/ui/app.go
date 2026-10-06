@@ -350,6 +350,14 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.openUpdate()
 			return a, nil
 		}
+		if kit.LeftClick(msg) && zone.Get(kit.SponsorZone).InBounds(msg) {
+			if err := kit.OpenURL(kit.SponsorURL); err != nil {
+				a.Note("sponsor page: %v", err)
+			} else {
+				a.Note("opened %s in the browser — thank you", strings.TrimPrefix(kit.SponsorURL, "https://"))
+			}
+			return a, nil
+		}
 		if msg.X < railW {
 			if msg.Action != tea.MouseActionPress {
 				return a, nil

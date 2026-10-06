@@ -242,6 +242,7 @@ Nothing lazychat does leaves a workspace half written or written over:
       │   └─ no sessions yet             ││                                                          │
 ┌────┐│ AI tools                         ││                                                          │
 │set ││ ● claude  2.1.0                  ││ Opus · high · main · ctx 28%                             │
+│    ││ ♥ sponsor lazychat               ││                                                          │
 └────┘└──────────────────────────────────┘└──────────────────────────────────────────────────────────┘
       session: (enter) continue · (n) new · (r) resume · (e) rename · (m) move · (d) close    v1.0.3
       project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove
@@ -350,7 +351,9 @@ from the prompt to where Claude Code ended the turn, and a session resumed
 shows its last prompt's time at once; a tool that keeps no transcript (codex)
 is timed by lazychat from the first work after your input. A session whose project was
 removed is listed at the end under "no longer registered". The AI tools
-are listed under the tree, ready or not and why. The right side is the
+are listed under the tree, ready or not and why, and under them one line,
+`♥ sponsor lazychat`: a click on it opens github.com/sponsors/Perpeer in
+your browser (`open`, `xdg-open` on Linux). The right side is the
 shown session's terminal, its size the pty's; under 80 columns it takes the
 whole screen while shown and `Esc` brings the tree back.
 
