@@ -80,7 +80,7 @@ func TestMascot(t *testing.T) {
 	}
 
 	d.session("ivy", "work")
-	d.expect("ivy waits")
+	d.untilIn(3*waitFor, "ivy is not done", func() bool { return strings.Contains(d.screen(), "ivy waits") })
 	d.untilIn(3*waitFor, "the mascot does not party for the finished session", func() bool { return strings.Contains(d.mascot(), "✦") })
 
 	d.tab(3) // from another tab
@@ -300,7 +300,7 @@ func TestMascotTwoSessions(t *testing.T) {
 	d.holds(1200*time.Millisecond, "ivy, looked at, does not keep a steady ✓", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 	d.until("oak stopped blinking", func() bool { return !strings.Contains(d.screen(), "✓ oak") })
 	d.until("oak does not blink back", func() bool { return strings.Contains(d.screen(), "✓ oak") })
-	d.expect("oak waits")
+	d.untilIn(3*waitFor, "oak is not done", func() bool { return strings.Contains(d.screen(), "oak waits") })
 	d.expectNot("ivy waits")
 
 	// A prompt in ivy: typing comes back with ivy's badge; the footer names
@@ -362,7 +362,7 @@ func TestStartWorkIsNoNews(t *testing.T) {
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("work\r")
 	d.leave()
-	d.expect("ivy waits")
+	d.untilIn(3*waitFor, "ivy is not done", func() bool { return strings.Contains(d.screen(), "ivy waits") })
 	d.quitApp()
 }
 

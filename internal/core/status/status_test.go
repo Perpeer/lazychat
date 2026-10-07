@@ -278,9 +278,10 @@ func TestShortPause(t *testing.T) {
 		c.tick(Signals{Working: true, Given: true, Inputs: 1})
 	}
 	before, _ := c.b.Turn("a", c.now)
-	c.tick(Signals{Given: true, Inputs: 1})
-	c.tick(Signals{Given: true, Inputs: 1})
-	c.want("a pause of a second and more", Working)
+	for range 3 {
+		c.tick(Signals{Given: true, Inputs: 1})
+	}
+	c.want("a pause of three seconds", Working)
 	c.tick(Signals{Working: true, Given: true, Inputs: 1})
 	c.want("at work again", Working)
 	if after, st := c.b.Turn("a", c.now); st != TurnRunning || after < before {
