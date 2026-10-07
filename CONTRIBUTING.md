@@ -4,6 +4,12 @@ Issues and pull requests are welcome. This page is how the code is laid
 out, how to change it without breaking it, and how it is tested; what the
 app does, key by key, is in [docs/REFERENCE.md](docs/REFERENCE.md).
 
+A contribution comes under lazychat's licence (`LICENSE`, the PolyForm
+Shield License 1.0.0). By sending one you also allow perpeer, lazychat's
+author, to offer it under other terms, so lazychat can change its licence
+or be offered under another one later. Send only work you have the right
+to give. The name lazychat and Lazy stay the author's (`TRADEMARKS.md`).
+
 ## Code
 
 Layers, each importing only those below it; `./check.sh` enforces the

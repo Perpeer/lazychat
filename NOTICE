@@ -1,12 +1,13 @@
 lazychat
-Copyright (C) 2026 perpeer — https://github.com/perpeer/lazychat
 
-lazychat is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the
-Free Software Foundation, version 3 (see LICENSE).
+Required Notice: Copyright (C) 2026 perpeer (https://github.com/perpeer/lazychat)
 
-Additional term under section 7(b) of the license: any copy, modified
-version or work based on lazychat must keep this NOTICE file and show the
-author attribution "Based on lazychat by perpeer —
-https://github.com/perpeer/lazychat" where it shows its own credits (in
-its documentation, and in its about or help screen if it has one).
+Licensor Line of Business: lazychat, a terminal app that runs AI coding agents side by side with Git and shells (https://github.com/perpeer/lazychat)
+
+lazychat is source-available under the PolyForm Shield License 1.0.0
+(see LICENSE, or https://polyformproject.org/licenses/shield/1.0.0). You
+may read, use and change it, also at work; you may not offer a product
+that competes with it, paid or free.
+
+The name lazychat, the mascot Lazy, its drawings and its sounds are not
+licensed by these terms: see TRADEMARKS.md.

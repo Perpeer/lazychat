@@ -16,7 +16,7 @@
   <a href="#install"><img src="https://img.shields.io/badge/homebrew-perpeer%2Ftap-fbb040?logo=homebrew&logoColor=white" alt="Homebrew: perpeer/tap"></a>
   <img src="https://img.shields.io/badge/platform-macOS-555?logo=apple&logoColor=white" alt="Platform: macOS">
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue" alt="License: PolyForm Shield 1.0.0"></a>
 </p>
 
 <p align="center">
@@ -139,9 +139,17 @@ same for AI coding agents.
 
 ## License
 
-AGPL-3.0, see `LICENSE`. lazychat is free to use, change and share; a
-changed copy that is shipped, sold or run as a service has to stay open
-source too, and keeps the credit in `NOTICE`.
+lazychat is source-available under the
+[PolyForm Shield License 1.0.0](LICENSE): read it, use it, change it for
+yourself, also at work, for free. What it does not allow is offering a
+product that competes with lazychat, paid or free — selling it, or
+shipping a renamed copy. Keep `NOTICE` with any copy.
+
+The name lazychat, the mascot Lazy, its drawings and its sounds are not
+part of the licence: see [TRADEMARKS.md](TRADEMARKS.md).
+
+Your workspaces, sessions and settings stay on your Mac, in `~/.lazychat`;
+lazychat sends none of them anywhere.
 
 ## Contributing
 
