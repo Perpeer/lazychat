@@ -60,7 +60,12 @@ func init() {
 		keyMove,
 		{Key: kit.ChatKeys.Close, Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {
-				c.act.Close(r)
+				c.act.Close(r, c.board.Working(r.Key))
+			}
+		})},
+		{Key: kit.ChatKeys.Delete, Run: act(func(c *Chat) {
+			if r, ok := c.tree.Session(); ok {
+				c.act.Delete(r)
 			}
 		})},
 		{Key: kit.ChatKeys.Wheel},

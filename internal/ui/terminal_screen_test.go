@@ -13,7 +13,7 @@ import (
 // The Terminal tab, under Git on the rail: n opens a shell in the project's
 // folder under a name of its own, it takes the keys and runs on after
 // Ctrl+Q; a second one is numbered after it; one is renamed and moved above
-// the other; d closes one, asked; exit ends the other and it leaves the list.
+// the other; d deletes one, asked; exit ends the other and it leaves the list.
 func TestTerminalTab(t *testing.T) {
 	e, dir := seeded(t)
 	e.vars = map[string]string{"SHELL": "/bin/sh"}
@@ -23,13 +23,13 @@ func TestTerminalTab(t *testing.T) {
 		t.Fatalf("the Terminal box is not under Git's:\n%s", d.screen())
 	}
 	d.tab(3)
-	d.expect("[1] projects", "demo2 · terminals (0)", "└─ no terminals yet", "(enter/n) new · (s) new ssh · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("[1] projects", "demo2 · terminals (0)", "└─ no terminals yet", "(enter/n) new · (s) new ssh · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("n")
 	d.expect("sh 1", "(ctrl+q) back to lazychat")
 	d.raw("pwd\r")
 	d.expect(filepath.Base(dir))
 	d.leave()
-	d.expect("(enter) continue · (n) new · (s) new ssh · (e) rename · (m) move · (d) close · (v) copy")
+	d.expect("(enter) continue · (n) new · (s) new ssh · (e) rename · (m) move · (d) delete · (v) copy")
 	d.key("n")
 	d.expect("sh 2")
 	d.leave()
@@ -47,9 +47,9 @@ func TestTerminalTab(t *testing.T) {
 		t.Fatalf("server was not moved above sh 1:\n%s", s)
 	}
 	d.key("d")
-	d.expect("close server (demo2)?")
+	d.expect("delete server (demo2)?")
 	d.key("y")
-	d.expect("closed server", "1 running")
+	d.expect("deleted server", "1 running")
 	d.expectNot("─ ◐ server")
 
 	d.key("2") // the cursor went on to sh 1; 2 only chooses its pane

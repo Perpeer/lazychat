@@ -46,7 +46,7 @@ var ListKeys = struct {
 	OpenProject:   Key{Keys: []string{"O"}, Hint: Hint{Key: "shift+o", Does: "open"}, Help: "open a project: a directory, listed under a name, in Chat; nothing starts in it until asked"},
 	EditProject:   Key{Keys: []string{"E"}, Hint: Hint{Key: "shift+e", Does: "edit"}, Help: "edit the cursor's project: its name and its directory, both prefilled"},
 	MoveProject:   Key{Keys: []string{"M"}, Hint: Hint{Key: "shift+m", Does: "move"}, Help: "move mode for the whole project (↕ on its heading); ↑↓ j k carry it among the projects, Enter puts it down"},
-	RemoveProject: Key{Keys: []string{"D"}, Hint: Hint{Key: "shift+d", Does: "remove"}, Help: "remove the cursor's project from the list, asked, closing its sessions and shells; the directory and Claude Code's transcripts stay"},
+	RemoveProject: Key{Keys: []string{"D"}, Hint: Hint{Key: "shift+d", Does: "delete"}, Help: "delete the cursor's project from the workspace, asked, closing its sessions and shells; the directory and Claude Code's transcripts stay"},
 	Carry:         Key{Keys: []string{"up", "k"}, Hint: Hint{Key: "↑↓ j k", Does: "move"}, Help: "carry the picked row up or down; the order is saved at every step"},
 	PutDown:       Key{Keys: []string{"enter", "m", "M", "ctrl+q"}, Hint: Hint{Key: "enter", Does: "done"}, Help: "put the row down where it is; m, M and ctrl+q too"},
 	Back:          Key{Keys: []string{"ctrl+q"}, Quiet: true, Name: "ctrl+q", Help: "back to [1], the list on the left, from any panel"},
@@ -64,6 +64,7 @@ var ChatKeys = struct {
 	Continue      Key
 	Rename        Key
 	Draft         Key
+	Delete        Key
 	Close         Key
 	Wheel         Key
 	DraftPaste    Key
@@ -89,7 +90,8 @@ var ChatKeys = struct {
 	Continue:      Key{Keys: []string{"enter"}, Hint: Hint{Key: "enter", Does: "continue"}, Help: "into the session's chat, its terminal, the only key that goes in, as Enter is on the Terminal tab; an ended one is resumed · " + LeaveLabel + " comes back"},
 	Rename:        Key{Keys: []string{"e"}, Hint: Hint{Key: "e", Does: "rename"}, Help: "rename the session: a popup, its name prefilled; the tree and the pane's title follow"},
 	Draft:         Key{Keys: []string{"w"}, Hint: Hint{Key: "w", Does: "draft"}, Help: "write the session's next prompt in a box under its pane while it works; an answer it asks for never takes its place, and it is kept across runs (✎ on the row)"},
-	Close:         Key{Keys: []string{"d"}, Hint: Hint{Key: "d", Does: "close"}, Help: "close the session, asked: a running one is stopped, the record leaves the tree; the transcript stays and r brings it back"},
+	Delete:        Key{Keys: []string{"d"}, Hint: Hint{Key: "d", Does: "delete"}, Help: "delete the session, asked: a running one is stopped, the record leaves the tree; the transcript stays and r brings it back"},
+	Close:         Key{Keys: []string{"x"}, Hint: Hint{Key: "x", Does: "close"}, Help: "close the session: its program ends, its row stays and Enter resumes the conversation; asked while it works, since its answer is cut off"},
 	Wheel:         Key{Hint: Hint{Key: "wheel", Does: "scroll"}, Help: "the wheel over the session on the right scrolls it; over the tree it scrolls the tree and leaves the cursor"},
 	DraftPaste:    Key{Hint: Hint{Key: "cmd/opt+enter", Does: "paste in prompt"}, Help: "paste the draft into the session's input and go into it, once it runs, does not work and asks nothing; Enter is yours after a last edit. Cmd+Enter where the terminal passes it on (kitty-protocol terminals, an iTerm mapping), Option+Enter everywhere with Option as Meta; a draft starting with / goes on one line, so claude runs it as a command"},
 	DraftClear:    Key{Hint: Hint{Key: "ctrl+u", Does: "clear"}, Help: "clear the draft, asked"},
@@ -141,7 +143,7 @@ var TerminalKeys = struct {
 	Up:        Key{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from terminal to terminal, across the projects; the headings take no cursor; on a terminal the right side shows it"},
 	Continue:  Key{Keys: []string{"enter"}, Hint: Hint{Key: "enter", Does: "continue"}, Help: "into the shell: it gets every key · " + LeaveLabel + " comes back, the shell runs on"},
 	Rename:    Key{Keys: []string{"e"}, Hint: Hint{Key: "e", Does: "rename"}, Help: "rename the terminal: a popup, its name prefilled"},
-	Close:     Key{Keys: []string{"d"}, Hint: Hint{Key: "d", Does: "close"}, Help: "close the terminal, asked while its shell runs: the shell and what runs in it are stopped"},
+	Close:     Key{Keys: []string{"d"}, Hint: Hint{Key: "d", Does: "delete"}, Help: "delete the terminal, asked while its shell runs: the shell and what runs in it are stopped"},
 	CopyMode:  Key{Keys: []string{"v"}, Hint: Hint{Key: "v", Does: "copy"}, Help: "copy mode over the shown terminal: mark rows and put them on the clipboard"},
 	CopyMove:  Key{Keys: []string{"up", "k"}, Hint: Hint{Key: "↑↓ Fn+↑↓", Does: "move"}, Help: "move the cursor row"},
 	CopyMark:  Key{Keys: []string{" "}, Hint: Hint{Key: "space", Does: "mark"}, Help: "mark where the selection starts"},

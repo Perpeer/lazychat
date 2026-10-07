@@ -192,7 +192,7 @@ func TestRemoveProject(t *testing.T) {
 
 // Starting a session records it, runs it and shows it; closing it asks,
 // then drops the record, empties the pane and stops the process after.
-func TestStartAndClose(t *testing.T) {
+func TestStartAndDelete(t *testing.T) {
 	a, h, p := setup(t)
 	a.NewSession(p.Name)
 	if len(h.later) != 1 {
@@ -207,7 +207,7 @@ func TestStartAndClose(t *testing.T) {
 	if len(h.shown) != 1 || h.shown[0] != rec.Key || !a.Live.Running(rec.Key) {
 		t.Fatalf("shown %v, running %v", h.shown, a.Live.Running(rec.Key))
 	}
-	a.Close(rec)
+	a.Delete(rec)
 	h.yes()
 	if len(a.core.Store.Sessions) != 0 {
 		t.Errorf("record kept: %v", a.core.Store.Sessions)
@@ -220,7 +220,45 @@ func TestStartAndClose(t *testing.T) {
 	}
 	h.later[0]()
 	if a.Live.Running(rec.Key) {
-		t.Error("process survived close")
+		t.Error("process survived delete")
+	}
+}
+
+// x ends a session's program and keeps its record, so Enter resumes it;
+// it asks only while the session works.
+func TestCloseKeepsTheRecord(t *testing.T) {
+	a, h, p := setup(t)
+	a.NewSession(p.Name)
+	h.later = nil
+	h.submit([]string{p.Name, "claude", "oak"})
+	rec := a.core.Store.Sessions[0]
+	a.Close(rec, false)
+	if len(h.later) != 1 {
+		t.Fatalf("%d later jobs, want the stop at once", len(h.later))
+	}
+	h.later[0]()
+	if a.Live.Running(rec.Key) {
+		t.Error("the program survived close")
+	}
+	if len(a.core.Store.Sessions) != 1 || a.core.Store.Sessions[0].Key != rec.Key {
+		t.Errorf("the record left with close: %v", a.core.Store.Sessions)
+	}
+	a.Close(rec, false)
+	if len(h.later) != 1 {
+		t.Error("closing a session that does not run stopped something")
+	}
+
+	a.NewSession(p.Name)
+	h.later = nil
+	h.submit([]string{p.Name, "claude", "ivy"})
+	busy := a.core.Store.Sessions[0]
+	a.Close(busy, true)
+	if len(h.later) != 0 {
+		t.Fatal("a working session was closed without asking")
+	}
+	h.yes()
+	if len(h.later) != 1 {
+		t.Fatalf("%d later jobs after yes, want the stop", len(h.later))
 	}
 }
 

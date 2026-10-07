@@ -244,8 +244,8 @@ Nothing lazychat does leaves a workspace half written or written over:
 │set ││ ● claude  2.1.0                  ││ Opus · high · main · ctx 28%                             │
 │    ││ ♥ sponsor lazychat               ││                                                          │
 └────┘└──────────────────────────────────┘└──────────────────────────────────────────────────────────┘
-      session: (enter) continue · (n) new · (r) resume · (e) rename · (m) move · (d) close    v1.0.3
-      project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove
+      session: (enter) continue · (n) new · (r) resume · (e) rename · (m) move · (x) close · (d) delete
+      project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete
 ```
 
 The rail holds one box per tab — chat, git and term, and set at its foot
@@ -322,7 +322,7 @@ Questions — add a project, create a session, close, quit — are popups:
 | `i`, or a click on Lazy while two or more sessions wait | the inbox: the sessions waiting on you, asking first, then finished and not looked at; `Enter` opens the one chosen in Chat, `Esc` leaves |
 | a tab switch | keeps the project: the project under the cursor in Chat, Git or Terminal is the one the next tab opens on; what is under it — a session, a change, a shell — stays each tab's own |
 | `shift+o` (`o` with no project yet) | open a project: a name (empty = the folder's) and a folder — the git top level is registered — walked in columns as Finder's column view walks them: `↑↓` highlight a folder, `→` steps in, `./` is the folder itself, a typed path lays the columns out, the line under them says `the project's directory: …`. Nothing starts in it |
-| `shift+e` / `shift+d` | edit the cursor's project, name and folder prefilled / remove it from the list, asked: its sessions and shells close with it, the folder stays and Claude Code keeps the transcripts |
+| `shift+e` / `shift+d` | edit the cursor's project, name and folder prefilled / delete it from the workspace, asked: its sessions and shells close with it, the folder stays and Claude Code keeps the transcripts |
 | `m` / `shift+m` | move mode: `m` picks up the row under the cursor, `shift+m` its project (marked `↕`); `↑↓` `j k` carry it and `Enter`, `ctrl+q`, `m` or `M` put it down. Every step is saved; a click or another tab puts it down too. New sessions and shells go first under their project, new projects last |
 | the wheel | over a list, scroll it — the cursor and the right side stay, the next key brings the list back; over a pane or a diff, scroll that |
 | `?` / `q` / `Ctrl+C` | help / quit, asked when something runs; nothing survives lazychat. `Ctrl+C` quits only on a list: in a pane it is the program's, in a text field it copies |
@@ -466,7 +466,8 @@ the tree too.
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow |
 | `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
-| `d` | close it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
+| `x` | close it: its program ends (SIGTERM, SIGKILL after 3 s), its row stays and `Enter` resumes the conversation; asked only while it works, since its answer is cut off |
+| `d` | delete it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |
 | the wheel / `PgUp` `PgDn` (Fn+↑↓, five rows a press) | scroll the session, while it has the keys too: claude keeps its own history and gets the wheel; a program that does not take the mouse is scrolled through the emulator's scrollback, where typing returns to the bottom. Scrolled back, the title says `↑ N` and a thumb on the pane's edge shows where |
 
 In the pane every byte the terminal sends goes to the session exactly as it
@@ -584,7 +585,7 @@ The projects again, and under each the shells opened in it: `n` starts
 `zsh 1`, `zsh 2` … (the lowest number free), any number per project. The one
 under the cursor is on the right; `Enter` or a click gives it every key and
 `ctrl+q` comes back while it runs on. `e` renames a shell, `m` moves it
-among its project's, `d` closes it (asked while it runs), and `exit` in it
+among its project's, `d` deletes it (asked while it runs), and `exit` in it
 takes it off the list. A drag over a shell's text selects it and the release
 copies it, as in a plain terminal (a program on the alternate screen, vim or
 less, keeps the mouse for itself); the pane's title says how much was

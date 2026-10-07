@@ -74,112 +74,43 @@ It checks your Mac, says what is missing, and builds
 
 ### Updates
 
-When a new release is out, a green `new` box shows on the left rail over
-Settings (and `↑ 1.0.5` beside the version at the bottom right). Click it,
-or press `U`: a small window shows the Homebrew command above, and `c`
-copies it. With Homebrew, `Enter` upgrades right there in the
-background, showing the step it is on, then offers to restart lazychat on
-the new version — running sessions stop and stay in the list. If the
-upgrade fails it says so and shows the command to run by hand. Homebrew
-sees a release within the hour it comes out. From the source, `Enter`
-runs it in a new shell in the Terminal tab instead. If Lazy runs as a
-service, `brew services restart lazychat` brings the new menu bar app too.
+When a release is out, a green `new` box shows on the rail. Click it or
+press `U`: with Homebrew `Enter` upgrades and restarts lazychat; from the
+source it shows the command to run. To remove lazychat: `brew uninstall
+lazychat`, or `./uninstall.sh`. Your workspaces and projects stay.
 
-To remove lazychat, run `brew uninstall lazychat`, or `./uninstall.sh` for
-a source install. Your settings and workspaces stay (`./uninstall.sh
---purge` takes them too); your projects and the agents' own files are
-never touched.
+## How it works
 
-## Quick start
+**1. A workspace.** Run `lazychat` and name one: the set of projects you
+work on. `ctrl+w` switches between workspaces.
 
-1. Run `lazychat` and name a workspace, the set of projects you work on.
-2. Press `o` and pick a project folder.
-3. Press `n` to start Claude Code or Codex in it, `Enter` to type to it,
-   and `ctrl+q` to come back.
-4. `Tab` moves between the tabs, and `?` lists every key where you are.
+**2. A project.** Press `o` and pick a folder. Every tab — Chat, Git,
+Terminal — lists the same projects.
 
-`lazychat doctor` tells you which agents are ready, and why not.
-
-## Features
-
-### Chat: your agents, side by side
-
-Every session sits under its project with its terminal next to it. You can
-see which one works, which one waits for you and how long the last prompt
-took. `n` starts one, `r` resumes an old one, and `w` lets you draft the
-next prompt while the agent is still busy. `i`, or
-a click on Lazy while several wait, opens the inbox: the sessions asking
-you something or finished, Enter opens one. Press `3` for the details. At
-the top is the prompt's flow, drawn like `git log --graph`: each tool it
-called in order with the file it touched or the command it ran, a
-subagent as a branch that forks off and joins back when it returns, a
-question to you, and what each step added to the context. Beside it is the session's context, drawn like Claude
-Code's `/context`: how full the window is, what fills it, which tool's
-results took the most, and how many more prompts fit at this pace. At the
-bottom are your last ten prompts as a table with their state, duration,
-tokens and API cost. Lazy says hello when lazychat opens, and plays a
-sound when a session starts on a prompt, asks you something, finishes or
-fails; you can turn the sounds off in Settings.
+**3. Sessions.** Press `n` to start Claude Code or Codex in the project,
+`Enter` to type to it and `ctrl+q` to come back. A project holds as many
+sessions as you like, each its own agent in its own terminal, working on
+its own: start one on a feature and another on a bug, side by side, and
+see which one works, which one asks you something and which one is done.
 
 ```
 ┌ [1] projects ──────────┐┌ [2] session │ [3] details ───────────┐
 │ garden-shed            ││ ❯ paint the shed blue                │
-│ main                   ││                                      │
-│   │                    ││ ● Starting with the north wall.      │
-│   ├─ ● ivy             ││   Reading paint.go…                  │
-│   │    claude · 42s    ││                                      │
-│   │                    ││ > ▌                                  │
-│   └─ ○ oak             ││                                      │
-│        codex · 3m 18s  ││                                      │
+│ ⎇ main                 ││                                      │
+│   ├─ ◐ north-wall      ││ ● Starting with the north wall.      │
+│   │    claude · 42s    ││   Reading paint.go…                  │
+│   ├─ ? blue-door       ││                                      │
+│   │    claude · 3m 18s ││ > ▌                                  │
+│   └─ ✓ fence           ││                                      │
+│        codex · 1m 05s  ││                                      │
 └────────────────────────┘└──────────────────────────────────────┘
-session: (enter) continue · (n) new · (r) resume · (w) draft · (?) help
+session: (enter) continue · (n) new · (x) close · (d) delete · (?) help
 ```
 
-### Git: stage, diff and commit without leaving
-
-Changes as a folder tree, a diff you can walk line by line with the code
-in its language's colours — `v` selects lines, `space` stages just
-those — your last commits and the repository's worktrees. `Suggest` asks the agent for a
-commit message written from what you staged.
-
-```
-┌ [1] projects ──┐┌ [2] Unstaged · 1 ────┐┌ [5] diff ──────────────────┐
-│ garden-shed    ││ M paint.go           ││ @@ -3,2 +3,2 @@            │
-│ main ↑1        │└──────────────────────┘│ - color := "red"           │
-│                │┌ [3] Staged · 1 ──────┐│ + color := "blue"          │
-│ blue-door      ││ + door.go            ││                            │
-│ worktree       │└──────────────────────┘└────────────────────────────┘
-│                │┌ [4] commits ─────────┐┌ [6] commit ────────────────┐
-│                ││ ↑ a1b2c3d first coat ││ Paint the door blue        │
-│                ││   9f8e7d6 sand it    ││────────────────────────────│
-│                ││                      ││      [ Suggest ] [ Commit ]│
-│                ││                      ││                            │
-└────────────────┘└──────────────────────┘└────────────────────────────┘
-branch: (c) commit · (p) pull · (shift+p) push · (b) branches · (w) worktrees
-```
-
-### Terminal: a shell in every project
-
-Plain shells in your projects' folders, for the things the agents don't
-do, and SSH connections saved with the workspace: `s` takes a host from
-your `~/.ssh/config` or a host, user and key, and opens it with your own
-`ssh`.
-
-```
-┌ [1] projects ──────┐┌ [2] sh 1 ──────────────────────────────┐
-│ garden-shed        ││ $ go test ./...                        │
-│ main               ││ ok   shed/paint   0.4s                 │
-│   │                ││ $ ▌                                    │
-│  ├─ ● sh 1         ││                                        │
-│  │                 ││                                        │
-│  └─ ○ server       ││                                        │
-└────────────────────┘└────────────────────────────────────────┘
-terminal: (enter) continue · (n) new · (s) new ssh · (e) rename · (d) close
-```
-
-Settings holds the theme, which tabs show and which agent writes your
-commit messages. Every key and screen is in the
-[reference](docs/REFERENCE.md).
+The rest you meet as you go: Git to stage, diff and commit, Terminal for
+shells and SSH, the details of each prompt, Settings. `?` lists every key
+where you are, and the [reference](docs/REFERENCE.md) has every screen.
+`lazychat doctor` tells you which agents are ready.
 
 ## Sponsor Lazy
 

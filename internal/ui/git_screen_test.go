@@ -127,7 +127,7 @@ func TestGitTab(t *testing.T) {
 	d.key("left") // not a way back any more: the diff keeps the keys
 	d.expect("(esc) projects · (v) select · (y) copy")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("3", "6") // 6 only chooses the box: digits and keys stay lazychat's
 	d.expect("(enter) write · (esc) projects")
 	d.key("esc")
@@ -135,22 +135,22 @@ func TestGitTab(t *testing.T) {
 	d.key("3", "6", "enter")
 	d.expect("(ctrl+s) commit · (ctrl+n) suggest · (Tab) next · (esc) projects")
 	d.key("esc")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("3")
 	d.expect("(space) stage / unstage")
 	d.key("6", "ctrl+q") // Ctrl+Q goes back to the projects, from the commit box too
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("5", "ctrl+q")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	// A click on a box's empty part gives it the keys; its selection stays.
 	sc := d.screen()
 	staged := lineOf(sc, "┌ [3] Staged")
 	d.click(utf8.RuneCountInString(strings.Split(sc, "\n")[staged][:strings.Index(strings.Split(sc, "\n")[staged], "┌ [3] Staged")])+5, staged+4)
 	d.expect("(space) stage / unstage", "      1 + package app")
 	d.click(10, lineOf(d.screen(), "(space) stage")-2) // the projects box, below its last project
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("1")
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees · (d) delete · (r) refresh · (wheel) scroll", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("2")
 	d.expect("┌ [5] all unstaged", "(space) stage / unstage")
 	d.key("1")

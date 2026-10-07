@@ -226,26 +226,43 @@ func (a *Actions) ResumeRunning() int {
 	return n
 }
 
-// Close is x on a session: the record leaves the list and the state file,
+// Delete is d on a session: the record leaves the list and the state file,
 // and a running process is stopped first. The question says what that costs.
-func (a *Actions) Close(r state.Session) {
-	question := fmt.Sprintf("close %s (%s)? it leaves this list; Claude Code keeps the transcript, r can bring it back", r.Name, r.Project)
+func (a *Actions) Delete(r state.Session) {
+	question := fmt.Sprintf("delete %s (%s)? it leaves this list; Claude Code keeps the transcript, r can bring it back", r.Name, r.Project)
 	if a.Live.Running(r.Key) {
-		question = fmt.Sprintf("close %s (%s)? claude is stopped now: an answer in progress is cut off. Claude Code keeps the transcript, r can resume it; the record leaves this list.", r.Name, r.Project)
+		question = fmt.Sprintf("delete %s (%s)? claude is stopped now: an answer in progress is cut off. Claude Code keeps the transcript, r can resume it; the record leaves this list.", r.Name, r.Project)
 	}
 	a.host.Ask(question, func() {
 		stopping, err := a.closeNow(r)
 		if err != nil {
-			a.host.Note("close: %v", err)
+			a.host.Note("delete: %v", err)
 			return
 		}
 		if stopping == nil {
-			a.host.Note("closed %s (%s)", r.Name, r.Project)
+			a.host.Note("deleted %s (%s)", r.Name, r.Project)
 			return
 		}
 		// Its exit is noted as "closed" when it is reaped.
 		a.host.Later(func() { term.StopAll([]*term.Session{stopping}, 3*time.Second) })
 	})
+}
+
+// Close is x on a session: its program ends and its record stays, so the
+// row is still there and Enter resumes the conversation. Asked only while
+// it works: that cuts an answer off; a session waiting or done just ends.
+func (a *Actions) Close(r state.Session, working bool) {
+	s, ok := a.Live.Get(r.Key)
+	if !ok || !s.Alive() {
+		a.host.Note("%s (%s) is not running", r.Name, r.Project)
+		return
+	}
+	end := func() { a.host.Later(func() { term.StopAll([]*term.Session{s}, 3*time.Second) }) }
+	if !working {
+		end()
+		return
+	}
+	a.host.Ask(fmt.Sprintf("close %s (%s)? it is answering: the answer is cut off; the row stays and Enter brings it back", r.Name, r.Project), end)
 }
 
 // closeNow drops a session's record and, when it runs, asks its process to
@@ -299,7 +316,7 @@ func (a *Actions) Reap() {
 		if a.closing[key] {
 			delete(a.closing, key)
 			delete(a.resumes, key)
-			a.host.Note("closed %s (%s)", s.Name, s.Project)
+			a.host.Note("deleted %s (%s)", s.Name, s.Project)
 			return
 		}
 		attempt, wasResume := a.resumes[key]

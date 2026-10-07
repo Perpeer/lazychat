@@ -18,12 +18,16 @@ paths:
   is on its context's footer, from the tab's `keymap.go`
   (`kit.Unlisted` for the rest; `TestKeymapTables` checks them).
 - Project keys are capitals on the footer's second row (M move, E edit,
-  D remove, O open); lowercase `m` moves the row. Headings take no cursor.
+  D delete, O open); lowercase `m` moves the row. Headings take no cursor.
 - Deleting is `d` in every tab and screen — a Chat session, a Terminal
-  shell, a Git row, the workspace box, the start screen — and `shift+d`
-  for a project; the user asked for one key. Chat's draft is `w`
-  ("write"). Keep one meaning per key: n new, e rename/edit, m move,
-  o open, d delete, ? help, q quit.
+  shell, a Git row, an SSH connection, the workspace box, the start screen
+  — and `shift+d` for a project, and every one of them reads "delete"
+  (the user asked for one key and one word; "close" and "remove" were
+  renamed). A project's delete leaves its folder. Chat's `x` closes a
+  session: its program ends, its row stays for Enter to resume (asked only
+  while it works). Chat's draft is `w` ("write"). Keep one meaning per
+  key: n new, e rename/edit, m move, o open, x close, d delete, ? help,
+  q quit.
 - A mouse report the terminal's reads cut is held whole (kit/input.go
   toTerminal: Esc [ or Esc [ < at a read's end waits for the next read, a
   lone Esc only escWait, 25 ms, so a key's Esc still reaches claude): cut

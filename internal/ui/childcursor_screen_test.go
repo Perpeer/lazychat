@@ -26,12 +26,12 @@ func TestChildCursor(t *testing.T) {
 	on := func(name string) {
 		t.Helper()
 		d.key("d")
-		d.expect("close " + name + " (demo2)?")
+		d.expect("delete " + name + " (demo2)?")
 		d.key("n")
 	}
 	d.key("g")
 	on("alpha")
-	d.expect("(enter) continue · (n) new", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(enter) continue · (n) new", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("j")
 	on("beta")
 	d.key("j") // over second's heading, onto its empty row
@@ -66,14 +66,14 @@ func TestChildCursor(t *testing.T) {
 	d.expect("(enter) continue") // opening brought Chat forward
 
 	d.tab(3) // Terminal: no terminals anywhere, one empty row per project
-	d.expect("└─ no terminals yet", "(enter/n) new · (s) new ssh · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("└─ no terminals yet", "(enter/n) new · (s) new ssh · (?) help", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("G")
-	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 
 	d.tab(2) // Git: the branch is the row, the project's key below it
-	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees", "project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("j")
-	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.quitApp()
 }
 

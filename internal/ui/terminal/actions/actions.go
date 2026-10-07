@@ -141,17 +141,18 @@ func (a *Actions) Rename(sh Shell) {
 	})
 }
 
-// Close stops a shell, asked first when it still runs, and forgets it.
+// Close is d on a shell: it stops it, asked first when it still runs, and
+// forgets it — shells are not saved, so closing one deletes it.
 func (a *Actions) Close(sh Shell) {
 	s, ok := a.Live.Get(sh.Key)
 	if !ok || !s.Alive() {
 		a.forget(sh.Key)
 		return
 	}
-	a.host.Ask(fmt.Sprintf("close %s (%s)? the shell and what runs in it are stopped", sh.Name, sh.Project), func() {
+	a.host.Ask(fmt.Sprintf("delete %s (%s)? the shell and what runs in it are stopped", sh.Name, sh.Project), func() {
 		a.forget(sh.Key)
 		a.host.Later(func() { term.StopAll([]*term.Session{s}, 3*time.Second) })
-		a.host.Note("closed %s", sh.Name)
+		a.host.Note("deleted %s", sh.Name)
 	})
 }
 

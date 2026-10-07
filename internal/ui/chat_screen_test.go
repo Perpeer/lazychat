@@ -49,8 +49,8 @@ func TestChatFlow(t *testing.T) {
 	d.expectCount(1, 1)
 	d.leave()
 
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help",
-		"project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) remove")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (x) close · (d) delete · (wheel) scroll · (?) help",
+		"project: (shift+o) open · (shift+e) edit · (shift+m) move · (shift+d) delete")
 	d.key("p", "s", "K", "J", "ctrl+k", "ctrl+j") // no menus, no second way to move: nothing happens
 	d.expectNot("project · demo")
 	d.expectNot("┌ session · ")
@@ -78,7 +78,7 @@ func TestChatFlow(t *testing.T) {
 	d.raw("hello\r")
 	d.expect("got: hello")
 	d.leave()
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help", "ivy")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (x) close · (d) delete · (wheel) scroll · (?) help", "ivy")
 	d.key("ctrl+c")
 	d.expect("stop 2 running session(s) and quit?")
 	d.key("n")
@@ -106,13 +106,13 @@ func TestChatFlow(t *testing.T) {
 	d.key("tab", "tab") // Chat → Git → Terminal
 	d.expect("demo2 · terminals (0)")
 	d.key("tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (x) close · (d) delete · (wheel) scroll · (?) help")
 	d.key("shift+tab") // back around the rail: Chat → Terminal, then Terminal → Git
 	d.expect("demo2 · terminals (0)")
 	d.key("shift+tab")
 	d.expect("(c) commit · (p) pull · (shift+p) push · (f) fetch · (b) branches · (w) worktrees")
 	d.key("tab", "tab")
-	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (d) close · (wheel) scroll · (?) help")
+	d.expect("(enter) continue · (n) new · (r) resume · (e) rename · (w) draft · (m) move · (x) close · (d) delete · (wheel) scroll · (?) help")
 	d.click(79, 14)
 	d.expect("(ctrl+q) back to lazychat")
 	d.click(9, 4) // the project's heading, beside the pane: its first session
@@ -120,9 +120,9 @@ func TestChatFlow(t *testing.T) {
 	d.expectNot("(ctrl+q) back to lazychat")
 
 	d.key("d")
-	d.expect("confirm", "close ivy (demo2)?", "in progress", "transcript")
+	d.expect("confirm", "delete ivy (demo2)?", "in progress", "transcript")
 	d.key("y")
-	d.expect("[1] projects", "closed ivy (demo2)")
+	d.expect("[1] projects", "deleted ivy (demo2)")
 	d.expectSessions(1)
 
 	d.key("r")
@@ -607,5 +607,27 @@ func TestSponsorLine(t *testing.T) {
 	if len(opened) != 1 || opened[0] != kit.SponsorURL {
 		t.Errorf("opened %q, want the sponsor page", opened)
 	}
+	d.quitApp()
+}
+
+// x ends a session's program and keeps its row — the record stays, marked
+// ended, for Enter to resume (the fake keeps no conversation to resume);
+// d deletes it, asked.
+func TestCloseKeepsTheRow(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "oak", ID: "oak-11"})
+	d := start(t, e, 120, 32)
+	d.selectSession("oak")
+	d.key("enter")
+	d.expect("FAKE CLAUDE READY", "(ctrl+q) back to lazychat")
+	d.leave()
+	d.expect("(x) close · (d) delete")
+	d.key("x")
+	d.expect("oak (demo2) ended")
+	d.expectSessions(1)
+	d.expect("○ oak")
+	d.key("d")
+	d.expect("delete oak (demo2)?")
+	d.key("y")
+	d.expectSessions(0)
 	d.quitApp()
 }
