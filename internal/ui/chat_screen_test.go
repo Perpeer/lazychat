@@ -485,7 +485,7 @@ func TestDraft(t *testing.T) {
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("answer\r")
 	d.leave()
-	d.untilIn(3*waitFor, "the session did not settle", func() bool { return strings.Contains(d.screen(), "ivy waits") })
+	d.untilIn(5*waitFor, "the session did not settle", func() bool { return strings.Contains(d.screen(), "ivy waits") })
 	st, err := state.Load(d.state)
 	if err != nil {
 		t.Fatal(err)

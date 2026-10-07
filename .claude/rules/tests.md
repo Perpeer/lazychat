@@ -30,10 +30,12 @@ paths:
   LAZYCHAT_BENCH_FILE, copied under an invented id — only its size and
   the times are printed. A CPU profile of a real run: LAZYCHAT_CPUPROFILE.
 - A step that waits for a session to finish (work → done, a party, "waits")
-  uses untilIn(3*waitFor): a fake session's end goes through the board's
+  uses untilIn(5*waitFor): a fake session's end goes through the board's
   grace and the ticks, and on GitHub's Mac runner, with every package's
   tests at once, TestMascotTwoSessions missed the 5 s limit and stopped a
-  release. Short waits are for what the screen draws at once.
+  release. With the board's grace at 4 s, 3*waitFor missed again, twice in
+  a row, so the wait is now untilIn(5*waitFor). Short waits are for what
+  the screen draws at once.
 - A screen test's click waits for the frame's zones (driver zonesStored):
   bubblezone stores them in a goroutine, and the driver clicked right
   after drawing; on GitHub's loaded runner TestSettingsTab's click missed

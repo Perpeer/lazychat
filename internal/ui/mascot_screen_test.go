@@ -80,8 +80,8 @@ func TestMascot(t *testing.T) {
 	}
 
 	d.session("ivy", "work")
-	d.untilIn(3*waitFor, "ivy is not done", func() bool { return strings.Contains(d.screen(), "ivy waits") })
-	d.untilIn(3*waitFor, "the mascot does not party for the finished session", func() bool { return strings.Contains(d.mascot(), "✦") })
+	d.untilIn(5*waitFor, "ivy is not done", func() bool { return strings.Contains(d.screen(), "ivy waits") })
+	d.untilIn(5*waitFor, "the mascot does not party for the finished session", func() bool { return strings.Contains(d.mascot(), "✦") })
 
 	d.tab(3) // from another tab
 	d.mouse(tea.MouseMsg{X: 2, Y: wsRows + 1, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
@@ -89,7 +89,7 @@ func TestMascot(t *testing.T) {
 	// Looked at, ivy stops calling: the party ends.
 	d.raw("work\r") // and a new turn, which it finishes while no one looks
 	d.leave()
-	d.untilIn(3*waitFor, "ivy's new turn brought no news", func() bool { return strings.Contains(d.screen(), "ivy waits") })
+	d.untilIn(5*waitFor, "ivy's new turn brought no news", func() bool { return strings.Contains(d.screen(), "ivy waits") })
 
 	// From inside another session, whose pane has the keys and the mouse.
 	d.session("oak", "")
@@ -171,7 +171,7 @@ func TestMascotAnimations(t *testing.T) {
 	}
 	d.session("ivy", "work")
 	d.until("no keyboard while ivy works", func() bool { return strings.Contains(d.mascot(), "▪") })
-	d.untilIn(3*waitFor, "no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
+	d.untilIn(5*waitFor, "no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
 	if got := d.railRow("chat"); got != chat {
 		t.Errorf("Chat's box moved from row %d to %d", chat, got)
 	}
@@ -199,7 +199,7 @@ func TestMascotDoneFlow(t *testing.T) {
 	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
 	d := start(t, e, 120, 32)
 	d.session("ivy", "work")
-	d.untilIn(3*waitFor, "no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
+	d.untilIn(5*waitFor, "no party once ivy was done", func() bool { return strings.Contains(d.mascot(), "✦") })
 	d.holds(2500*time.Millisecond, "the party ended with Chat open", func() bool { return strings.Contains(d.mascot(), "✦") })
 	d.until("ivy's name does not blink", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 	d.until("ivy's name does not blink back", func() bool { return !strings.Contains(d.screen(), "✓ ivy") })
@@ -212,7 +212,7 @@ func TestMascotDoneFlow(t *testing.T) {
 	d.leave()
 	d.until("no typing for ivy's new work", func() bool { return strings.Contains(d.mascot(), "▪") && !strings.Contains(d.mascot(), "✦") })
 	// "work long" works four seconds, then the second's grace tells it done.
-	d.untilIn(3*waitFor, "no party once ivy was done again", func() bool { return strings.Contains(d.mascot(), "✦") })
+	d.untilIn(5*waitFor, "no party once ivy was done again", func() bool { return strings.Contains(d.mascot(), "✦") })
 
 	// Opening it is looking at it: the party ends, its ✓ stays steady.
 	d.selectSession("ivy")
@@ -255,7 +255,7 @@ func TestMascotMany(t *testing.T) {
 	d.session("oak", "work long")
 	d.expect("2 working")
 	d.until("no second badge for oak", func() bool { return strings.HasPrefix(top(), "╭──●●╮") })
-	d.untilIn(3*waitFor, "the badges did not go once both were done", func() bool { return !strings.Contains(top(), "●") && strings.Contains(d.screen(), "waits") })
+	d.untilIn(5*waitFor, "the badges did not go once both were done", func() bool { return !strings.Contains(top(), "●") && strings.Contains(d.screen(), "waits") })
 	d.quitApp()
 }
 
@@ -268,14 +268,14 @@ func TestMascotCheer(t *testing.T) {
 	d.session("oak", "work long")
 	d.session("ivy", "work")
 	party := func() bool { m := d.mascot(); return strings.Contains(m, "^^") && !strings.Contains(m, "▪") }
-	d.untilIn(3*waitFor, "no cheer when ivy was done with oak at work", func() bool {
+	d.untilIn(5*waitFor, "no cheer when ivy was done with oak at work", func() bool {
 		return party() && strings.HasSuffix(strings.Split(d.mascot(), "\n")[0], "●╮") && strings.Count(strings.Split(d.mascot(), "\n")[0], "●") == 1 && strings.Contains(d.screen(), "oak working")
 	})
 	d.until("the cheer did not give way to typing for oak", func() bool {
 		m := d.mascot()
 		return strings.Contains(m, "▪") && strings.Contains(d.screen(), "oak working")
 	})
-	d.untilIn(3*waitFor, "no party once oak was done too", func() bool { return party() && !strings.Contains(d.mascot(), "●") })
+	d.untilIn(5*waitFor, "no party once oak was done too", func() bool { return party() && !strings.Contains(d.mascot(), "●") })
 	d.holds(2500*time.Millisecond, "the last party did not go on", party)
 	d.quitApp()
 }
@@ -290,7 +290,7 @@ func TestMascotTwoSessions(t *testing.T) {
 	d := start(t, e, 120, 32)
 	d.session("ivy", "work")
 	d.session("oak", "work")
-	d.untilIn(3*waitFor, "no party once both were done", func() bool { return strings.Contains(d.mascot(), "✦") && strings.Contains(d.screen(), "oak waits") })
+	d.untilIn(5*waitFor, "no party once both were done", func() bool { return strings.Contains(d.mascot(), "✦") && strings.Contains(d.screen(), "oak waits") })
 	d.until("ivy does not blink", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 
 	d.selectSession("ivy")
@@ -300,7 +300,7 @@ func TestMascotTwoSessions(t *testing.T) {
 	d.holds(1200*time.Millisecond, "ivy, looked at, does not keep a steady ✓", func() bool { return strings.Contains(d.screen(), "✓ ivy") })
 	d.until("oak stopped blinking", func() bool { return !strings.Contains(d.screen(), "✓ oak") })
 	d.until("oak does not blink back", func() bool { return strings.Contains(d.screen(), "✓ oak") })
-	d.untilIn(3*waitFor, "oak is not done", func() bool { return strings.Contains(d.screen(), "oak waits") })
+	d.untilIn(5*waitFor, "oak is not done", func() bool { return strings.Contains(d.screen(), "oak waits") })
 	d.expectNot("ivy waits")
 
 	// A prompt in ivy: typing comes back with ivy's badge; the footer names
@@ -322,7 +322,7 @@ func TestMascotTwoSessions(t *testing.T) {
 	d.until("oak's news went on once it was looked at", func() bool { return !strings.Contains(d.screen(), "oak waits") })
 
 	// Once ivy is done too, one click on its blinking row stops it.
-	d.untilIn(3*waitFor, "ivy did not finish", func() bool { return strings.Contains(d.screen(), "ivy waits") })
+	d.untilIn(5*waitFor, "ivy did not finish", func() bool { return strings.Contains(d.screen(), "ivy waits") })
 	sc := d.screen()
 	y := lineOf(sc, " ivy")
 	row := strings.Split(sc, "\n")[y]
@@ -362,7 +362,7 @@ func TestStartWorkIsNoNews(t *testing.T) {
 	d.expect("(ctrl+q) back to lazychat")
 	d.raw("work\r")
 	d.leave()
-	d.untilIn(3*waitFor, "ivy is not done", func() bool { return strings.Contains(d.screen(), "ivy waits") })
+	d.untilIn(5*waitFor, "ivy is not done", func() bool { return strings.Contains(d.screen(), "ivy waits") })
 	d.quitApp()
 }
 
@@ -406,7 +406,7 @@ func TestTurnTime(t *testing.T) {
 	if secs(row()) < secs(held) {
 		t.Fatalf("the answer started the turn over: held %q, then %q", held, row())
 	}
-	d.untilIn(3*waitFor, "the time did not stop when done", func() bool {
+	d.untilIn(5*waitFor, "the time did not stop when done", func() bool {
 		return !strings.Contains(d.screen(), "◷") && !strings.Contains(d.screen(), "⏸") && strings.Contains(d.screen(), "ivy waits")
 	})
 	done := row()
@@ -477,7 +477,7 @@ func TestInbox(t *testing.T) {
 	d.session("pine", "answer")
 	d.session("oak", "ask")
 	d.until("oak does not ask yet", func() bool { return strings.Contains(d.screen(), "oak asks") })
-	d.untilIn(3*waitFor, "pine has not finished yet", func() bool {
+	d.untilIn(5*waitFor, "pine has not finished yet", func() bool {
 		st, _ := d.app.mascotState()
 		for _, s := range st.Sessions {
 			if s.Name == "pine" && s.State == status.Done {
