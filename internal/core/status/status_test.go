@@ -259,6 +259,16 @@ func TestTurnOpen(t *testing.T) {
 	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("an open turn quiet for an hour", Done)
 
+	// A command Claude Code runs itself (/mcp) or a shell command sent to
+	// the background: the turn's end is written at once, so no work and no
+	// done to call.
+	c = newClock(t)
+	call = usage.ToolUse{ID: "bg", Name: "Bash", Time: c.now, Back: c.now}
+	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now}, Last: c.now, End: c.now, Steps: []usage.ToolUse{call}}
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("an ended turn, nothing out", Rest)
+
 	// A question while the turn is open.
 	c = newClock(t)
 	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now}, Last: c.now}

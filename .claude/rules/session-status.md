@@ -56,6 +56,15 @@ it from there.
   ends and its title stops while they work, and the user heard the done
   sound, then the start one at their news. A question on screen or from
   the hook still wins; an agent silent for two minutes holds nothing.
+- A command Claude Code runs itself (/mcp, /model, /effort, /login,
+  /compact) is no work: its `<local-command-stdout>` line ends its turn
+  (usage reader.go), since it never writes a `turn_duration`. Before, the
+  command counted as a prompt with its turn open, so the session showed
+  working for turnOpenWithin and was then called done with the done
+  sound; the user saw it after a failed MCP reconnect. A foreground shell
+  call and a subagent still out are real work and keep it working; a
+  shell call sent to the background gets its result at once and holds
+  nothing.
 - A question on screen counts only while the session does not work; it
   ends when the session works again (that is the answer) or leaves the
   screen with no word from the hook.

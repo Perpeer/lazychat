@@ -142,8 +142,10 @@ paths:
 - Commands are the Bash tool's `command`, cut on ; | & and newlines, by
   their first word and a second one that is no flag or path; env
   assignments, sudo, env, cd and echo are skipped (usage.commandHeads).
-- A turn ends at the `system` line `turn_duration`; one never written (an
-  interrupted answer) ends at its last call once a later prompt came.
+- A turn ends at the `system` line `turn_duration`, or for a command
+  Claude Code runs itself (/mcp, /model) at its `<local-command-stdout>`
+  line; one never written (an interrupted answer) ends at its last call
+  once a later prompt came.
   Active time leaves out AskUserQuestion's wait (tool_use → its result);
   permission prompts leave no record, so their wait stays in, and the
   page says so.

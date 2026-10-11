@@ -355,6 +355,11 @@ func (r *Reader) mainLine(line []byte) {
 			} else {
 				ok = json.Unmarshal(rec.Message.Content, &text) == nil
 			}
+			// A command Claude Code runs itself (/mcp, /model) writes its
+			// output and never a turn_duration: the output is its turn's end.
+			if ok && strings.HasPrefix(strings.TrimSpace(text), "<local-command-std") {
+				r.s.Ends = append(r.s.Ends, rec.Timestamp)
+			}
 			if ok {
 				if p, ok := prompt(text); ok {
 					r.s.UserMessages++

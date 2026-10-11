@@ -624,3 +624,21 @@ func TestBackgroundNews(t *testing.T) {
 		t.Fatalf("turns %+v", turns)
 	}
 }
+
+// A command Claude Code runs itself (/mcp, /model) writes its output and
+// never a turn's end: the output ends its turn, else the session counted as
+// at work for minutes and then called done.
+func TestLocalCommandEnds(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s-10.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "isMeta": true, "message": map[string]any{"role": "user", "content": "<local-command-caveat>Caveat: run directly.</local-command-caveat>"}})
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "<command-name>/mcp</command-name>\n<command-message>mcp</command-message>\n<command-args></command-args>"}})
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "<local-command-stdout>Failed to reconnect to shed-paints: CONNECTION_CLOSED</local-command-stdout>"}})
+	out := w.at
+	w.flush()
+	s, _ := Open(path).Update()
+	turns := s.Turns()
+	if len(turns) != 1 || turns[0].Text != "/mcp" || !turns[0].Ended() || !turns[0].End.Equal(out) {
+		t.Fatalf("turns %+v", turns)
+	}
+}
