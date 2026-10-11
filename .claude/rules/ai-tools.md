@@ -36,6 +36,18 @@ paths:
   folder?", drawn before any title. Codex has no UsageReader, so Chat shows
   no details tab for its sessions (chat.hasDetails); its page could only
   ever say it had no id.
+- A session's name reaches claude through the Renamer capability: `-n
+  <name>` when it starts, and a rename made in lazychat (state.Session
+  Renamed) as `/rename <name>` typed into the running session, or `-n` on
+  its next `--resume`. Both were tried with claude 2.1.296: `/rename` at
+  an empty prompt and `--resume <id> -n` each write a `custom-title` and
+  `agent-name` line, same session id. `/rename` waits until the session
+  works on nothing, asks nothing and holds no unsent typing
+  (term.Session.Unsent): the user chose "when idle", and a line typed
+  into a half-written prompt would be sent with it. Its Enter comes 300 ms
+  after the text (term.Session.Command), so it is not taken for a paste.
+  Only a rename made in lazychat is sent, once: a name the user gave inside
+  claude is never put back to lazychat's.
 - Resume at start: sessions marked running when lazychat ended any way
   but a deliberate quit (`q`, Ctrl+C on a list) are resumed as
   conversations; a deliberate quit closes them all. A resume refused as

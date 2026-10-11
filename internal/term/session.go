@@ -75,6 +75,7 @@ type Session struct {
 	// inputs counts the user's writes, so a new prompt can be told from no
 	// input at all since some moment.
 	inputs atomic.Int64
+	unsent atomic.Bool // the user's last write had no Enter at its end
 	// focusMode is the program asking to be told when it gains and loses
 	// the keys (?1004), as a terminal tells it of its window's focus.
 	focusMode atomic.Bool
@@ -447,8 +448,32 @@ func (s *Session) Write(b []byte) error {
 	}
 	s.given.Store(true)
 	s.inputs.Add(1)
+	if len(b) > 0 {
+		last := b[len(b)-1]
+		s.unsent.Store(last != '\r' && last != '\n')
+	}
 	return nil
 }
+
+// Unsent says the user's last write did not end with Enter: text may wait
+// in the program's input, and a line typed there now would join it. An
+// arrow key counts too, which only makes a caller wait for the next Enter.
+func (s *Session) Unsent() bool { return s.unsent.Load() }
+
+// Command types a line into the program and presses Enter, as lazychat's
+// own act: it does not count as the user's input. Enter comes a moment
+// after the text, since a burst ending in Enter reads as a paste to a
+// program that tells pastes from typing, and a paste's Enter submits nothing.
+func (s *Session) Command(line string) error {
+	if err := s.send([]byte(line)); err != nil {
+		return err
+	}
+	time.Sleep(commandEnter)
+	return s.send([]byte("\r"))
+}
+
+// commandEnter is the pause between a command's text and its Enter.
+const commandEnter = 300 * time.Millisecond
 
 // Inputs is how many times the user has written to the program.
 func (s *Session) Inputs() int64 { return s.inputs.Load() }

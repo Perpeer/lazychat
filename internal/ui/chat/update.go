@@ -40,6 +40,7 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		if c.watchSessions() {
 			failed = playSound(sound.Error)
 		}
+		c.act.TellRenames(c.takesLine)
 		var clock tea.Cmd
 		if msg.N%2 == 0 {
 			clock = c.readClocks()

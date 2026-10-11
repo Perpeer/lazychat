@@ -167,6 +167,15 @@ func (c *Chat) sendDraft() tea.Cmd {
 	}
 }
 
+// takesLine says a running session can take a line lazychat types into
+// it: it works on nothing and asks nothing — the same reading a draft's
+// paste waits for, the screen and the hook read now.
+func (c *Chat) takesLine(r state.Session, s *term.Session) bool {
+	_, hooked := c.act.Asked(r.Key)
+	asks := c.board.Asking(r.Key) || hooked || c.act.ScreenAsks(r)
+	return !asks && !s.Working() && !c.board.Working(r.Key)
+}
+
 // promptText is what a draft pastes: one starting with / on a single line,
 // its newlines turned into spaces, since claude runs a slash command only
 // from one line and sends a longer one to the model as a message.

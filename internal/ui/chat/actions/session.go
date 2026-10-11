@@ -189,7 +189,11 @@ func (a *Actions) restart(p state.Project, r state.Session) error {
 	}
 	a.host.Note("%s had no conversation saved to resume: started anew", r.Name)
 	r.ID = ""
-	return a.launch(e, p, r)
+	if err := a.launch(e, p, r); err != nil {
+		return err
+	}
+	_ = a.core.Store.Told(r.Key) // started under its name
+	return nil
 }
 
 // ResumeRunning brings back, as conversations, the sessions that were
@@ -373,8 +377,16 @@ func (a *Actions) launchResume(p state.Project, rec state.Session, id string) er
 	if err != nil {
 		return err
 	}
+	// A rename made while it did not run reaches the tool now.
+	renamed := false
+	if cur, ok := a.core.Store.SessionByKey(rec.Key); ok && cur.Renamed {
+		e, renamed = a.core.Named(rec.Tool, e, cur.Name), true
+	}
 	if err := a.launch(e, p, rec); err != nil {
 		return err
+	}
+	if renamed {
+		_ = a.core.Store.Told(rec.Key)
 	}
 	a.resumes[rec.Key] = resumeAttempt{tool: rec.Tool, sessionID: id, at: time.Now()}
 	return nil

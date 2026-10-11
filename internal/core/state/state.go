@@ -47,6 +47,11 @@ type Session struct {
 	// Draft is the next prompt the user writes while the session works,
 	// kept apart from the tool's own input so an answer cannot take its place.
 	Draft string `json:"draft,omitempty"`
+	// Renamed is a rename the session's tool has not heard of yet: told
+	// to the running session when it is idle, or given at its next resume.
+	// Only a rename made in lazychat sets it, so a name given inside the
+	// tool is never put back to lazychat's.
+	Renamed bool `json:"renamed,omitempty"`
 }
 
 type State struct {
@@ -364,6 +369,16 @@ func (s *Store) ForgetID(key string) error {
 
 // RenameSession gives a session another name; an empty one keeps the old.
 func (s *Store) RenameSession(key, name string) error {
+	return s.rename(key, name, false)
+}
+
+// RenameForTool renames a session and marks the new name for its tool to
+// hear (Renamed).
+func (s *Store) RenameForTool(key, name string) error {
+	return s.rename(key, name, true)
+}
+
+func (s *Store) rename(key, name string, tell bool) error {
 	name = strings.TrimSpace(name)
 	for i, x := range s.Sessions {
 		if x.Key == key {
@@ -371,10 +386,32 @@ func (s *Store) RenameSession(key, name string) error {
 				return nil
 			}
 			s.Sessions[i].Name = name
+			s.Sessions[i].Renamed = s.Sessions[i].Renamed || tell
 			return s.Save()
 		}
 	}
 	return fmt.Errorf("no session with key %s", key)
+}
+
+// SessionByKey finds a recorded session by lazychat's own key.
+func (s *Store) SessionByKey(key string) (Session, bool) {
+	for _, x := range s.Sessions {
+		if x.Key == key {
+			return x, true
+		}
+	}
+	return Session{}, false
+}
+
+// Told says the session's tool has its current name.
+func (s *Store) Told(key string) error {
+	for i, x := range s.Sessions {
+		if x.Key == key && x.Renamed {
+			s.Sessions[i].Renamed = false
+			return s.Save()
+		}
+	}
+	return nil
 }
 
 func (s *Store) RemoveSession(key string) error {

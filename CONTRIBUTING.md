@@ -107,6 +107,7 @@ fails when they part:
 | settings per session | ✓ |   |
 | commit message | ✓ | ✓ |
 | usage report | ✓ |   |
+| rename | ✓ |   |
 <!-- /capabilities -->
 
 ## Changing it

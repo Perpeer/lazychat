@@ -80,7 +80,11 @@ func (a *Actions) RemoveProject(p state.Project) {
 // RenameSession asks a session's new name, the old one prefilled.
 func (a *Actions) RenameSession(s state.Session) {
 	a.host.Form("rename session", []Field{{Label: "name", Value: s.Name}}, func(v []string) {
-		if err := a.core.Store.RenameSession(s.Key, v[0]); err != nil {
+		rename := a.core.Store.RenameSession
+		if a.core.Renames(s.Tool) {
+			rename = a.core.Store.RenameForTool // its tool hears of it: TellRenames, or the next resume
+		}
+		if err := rename(s.Key, v[0]); err != nil {
 			a.host.Note("rename: %v", err)
 			return
 		}
@@ -89,4 +93,26 @@ func (a *Actions) RenameSession(s state.Session) {
 			t.Name = strings.TrimSpace(v[0])
 		}
 	})
+}
+
+// TellRenames types each running session's new name into it, once idle
+// says the session can take a line: not working, asking nothing, nothing
+// typed and unsent. A rename that waits past the session's end goes at its
+// next resume instead.
+func (a *Actions) TellRenames(idle func(r state.Session, s *term.Session) bool) {
+	for _, r := range a.core.Store.Sessions {
+		if !r.Renamed {
+			continue
+		}
+		s, ok := a.Live.Get(r.Key)
+		if !ok || !s.Alive() || s.Unsent() || !idle(r, s) {
+			continue
+		}
+		line := a.core.RenameLine(r.Tool, r.Name)
+		if line == "" {
+			continue
+		}
+		_ = a.core.Store.Told(r.Key)
+		go func() { _ = s.Command(line) }()
+	}
 }

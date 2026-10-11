@@ -28,6 +28,7 @@ func (a *Actions) busy(key, sessionID, short string) {
 			var fork state.Session
 			if err == nil {
 				fork, err = a.core.Store.AddSession(rec.Tool, rec.Name+" (fork)", p.Name, "")
+				e = a.core.Named(rec.Tool, e, fork.Name)
 			}
 			if err == nil {
 				err = a.launch(e, p, fork) // its id is learned from sessions/<pid>.json

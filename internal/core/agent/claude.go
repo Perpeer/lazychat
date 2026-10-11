@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"sync/atomic"
+	"unicode"
 
 	"lazychat/internal/core/history"
 )
@@ -48,6 +49,7 @@ var (
 	_ Suggester   = (*Claude)(nil)
 	_ Historian   = (*Claude)(nil)
 	_ UsageReader = (*Claude)(nil)
+	_ Renamer     = (*Claude)(nil)
 )
 
 // NewClaude is Claude Code, its data in home's .claude folder.
@@ -94,10 +96,43 @@ func (c *Claude) cmd(dir string, args ...string) Exec {
 
 // Start opens a new, named session in a project.
 func (c *Claude) Start(dir, name string) Exec {
-	if name == "" || c.unnamed.Load() {
-		return c.cmd(dir)
+	return c.Named(c.cmd(dir), name)
+}
+
+// Named gives the session a name with -n, which claude shows on its prompt
+// bar, in /resume and the terminal title; on --resume it renames the saved
+// session, same id. An attached session takes no flags that configure it.
+func (c *Claude) Named(e Exec, name string) Exec {
+	name = claudeName(name)
+	if name == "" || c.unnamed.Load() || len(e.Args) > 1 && e.Args[1] == "attach" {
+		return e
 	}
-	return c.cmd(dir, "-n", name)
+	e.Args = append(append([]string(nil), e.Args...), "-n", name)
+	return e
+}
+
+// RenameLine is what renames a running session typed at its prompt.
+func (c *Claude) RenameLine(name string) string {
+	if name = claudeName(name); name == "" {
+		return ""
+	}
+	return "/rename " + name
+}
+
+// claudeName is a name as claude keeps it: control characters as spaces
+// and at most 200 characters, which claude does itself; done here so a
+// name typed at the prompt stays one line.
+func claudeName(name string) string {
+	name = strings.TrimSpace(strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, name))
+	if r := []rune(name); len(r) > 200 {
+		name = strings.TrimSpace(string(r[:200]))
+	}
+	return name
 }
 
 // Resume continues a saved session in its project; it keeps the name it had.

@@ -126,6 +126,12 @@ type (
 		Transcripts(dir string) ([]history.Past, error)
 		AllTranscripts() ([]history.Past, error)
 	}
+	// Renamer keeps a session's name in the tool: on the command line a
+	// saved session is resumed with, and typed into one that runs.
+	Renamer interface {
+		Named(e Exec, name string) Exec
+		RenameLine(name string) string
+	}
 )
 
 // Capability is one thing only some tools can do, by the name the screen
@@ -153,6 +159,7 @@ var Capabilities = []Capability{
 	{"settings per session", Has[Overlayer]},
 	{"commit message", Has[Suggester]},
 	{"usage report", Has[UsageReader]},
+	{"rename", Has[Renamer]},
 }
 
 // Options are what tests change about the tools: Bins maps a tool's id to a

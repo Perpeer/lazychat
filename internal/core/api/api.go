@@ -116,6 +116,32 @@ func (c *Core) Fork(p state.Project, tool, sessionID string) (agent.Exec, error)
 	return f.Fork(p.Path, sessionID), nil
 }
 
+// Named is the command with the session's name for its tool, when the tool
+// keeps names; unchanged otherwise.
+func (c *Core) Named(tool string, e agent.Exec, name string) agent.Exec {
+	r, err := capability[agent.Renamer](c, tool, "")
+	if err != nil {
+		return e
+	}
+	return r.Named(e, name)
+}
+
+// RenameLine is what renames a running session of the tool, typed at its
+// prompt; "" for a tool that keeps no names.
+func (c *Core) RenameLine(tool, name string) string {
+	r, err := capability[agent.Renamer](c, tool, "")
+	if err != nil {
+		return ""
+	}
+	return r.RenameLine(name)
+}
+
+// Renames says the tool keeps the names lazychat gives its sessions.
+func (c *Core) Renames(tool string) bool {
+	_, err := capability[agent.Renamer](c, tool, "")
+	return err == nil
+}
+
 // Overlay is the command with what lazychat adds to the tool's sessions; a
 // tool that takes nothing runs as it was.
 func (c *Core) Overlay(tool string, e agent.Exec, x agent.Extras) agent.Exec {
