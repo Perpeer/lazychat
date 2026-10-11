@@ -21,6 +21,7 @@ import (
 	"lazychat/internal/core/presence"
 	"lazychat/internal/core/sound"
 	"lazychat/internal/core/status"
+	"lazychat/internal/core/update"
 	"lazychat/internal/core/workspace"
 	"lazychat/internal/ui/chat"
 	"lazychat/internal/ui/git"
@@ -56,7 +57,7 @@ type Options struct {
 	Base string
 	// Latest asks for the newest release, off the loop; nil asks nothing
 	// (the tests). Upgrade says how to bring this build up to date.
-	Latest  func(ctx context.Context) (string, error)
+	Latest  func(ctx context.Context) (update.Release, error)
 	Upgrade string
 	// RunUpgrade runs the upgrade command here, off the loop, each line of
 	// its output handed to line; nil when this build is not upgraded in

@@ -96,6 +96,15 @@ paths:
   number. `releaseTag` stays the newest tag the checkout is past, so
   update.Base compares the newer-release note from the release, not from
   the number the build will become. Tags are read locally, no fetch.
+- A release with the build's own number is behind only when its tag is on
+  another commit (update.Behind): the check asks GitHub's
+  `commits/<tag>` (Accept `application/vnd.github.sha`) once per release
+  and keeps the commit in update.json. A build installed while its release
+  was not yet tagged (CI failed, then a rerun tagged it) carries the tag
+  before as releaseTag and showed "↑ 1.0.18" beside v1.0.18. The number
+  alone cannot decide: two commits after one tag share it, and the other
+  Mac's push can release a later commit under it. With no commit known
+  the number decides, as before.
 - A newer release is a green `new` box on the rail over Settings (no
   tab: a click or U opens kit.UpdateBox), kept after an upgrade until a
   restart: the user found the corner's ↑ too easy to miss. A Homebrew

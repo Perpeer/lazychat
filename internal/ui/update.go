@@ -15,7 +15,7 @@ import (
 const updateZone = "update"
 
 // latestMsg is GitHub's answer for the newest release.
-type latestMsg struct{ version string }
+type latestMsg struct{ version, commit string }
 
 // askLatest asks for the newest release when it is time: at the first tick
 // and every update.Every after, unless Settings turns it off. The answer
@@ -32,17 +32,17 @@ func (a *App) askLatest(now time.Time) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		v, err := latest(ctx)
+		r, err := latest(ctx)
 		if err != nil {
 			return nil
 		}
-		return latestMsg{version: v}
+		return latestMsg{version: r.Version, commit: r.Commit}
 	}
 }
 
 // gotLatest keeps a newer release for the corner, and says it once.
 func (a *App) gotLatest(msg latestMsg) {
-	if !update.Newer(a.opts.Base, msg.version) || msg.version == a.latest {
+	if !update.Behind(a.opts.Base, a.opts.Version, update.Release{Version: msg.version, Commit: msg.commit}) || msg.version == a.latest {
 		return
 	}
 	a.latest = msg.version

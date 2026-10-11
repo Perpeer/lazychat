@@ -164,7 +164,7 @@ func run(args []string) error {
 		opts := ui.Options{NoteTime: noteTime, Version: version, Open: open, Release: release,
 			Base: update.Base(version, releaseTag)}
 		if c := update.New(filepath.Dir(registryPath)); c != nil {
-			opts.Latest, opts.Upgrade = c.Latest, upgradeCommand
+			opts.Latest, opts.Upgrade = c.Release, upgradeCommand
 			// Homebrew's build is upgraded here in the background; a source
 			// build's git pull runs where the user sees it.
 			if releaseTag == "" {
@@ -243,7 +243,7 @@ func subcommand(core *api.Core, rest []string) error {
 		}
 		checks := append(core.Doctor(), extraChecks(apps, exec.LookPath)...)
 		if core.Settings != nil && !core.Settings.NoUpdateCheck {
-			checks = append(checks, updateCheck(update.New(core.Settings.Home), update.Base(version, releaseTag)))
+			checks = append(checks, updateCheck(update.New(core.Settings.Home), update.Base(version, releaseTag), version))
 		}
 		for _, c := range checks {
 			mark := "ok  "
@@ -267,20 +267,20 @@ func subcommand(core *api.Core, rest []string) error {
 
 // updateCheck is doctor's line on the newest release: never a failure, as
 // lazychat works the same without the answer.
-func updateCheck(c *update.Checker, base string) api.Check {
+func updateCheck(c *update.Checker, base, version string) api.Check {
 	chk := api.Check{Name: "update", Optional: true}
 	if c == nil {
 		chk.Detail = "not checked"
 		return chk
 	}
-	latest, err := c.Latest(context.Background())
+	r, err := c.Release(context.Background())
 	switch {
 	case err != nil:
 		chk.Detail = "could not ask GitHub: " + err.Error()
-	case update.Newer(base, latest):
-		chk.Detail = "lazychat " + latest + " is out: " + upgradeCommand
+	case update.Behind(base, version, r):
+		chk.Detail = "lazychat " + r.Version + " is out: " + upgradeCommand
 	default:
-		chk.OK, chk.Detail = true, latest+" is the newest release"
+		chk.OK, chk.Detail = true, r.Version+" is the newest release"
 	}
 	return chk
 }

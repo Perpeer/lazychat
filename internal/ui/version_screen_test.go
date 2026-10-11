@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"lazychat/internal/core/update"
 )
 
 // The build's version stands at the screen's bottom-right corner, v1.0.3
@@ -37,7 +39,7 @@ func TestNewerRelease(t *testing.T) {
 	asks := 0
 	latest := "1.0.3"
 	d.app.opts.Version, d.app.opts.Base, d.app.opts.Upgrade = "1.0.2", "1.0.2", "brew upgrade lazychat"
-	d.app.opts.Latest = func(context.Context) (string, error) { asks++; return latest, nil }
+	d.app.opts.Latest = func(context.Context) (update.Release, error) { asks++; return update.Release{Version: latest}, nil }
 	d.expect("v1.0.2  ↑ 1.0.3", "lazychat 1.0.3 is out: U, or a click on ↑ 1.0.3")
 	if asks != 1 {
 		t.Errorf("asked %d times", asks)

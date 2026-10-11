@@ -123,7 +123,8 @@ bottom-right corner and on the splash, with the hash in `lazychat
 lower number, `git fetch --tags` fixes it. install.sh also stamps
 `releaseTag`, the newest tag the checkout is past, which the newer-release
 check compares from — so a build saying v1.0.3 while 1.0.2 is the newest
-release shows no `↑`. Releases are tags `vX.Y.Z`. Every push to main,
+release shows no `↑`. A release with the build's own number shows `↑` only
+when its tag is on another commit (update.Behind). Releases are tags `vX.Y.Z`. Every push to main,
 whatever it changed, releases its newest commit
 (`.github/workflows/release.yml`): `./check.sh` on a Mac,
 the next version, the tag and a GitHub release with the commits as notes.
