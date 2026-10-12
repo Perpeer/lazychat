@@ -502,9 +502,12 @@ colour when it is itself a worktree), the others `⑂`, or `○` for the
 repository's own. Under each, `↑` `↓` ahead and behind its upstream, how
 many files changed, `locked` or `gone` where git
 says so, `o opens as project` on a worktree that is no project yet (`o` adds its folder to the projects, named after the project and the folder), and `from dev` when git noted the branch it was made from — `git worktree add -b feat
-../feat dev` writes "Created from dev" first in the branch's reflog; a
-branch made from `HEAD`, from a commit, or whose note expired (90 days by
-default) says nothing. The cursor stands on these rows, not on headings.
+../feat dev` writes "Created from dev" first in the branch's reflog. A
+branch made from `HEAD` (`git checkout -b`, `git worktree add -b` with no
+start, Claude Code's worktrees) names the branch that `HEAD` was on then,
+read from the checkouts' own reflogs; when two checkouts stood on that
+commit, or the branch came from a commit, or the notes expired (90 days by
+default), it says nothing. The cursor stands on these rows, not on headings.
 
 The middle column and the diff are the cursor's checkout's: a worktree's
 own changes on its row, the main checkout's on its. In every tab a project

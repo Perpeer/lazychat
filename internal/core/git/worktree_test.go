@@ -1,6 +1,9 @@
 package git
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -67,10 +70,47 @@ func TestStartPoint(t *testing.T) {
 	sh(t, dir, "branch", "dev")
 	sh(t, dir, "worktree", "add", "-q", "-b", "feat", filepath.Join(t.TempDir(), "feat"), "dev")
 	sh(t, dir, "worktree", "add", "-q", "-b", "plain", filepath.Join(t.TempDir(), "plain"))
-	for branch, want := range map[string]string{"feat": "dev", "plain": "", "dev": "main", "": "", "gone": ""} {
+	hash := strings.TrimSpace(sh(t, dir, "rev-parse", "HEAD"))
+	sh(t, dir, "worktree", "add", "-q", "-b", "bare", filepath.Join(t.TempDir(), "bare"), hash)
+	// plain was made from HEAD while feat's checkout sat on the same commit:
+	// either could be it, so nothing is named.
+	for branch, want := range map[string]string{"feat": "dev", "plain": "", "bare": "", "dev": "main", "": "", "gone": ""} {
 		if got := StartPoint(dir, branch); got != want {
 			t.Errorf("StartPoint(%q) = %q, want %q", branch, got, want)
 		}
+	}
+}
+
+// A branch made from HEAD (git notes only "Created from HEAD") came from
+// the branch its checkout was on then, read off that checkout's HEAD
+// reflog, though the checkout has moved on since.
+func TestStartPointFromHead(t *testing.T) {
+	dir := repo(t)
+	at := func(sec int, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false"}, args...)...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_COMMITTER_DATE=%d +0000", 1790000000+sec), fmt.Sprintf("GIT_AUTHOR_DATE=%d +0000", 1790000000+sec))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	at(10, "switch", "-q", "-c", "dev")
+	write(t, dir, "c.txt", "sea\n")
+	at(20, "add", ".")
+	at(20, "commit", "-qm", "on dev")
+	at(30, "worktree", "add", "-q", "-b", "porch", filepath.Join(t.TempDir(), "porch"))
+	at(40, "switch", "-q", "main")
+	at(50, "worktree", "add", "-q", "-b", "fence", filepath.Join(t.TempDir(), "fence"))
+	for branch, want := range map[string]string{"porch": "dev", "fence": "main"} {
+		if got := StartPoint(dir, branch); got != want {
+			t.Errorf("StartPoint(%q) = %q, want %q", branch, got, want)
+		}
+	}
+	// With the reflogs gone nothing tells, and nothing is guessed.
+	at(60, "reflog", "expire", "--expire=all", "--all")
+	if got := StartPoint(dir, "porch"); got != "" {
+		t.Errorf("no reflog, yet %q", got)
 	}
 }
 

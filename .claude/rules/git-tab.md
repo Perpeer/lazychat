@@ -50,7 +50,14 @@ paths:
   left in place and named. A commit on main/master in the repository itself
   is asked (mainCommitOK, for that commit only).
 - The cursor sits on checkouts, never headings: `●` the project's checkout, `○` the repository itself, `⑂`
-  worktree, "from X" read from the reflog. Digits pick panels in Git but
+  worktree, "from X" read from the reflog. A branch noted "Created from
+  HEAD" (git checkout -b, worktree add -b with no start, Claude Code's
+  worktrees) names the branch its checkout's HEAD was on at that time
+  (git.fromHead: the checkout whose HEAD reflog then held the branch's
+  start commit, its last "checkout: moving … to X" before, else the "from"
+  of the first after, else its branch now). Exactly one name or none: two
+  checkouts on that commit say nothing. The user saw a Claude Code
+  worktree with no "from" and asked why. Digits pick panels in Git but
   projects in Chat.
 - A row git could not read says "git failed" and keeps saying it while
   read again, never "…". Why (a sync tool's missing files, a slow disk) is

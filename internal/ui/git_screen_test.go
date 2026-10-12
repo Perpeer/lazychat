@@ -434,7 +434,9 @@ func TestGitWorktrees(t *testing.T) {
 
 	d := start(t, e, 150, 36)
 	d.tab(2)
-	d.expect("● main", "  clean", "⑂ feature · wt-feature/", "1 changed", "o opens as project")
+	// Made from HEAD, the worktree names the branch HEAD was on; the offer
+	// of o then has no room beside it in the column.
+	d.expect("● main", "  clean", "⑂ feature · wt-feature/", "1 changed · from main")
 	d.expectNot("repository ·") // the heading names the project: the row says only its branch
 	d.key("j")                  // the worktree's row
 	d.expect("vs main", "wt.txt", "loose.txt")
