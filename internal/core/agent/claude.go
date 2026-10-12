@@ -119,6 +119,25 @@ func (c *Claude) RenameLine(name string) string {
 	return "/rename " + name
 }
 
+// Hidden adds what keeps a hidden run quiet: no hooks (disableAllHooks
+// beats every other settings file) and no MCP servers. Tried with claude
+// 2.1.296: a SessionStart hook did not run, the name was still written.
+func (c *Claude) Hidden(e Exec) Exec {
+	if c.unsettled.Load() {
+		return e
+	}
+	e.Args = append(append([]string(nil), e.Args...), "--settings", `{"disableAllHooks":true}`, "--strict-mcp-config")
+	return e
+}
+
+var reTrust = regexp.MustCompile(`Is this a project you created or one you trust`)
+
+// Untrusted reads claude's question whether to trust the folder, asked
+// before anything else in a folder it was never trusted in.
+func (c *Claude) Untrusted(screen string) bool {
+	return reTrust.MatchString(reANSI.ReplaceAllString(screen, ""))
+}
+
 // claudeName is a name as claude keeps it: control characters as spaces
 // and at most 200 characters, which claude does itself; done here so a
 // name typed at the prompt stays one line.

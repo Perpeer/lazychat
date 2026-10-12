@@ -52,6 +52,31 @@ if [ -n "$FAKE_CLAUDE_START_WORK" ]; then
   sleep 1.5
   printf '\033]0;\342\234\263 fake\007'
 fi
+# FAKE_CLAUDE_STARTED=<file> is touched as the fake starts.
+[ -n "$FAKE_CLAUDE_STARTED" ] && touch "$FAKE_CLAUDE_STARTED"
+# FAKE_CLAUDE_STOPPED=<file> is touched when the fake is stopped (SIGTERM).
+[ -n "$FAKE_CLAUDE_STOPPED" ] && trap 'touch "$FAKE_CLAUDE_STOPPED"; exit 143' TERM
+# FAKE_CLAUDE_UNTRUSTED=1 asks claude's trust question first and goes no
+# further, as claude does in a folder it was never trusted in.
+if [ -n "$FAKE_CLAUDE_UNTRUSTED" ]; then
+  echo "Quick safety check: Is this a project you created or one you trust?"
+  while IFS= read -r line; do :; done
+  exit 0
+fi
+# FAKE_CLAUDE_HISTORY=<folder> writes the name of `--resume <id> -n <name>`
+# into that session's transcript there, as claude does at its start.
+if [ -n "$FAKE_CLAUDE_HISTORY" ]; then
+  id="" name="" prev=""
+  for a in "$@"; do
+    case "$prev" in --resume) id=$a ;; -n) name=$a ;; esac
+    prev=$a
+  done
+  if [ -n "$id" ] && [ -n "$name" ]; then
+    for f in "$FAKE_CLAUDE_HISTORY"/*/"$id".jsonl; do
+      [ -f "$f" ] && printf '{"type":"custom-title","customTitle":"%s","sessionId":"%s"}\n' "$name" "$id" >> "$f"
+    done
+  fi
+fi
 printf 'FAKE CLAUDE READY in %s args:%s\n' "$(pwd)" "$*"
 # FAKE_CLAUDE_BRACKETS=1 asks for bracketed paste, as claude does, and goes
 # on reading lines: a paste then Enter arrives as one line.

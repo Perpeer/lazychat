@@ -373,6 +373,7 @@ func (a *Actions) resume(p state.Project, past history.Past) (state.Session, err
 
 // launchResume is a plain resume, remembered so its refusal can be recognised.
 func (a *Actions) launchResume(p state.Project, rec state.Session, id string) error {
+	a.stopHidden(rec.Key)
 	e, err := a.core.Resume(p, rec.Tool, id)
 	if err != nil {
 		return err

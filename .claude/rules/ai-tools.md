@@ -48,6 +48,27 @@ paths:
   after the text (term.Session.Command), so it is not taken for a paste.
   Only a rename made in lazychat is sent, once: a name the user gave inside
   claude is never put back to lazychat's.
+- A session that does not run is renamed in claude at once
+  (actions.renameClosed): a hidden pty runs `--resume <id> -n <name>`,
+  stopped (SIGTERM) once the transcript's last custom-title is the name,
+  15 s at most. Tried with claude 2.1.296: the title and agent-name lines
+  come at the start, before any key; SIGTERM adds only cost-state lines,
+  same id, no prompt. The user wanted the name in claude's own list at
+  once, not at the next resume. Writing the custom-title line ourselves
+  was turned down: lazychat never writes into ~/.claude. The run's result
+  reaches the loop through a channel, since the Store is the loop's; a
+  run that fails keeps Renamed, so the next resume carries `-n`.
+- The hidden run is quiet (Renamer.Hidden): `--settings
+  {"disableAllHooks":true} --strict-mcp-config`, so none of the user's
+  hooks run and no MCP server connects (tried: a SessionStart hook ran
+  without the flags, not with them; the name was written both ways).
+  `--bare` was not taken: it reads no OAuth login. A resume first stops
+  the key's hidden run (stopHidden), and a run is registered from the
+  moment it is asked for, so a resume right after the rename cancels it
+  instead of racing it: the conversation is never open twice in lazychat
+  (a claude started outside it cannot be seen). Claude's trust question
+  (Renamer.Untrusted) ends the run at once: trusting a folder is the
+  user's call, made in a session they see.
 - Resume at start: sessions marked running when lazychat ended any way
   but a deliberate quit (`q`, Ctrl+C on a list) are resumed as
   conversations; a deliberate quit closes them all. A resume refused as

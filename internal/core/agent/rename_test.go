@@ -33,6 +33,12 @@ func TestClaudeNames(t *testing.T) {
 	if e := c.Named(c.Resume("/w", "garden-1"), "teal"); len(e.Args) != 3 {
 		t.Fatalf("a claude without --name got one: %q", e.Args)
 	}
+	if e := c.Hidden(c.Resume("/w", "garden-1")); !slices.Equal(e.Args, []string{"claude", "--resume", "garden-1", "--settings", `{"disableAllHooks":true}`, "--strict-mcp-config"}) {
+		t.Fatalf("hidden = %q", e.Args)
+	}
+	if !c.Untrusted("\x1b[1m Quick safety check: Is this a project you created or one you trust?\x1b[0m") || c.Untrusted("❯ garden") {
+		t.Fatal("trust question")
+	}
 	if Has[Renamer](&Codex{}) {
 		t.Fatal("codex keeps no names")
 	}

@@ -126,6 +126,38 @@ func (c *Core) Named(tool string, e agent.Exec, name string) agent.Exec {
 	return r.Named(e, name)
 }
 
+// Hidden is e for a run nobody sees, when the tool keeps names; unchanged
+// otherwise.
+func (c *Core) Hidden(tool string, e agent.Exec) agent.Exec {
+	r, err := capability[agent.Renamer](c, tool, "")
+	if err != nil {
+		return e
+	}
+	return r.Hidden(e)
+}
+
+// Untrusted says the tool's screen asks whether to trust the folder.
+func (c *Core) Untrusted(tool, screen string) bool {
+	r, err := capability[agent.Renamer](c, tool, "")
+	return err == nil && r.Untrusted(screen)
+}
+
+// TitleOf is the name a saved session has in its tool's own record, "" when
+// the tool keeps none or the session is not found.
+func (c *Core) TitleOf(tool, dir, sessionID string) string {
+	r, err := capability[agent.UsageReader](c, tool, "")
+	if err != nil {
+		return ""
+	}
+	ps, _ := r.Transcripts(dir)
+	for i := range ps {
+		if ps[i].ID == sessionID {
+			return ps[i].Title()
+		}
+	}
+	return ""
+}
+
 // RenameLine is what renames a running session of the tool, typed at its
 // prompt; "" for a tool that keeps no names.
 func (c *Core) RenameLine(tool, name string) string {

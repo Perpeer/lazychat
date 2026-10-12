@@ -5,10 +5,12 @@
 package actions
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"lazychat/internal/core/api"
+	"lazychat/internal/core/state"
 	"lazychat/internal/term"
 
 	"lazychat/internal/core/files"
@@ -73,6 +75,13 @@ type Actions struct {
 	// leaving is set once lazychat stops every session, to quit or to open
 	// another workspace: their exits then keep the running marks.
 	leaving atomic.Bool
+	// told carries the names hidden runs wrote into closed sessions, for
+	// the loop to clear their marks.
+	told chan state.Session
+	// hidden is the hidden runs by record key, from the moment one is asked
+	// for; they live off the loop.
+	hiddenMu sync.Mutex
+	hidden   map[string]*hiddenRun
 }
 
 // StopAll stops every running session because lazychat is leaving, keeping
@@ -85,7 +94,7 @@ func (a *Actions) StopAll(timeout time.Duration) {
 
 func New(core *api.Core, host Host, onOutput func()) *Actions {
 	clearStaleNotices(files.Temp())
-	return &Actions{core: core, host: host, onOutput: onOutput, Live: newLive(), resumes: map[string]resumeAttempt{}, closing: map[string]bool{}}
+	return &Actions{core: core, host: host, onOutput: onOutput, Live: newLive(), resumes: map[string]resumeAttempt{}, closing: map[string]bool{}, told: make(chan state.Session, 16), hidden: map[string]*hiddenRun{}}
 }
 
 // resumeAttempt is a plain resume in flight: if the tool refuses it because

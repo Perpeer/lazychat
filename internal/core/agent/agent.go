@@ -131,6 +131,11 @@ type (
 	Renamer interface {
 		Named(e Exec, name string) Exec
 		RenameLine(name string) string
+		// Hidden is e for a run nobody sees, which only renames: none of the
+		// user's hooks and servers start.
+		Hidden(e Exec) Exec
+		// Untrusted reads the tool's question whether to trust the folder.
+		Untrusted(screen string) bool
 	}
 )
 
