@@ -21,19 +21,14 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case kit.Beat:
 		c.beat = msg.N
+		c.list.beat = msg.N
 		return nil
 	case kit.Tick:
 		c.Tick = msg.N
 		c.list.tick = msg.N
-		// On the first beat, when the pane has its size: the sessions that
-		// ran when lazychat last quit come back.
-		if !c.resumed {
-			c.resumed = true
-			if n := c.act.ResumeRunning(); n > 0 {
-				// Shown, not entered: the list keeps the keys at start.
-				c.Capture.Drop()
-				c.Screen.Note("resumed %d session(s) that ran when lazychat quit", n)
-			}
+		if !c.started {
+			c.started = true
+			c.act.ForgetRunning()
 		}
 		c.act.LearnIDs()
 		var failed tea.Cmd

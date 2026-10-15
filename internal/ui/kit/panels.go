@@ -44,6 +44,8 @@ func Box(title string, lines []string, w, h int, focused, exact bool) string {
 // as one band — inner colour codes would break the highlight into pieces.
 type TreeLine struct {
 	Prefix, Styled, Plain string
+	// Lit draws the prefix in the busy colour, not dim: a session at work.
+	Lit bool
 }
 
 // DrawEntry lays an entry's rows out w columns wide. The connectors stay dim
@@ -60,7 +62,11 @@ func DrawEntry(lines []TreeLine, w int, selected, focused bool) []string {
 		case selected:
 			body = StyleAccent.Render(text.Pad(text.Fit(l.Plain, bw), bw))
 		}
-		out[i] = StyleDim.Render(l.Prefix) + body
+		prefix := StyleDim
+		if l.Lit {
+			prefix = StyleBusy.Bold(true)
+		}
+		out[i] = prefix.Render(l.Prefix) + body
 	}
 	return out
 }

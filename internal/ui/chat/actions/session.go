@@ -196,38 +196,15 @@ func (a *Actions) restart(p state.Project, r state.Session) error {
 	return nil
 }
 
-// ResumeRunning brings back, as conversations, the sessions that were
-// running when lazychat last quit on this workspace: each resumed under its
-// record. One with nothing saved to resume, or whose project is gone, is
-// let go and its mark cleared. It returns how many came back.
-func (a *Actions) ResumeRunning() int {
-	n := 0
+// ForgetRunning clears the running mark of every session lazychat does not
+// run now: one left by a window closed or a crash. Sessions are opened by
+// the user alone; resuming them at start was taken out at the user's word.
+func (a *Actions) ForgetRunning() {
 	for _, r := range append([]state.Session(nil), a.core.Store.Sessions...) {
-		if !r.Running || a.Live.Running(r.Key) {
-			continue
-		}
-		var err error
-		p, ok := a.core.Store.ProjectNamed(r.Project)
-		switch {
-		case !ok:
-			err = fmt.Errorf("project %q is gone", r.Project)
-		case r.ID == "":
-			var e agent.Exec
-			if e, err = a.core.ResumeLast(p, r.Tool); err == nil {
-				err = a.launch(e, p, r)
-			}
-		case !a.saved(p, r):
-			err = fmt.Errorf("%s has no conversation saved", r.Name)
-		default:
-			err = a.launchResume(p, r, r.ID)
-		}
-		if err != nil {
+		if r.Running && !a.Live.Running(r.Key) {
 			_ = a.core.Store.SetRunning(r.Key, false)
-			continue
 		}
-		n++
 	}
-	return n
 }
 
 // Delete is d on a session: the record leaves the list and the state file,

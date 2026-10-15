@@ -92,35 +92,39 @@ func TestCapture(t *testing.T) {
 }
 
 // A lone Enter with Shift or Option held is claude's new line: its kitty
-// key when it asked for kitty, ESC CR otherwise; plain Enter, typing, a
-// paste and an editor's capture pass as they came.
+// key when it asked for kitty, ESC CR otherwise; with Control held it is
+// Ctrl+Enter's kitty key, which has no other spelling claude reads; plain
+// Enter, typing, a paste and an editor's capture pass as they came.
 func TestHeldNewline(t *testing.T) {
-	var shift, option bool
-	c := &Capture{HeldNewline: true, heldKeys: func() (bool, bool) { return shift, option }}
+	var shift, option, control bool
+	c := &Capture{HeldNewline: true, heldKeys: func() (bool, bool, bool) { return shift, option, control }}
 	cases := []struct {
-		name          string
-		in            string
-		shift, option bool
-		kitty         int
-		want          string
+		name                   string
+		in                     string
+		shift, option, control bool
+		kitty                  int
+		want                   string
 	}{
-		{"Shift+Enter, kitty", "\r", true, false, 1, "\x1b[13;2u"},
-		{"Option+Enter, kitty", "\r", false, true, 1, "\x1b[13;3u"},
-		{"Shift+Enter, no kitty", "\r", true, false, 0, "\x1b\r"},
-		{"Option+Enter, no kitty", "\r", false, true, 0, "\x1b\r"},
-		{"Enter", "\r", false, false, 1, "\r"},
-		{"typing that ends in Enter", "a\r", true, false, 1, "a\r"},
-		{"a paste", "\x1b[200~x\ry\x1b[201~", true, false, 1, "\x1b[200~x\ry\x1b[201~"},
-		{"Option+Enter as Meta already", "\x1b\r", false, true, 1, "\x1b\r"},
-		{"Shift+Enter a terminal told apart", "\x1b[13;2u", true, false, 1, "\x1b[13;2u"},
+		{"Ctrl+Enter, kitty", "\r", false, false, true, 5, "\x1b[13;5u"},
+		{"Ctrl+Enter, no kitty", "\r", false, false, true, 0, "\r"},
+		{"Ctrl+J, a new line in claude", "\n", false, false, true, 5, "\n"},
+		{"Shift+Enter, kitty", "\r", true, false, false, 1, "\x1b[13;2u"},
+		{"Option+Enter, kitty", "\r", false, true, false, 1, "\x1b[13;3u"},
+		{"Shift+Enter, no kitty", "\r", true, false, false, 0, "\x1b\r"},
+		{"Option+Enter, no kitty", "\r", false, true, false, 0, "\x1b\r"},
+		{"Enter", "\r", false, false, false, 1, "\r"},
+		{"typing that ends in Enter", "a\r", true, false, false, 1, "a\r"},
+		{"a paste", "\x1b[200~x\ry\x1b[201~", true, false, false, 1, "\x1b[200~x\ry\x1b[201~"},
+		{"Option+Enter as Meta already", "\x1b\r", false, true, false, 1, "\x1b\r"},
+		{"Shift+Enter a terminal told apart", "\x1b[13;2u", true, false, false, 1, "\x1b[13;2u"},
 	}
 	for _, k := range cases {
-		shift, option = k.shift, k.option
+		shift, option, control = k.shift, k.option, k.control
 		if got := string(c.newline([]byte(k.in), k.kitty)); got != k.want {
 			t.Errorf("%s: %q, want %q", k.name, got, k.want)
 		}
 	}
-	editor := &Capture{heldKeys: func() (bool, bool) { return true, true }}
+	editor := &Capture{heldKeys: func() (bool, bool, bool) { return true, true, true }}
 	if got := string(editor.newline([]byte("\r"), 1)); got != "\r" {
 		t.Errorf("an editor's Enter became %q", got)
 	}

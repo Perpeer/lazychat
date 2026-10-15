@@ -144,8 +144,9 @@ paths:
   assignments, sudo, env, cd and echo are skipped (usage.commandHeads).
 - A turn ends at the `system` line `turn_duration`, or for a command
   Claude Code runs itself (/mcp, /model) at its `<local-command-stdout>`
-  line; one never written (an interrupted answer) ends at its last call
-  once a later prompt came.
+  line, or for an answer the user cut short at Claude Code's
+  "[Request interrupted …]" note; one never written (a process killed
+  mid-answer) ends at its last call once a later prompt came.
   Active time leaves out AskUserQuestion's wait (tool_use → its result);
   permission prompts leave no record, so their wait stays in, and the
   page says so.

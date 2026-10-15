@@ -30,7 +30,7 @@ func TestTurkishPC(t *testing.T) {
 // With no key held, as under test, macOS reports neither modifier, and the
 // call asks for no permission on the way.
 func TestHeld(t *testing.T) {
-	if shift, option := Held(); shift || option {
-		t.Errorf("Held() = %v, %v with nothing pressed", shift, option)
+	if shift, option, control := Held(); shift || option || control {
+		t.Errorf("Held() = %v, %v, %v with nothing pressed", shift, option, control)
 	}
 }

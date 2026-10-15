@@ -4,9 +4,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/muesli/termenv"
 
 	"lazychat/internal/core/git"
+	"lazychat/internal/ui/text"
 )
 
 // The heading is the name and the folder; the branch the folder is on goes
@@ -47,6 +50,29 @@ func TestProjectHeading(t *testing.T) {
 	if got := plain(ProjectHeading("notes", "/work/notes", NoGit, 30)); len(got) != 3 || got[2] != NoGit {
 		t.Errorf("without git: %q", got)
 	}
+	long := plain(ProjectHeading("door", "/work/garden-shed/paints/feature/blue-door", "⎇ main", 24))
+	if len(long) != 3 || long[1] != "…nts/feature/blue-door" || long[2] != "⎇ main" {
+		t.Errorf("a long folder is not one row with its end: %q", long)
+	}
+}
+
+// A folder takes one row: whole when it fits, else its end filling the row
+// after "…".
+func TestFolder(t *testing.T) {
+	for _, c := range []struct {
+		path string
+		w    int
+		want string
+	}{
+		{"/work/blue-door", 20, "/work/blue-door"},
+		{"/work/garden-shed/paints/blue-door", 20, "…ed/paints/blue-door"},
+		{"/work/garden-shed/paints/blue-door", 13, "…ts/blue-door"},
+		{"/work/a-very-long-folder-name", 12, "…folder-name"},
+	} {
+		if got := Folder(c.path, c.w); got != c.want || text.Width(got) > c.w {
+			t.Errorf("Folder(%q, %d) = %q, want %q", c.path, c.w, got, c.want)
+		}
+	}
 }
 
 // The projects column narrows with the terminal between its two bounds.
@@ -78,7 +104,7 @@ func TestTitleRows(t *testing.T) {
 	}
 	name := ProjectHeading("a project with a long name", "/p", "", 20)
 	if !strings.HasPrefix(name[0].Plain, " a project") || !strings.HasPrefix(name[1].Plain, " ") || strings.Contains(name[1].Plain, "/p") {
-		t.Errorf("a long project name: %q", name)
+		t.Errorf("a long project name: %+v", name)
 	}
 }
 
@@ -106,5 +132,50 @@ func TestWorktreeHeading(t *testing.T) {
 	main := ProjectHeading("garden", "/tmp/garden", "⎇ main", 40)
 	if last := main[len(main)-1].Plain; last != " ⎇ main" {
 		t.Errorf("main checkout's branch row: %q", last)
+	}
+}
+
+// A session at work has a band of the busy colour running across its
+// name, one character a beat, over a wrapped name too; the plain text stays.
+func TestSweep(t *testing.T) {
+	defer lipgloss.SetColorProfile(lipgloss.ColorProfile())
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	rows := TitleRows("└─ ", "   ", "◐ ", "◐ ", "garden-shed-paints/feature/blue-door", StyleBold, 25, 2)
+	band := StyleBusy.Bold(true)
+	for _, c := range []struct {
+		beat int
+		row  int
+		lit  string
+	}{{2, 0, "gar"}, {5, 0, "den"}, {21, 1, "fea"}} {
+		got := Sweep(rows, "◐ ", "◐ ", c.beat)
+		if !strings.Contains(got[c.row].Styled, band.Render(c.lit)) {
+			t.Errorf("beat %d: row %d does not light %q: %q", c.beat, c.row, c.lit, got[c.row].Styled)
+		}
+		for i := range got {
+			if got[i].Plain != rows[i].Plain || got[i].Prefix != rows[i].Prefix {
+				t.Errorf("beat %d changed row %d: %+v", c.beat, i, got[i])
+			}
+		}
+	}
+	rest := Sweep(rows, "◐ ", "◐ ", 36+sweepBand)
+	for i := range rest {
+		if strings.Contains(rest[i].Styled, band.Render("e")) {
+			t.Errorf("past the end the band still shows on row %d: %q", i, rest[i].Styled)
+		}
+	}
+}
+
+// A lit entry's connector takes the busy colour, bold; an unlit one stays
+// dim, so a session at work is a coloured block in the tree.
+func TestLitPrefix(t *testing.T) {
+	defer lipgloss.SetColorProfile(lipgloss.ColorProfile())
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	rows := []TreeLine{{Prefix: "   ┣━ ", Styled: "oak", Plain: "oak", Lit: true}, {Prefix: "   ├─ ", Styled: "ivy", Plain: "ivy"}}
+	got := DrawEntry(rows, 20, false, true)
+	if !strings.HasPrefix(got[0], StyleBusy.Bold(true).Render("   ┣━ ")) {
+		t.Errorf("a lit prefix is not in the busy colour: %q", got[0])
+	}
+	if !strings.HasPrefix(got[1], StyleDim.Render("   ├─ ")) {
+		t.Errorf("an unlit prefix is not dim: %q", got[1])
 	}
 }

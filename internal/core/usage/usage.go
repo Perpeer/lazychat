@@ -107,6 +107,8 @@ type Session struct {
 	Prompts []Prompt
 	// Ends are the moments Claude Code said a turn was over.
 	Ends []time.Time
+	// Cuts are the moments the user cut an answer short; each is an end too.
+	Cuts []time.Time
 	// Waits are the questions put to the user, To zero while one is open.
 	Waits []Span
 	// Uses are the skills and MCP calls, the subagents' too, in the order
@@ -181,7 +183,9 @@ type Prompt struct {
 type Turn struct {
 	Prompt
 	// End is when Claude Code said the turn was over; zero while it runs.
-	End   time.Time
+	End time.Time
+	// Cut says the turn ended where the user cut its answer short.
+	Cut   bool
 	Last  time.Time // the last call's
 	Waits []Span    // questions to the user in the turn
 	// Idle is where the turn had ended and a background agent's news
@@ -203,7 +207,7 @@ type Turn struct {
 }
 
 // Ended says the turn is over: Claude Code said so, or the turn's end was
-// never written (an interrupted answer) and a later prompt came.
+// never written (a process killed mid-answer) and a later prompt came.
 func (t Turn) Ended() bool { return !t.End.IsZero() }
 
 // Active is the turn's time without the questions' waits: from the prompt
@@ -226,7 +230,7 @@ func (t Turn) Active(now time.Time) time.Duration {
 
 // Took is the turn's active time as the report and the session rows show
 // it: running, until now; else until its end, or for one whose end was
-// never written (an interrupted answer), its last call.
+// never written (a process killed mid-answer), its last call.
 func (t Turn) Took(now time.Time, running bool) time.Duration {
 	if !t.Ended() && !running {
 		t.End = t.Last
@@ -326,6 +330,11 @@ func (s *Session) Turns() []Turn {
 	for i := range out {
 		if out[i].Last.After(out[i].End) {
 			out[i].End = time.Time{}
+		}
+	}
+	for _, c := range s.Cuts {
+		if i := at(c); i >= 0 && out[i].End.Equal(c) {
+			out[i].Cut = true
 		}
 	}
 	for i := range out {

@@ -189,7 +189,9 @@ asked first. With none it is the form for a new one. `--workspace <name>`
 skips the screen, and the splash with it.
 
 In the app the open workspace is the box across the top: its name and how
-many projects it has. `Ctrl+W` or a click selects it; `↓` or `Esc`
+many projects it has, and over the right box, after a `│`, the folder of
+the project the cursor is on, on one row (its end, `…Data/github/lazychat`, when it is
+too long), so which project a session works in is read at the top. `Ctrl+W` or a click selects it; `↓` or `Esc`
 goes back to the tab's list. Its keys:
 
 | Key | Does |
@@ -222,7 +224,7 @@ Nothing lazychat does leaves a workspace half written or written over:
 
 ```
 ┌ workspace (ctrl+w) ────────────────────────────────────────────────────────────────────────────────┐
-│ work   2 project(s)                                                                                │
+│ work   2 project(s)                     │ ~/code/app                                               │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ╭────╮┌ [1] projects ────────────────────┐┌ [2] app · fix-12 search box · running ───────────────────┐
 │ ^^ ││ app                            1 ││ claude's own screen, drawn by the emulator               │
@@ -267,8 +269,8 @@ The projects column is as wide in Chat, Git and Terminal (28 % of the tab,
 32 to 40 columns), so it stays put when the tab changes.
 
 A project's heading is the same in every tab: its name in bold (wrapped to
-two rows), its folder dim under it (wrapped to three rows, a longer one
-keeping its tail) and the branch the folder is on in the accent: `⎇ main`; a worktree's heading has no branch row — its name already says which one it is — and is drawn in the theme's worktree colour, `⑂` before it; nothing
+two rows), its folder dim under it on one row (a longer one its end, filling the
+row: `…cs/SharedData/github/lazychat`) and the branch the folder is on in the accent: `⎇ main`; a worktree's heading has no branch row — its name already says which one it is — and is drawn in the theme's worktree colour, `⑂` before it; nothing
 outside a repository. A branch always takes one row: one too long is cut
 in its middle, its last part kept — `garden-shed-paints/…/blue-door` — since
 that part tells branches apart. It is read from the HEAD file at most every three
@@ -341,8 +343,10 @@ selection replaces it; `Tab` types two spaces.
 
 The left side is one tree of the projects, each with every session
 lazychat started or resumed in it, remembered across runs. Each session is a glyph
-(spinner running, `○` saved), the name wrapped to three
-rows, and under it its tool, in its colour, and its last prompt's time in
+(a spinner while it works, hung on a heavy green line `┣━` / `┃` down
+all its rows, with a green light sweeping across its name;
+`●` while its program is open and waits for a prompt; `○` saved), the name
+wrapped to three rows, and under it its tool, in its colour, and its last prompt's time in
 two units, the same the details page shows: `◷ 42s` counting while it works,
 `⏸ 1m 05s` held in the accent while a question waits for you — that wait is
 left out — and the total dim once it is done (`3m 18s`); the next prompt
@@ -850,14 +854,11 @@ blinking block, a steady underline when the pane is not focused.
 lazychat records each session it starts or resumes in the workspace's
 state file: its name, project, tool, whether it runs, and, for claude, its
 session id, learned from `~/.claude/sessions/<pid>.json` once the process
-reports it. Quitting through the quit question (`q`, or `Ctrl+C` on a list)
-closes every session: they stay in the list, not running, and the next start
-brings none back — `Enter` or `r` resumes one. Sessions still running when
-lazychat ends any other way — the terminal window closed, a crash — or when
-it opens another workspace keep that mark, and the next start on the
-workspace resumes them as conversations: the screen and scrollback start
-afresh, a reply in progress at the end was cut off, and one with nothing
-saved to resume is let go. Shells do not come back.
+reports it. However lazychat ends — the quit question (`q`, or `Ctrl+C` on
+a list), the terminal window closed, a crash, another workspace opened — no
+session starts on its own at the next start: they all stay in the list, not
+running, and `Enter` or `r` resumes the one you want. Shells do not come
+back.
 Saved sessions to resume are read from Claude Code's own transcripts,
 `~/.claude/projects/<folder slug>/*.jsonl`; the `/rename` title is looked up
 in each file's head and tail, else the first prompt stands in.
@@ -910,6 +911,9 @@ arrives while a claude session has the keys, lazychat asks macOS which
 modifiers are down (`CGEventSourceFlagsState`, which needs no permission)
 and with Shift or Option held sends claude Shift+Enter or Alt+Enter —
 `CSI 13;2u` / `CSI 13;3u` under the kitty protocol, `ESC CR` otherwise.
+With Control held it sends Ctrl+Enter, `CSI 13;5u`, which claude takes to
+send a queued prompt now; claude asks lazychat for the kitty protocol, and
+without it Ctrl+Enter has no spelling claude reads, so it stays Enter.
 
 **Text in a pane the program did not draw.** Run lazychat with
 `LAZYCHAT_TRACE=<folder>`: each session writes `<time>-<n>-<name>.out`, its

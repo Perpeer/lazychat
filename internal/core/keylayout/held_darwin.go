@@ -12,10 +12,10 @@ static unsigned long long heldFlags(void) {
 */
 import "C"
 
-// Held says whether Shift or Option is down on this Mac's keyboard now. It
-// reads only the modifier flags, which needs no permission, unlike reading
-// keys; Caps Lock, Control and Command are not asked.
-func Held() (shift, option bool) {
+// Held says whether Shift, Option or Control is down on this Mac's keyboard
+// now. It reads only the modifier flags, which needs no permission, unlike
+// reading keys; Caps Lock and Command are not asked.
+func Held() (shift, option, control bool) {
 	f := C.heldFlags()
-	return f&C.kCGEventFlagMaskShift != 0, f&C.kCGEventFlagMaskAlternate != 0
+	return f&C.kCGEventFlagMaskShift != 0, f&C.kCGEventFlagMaskAlternate != 0, f&C.kCGEventFlagMaskControl != 0
 }

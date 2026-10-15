@@ -24,7 +24,9 @@ type treeView struct {
 	worktree func(path string) string                           // the worktree a project's folder is, "" for a repository's own; nil for none
 	turn     func(key string) (time.Duration, status.TurnState) // the session's turn time; nil for none
 	draft    func(r state.Session) bool                         // the session has a draft waiting; nil for none
+	working  func(key string) bool                              // the board calls the session at work; nil for none
 	tick     int
+	beat     int // the fast beat, which sweeps a working session's name
 	scroll   kit.Scroller
 	follow   kit.Follow
 }
@@ -46,13 +48,20 @@ func (t *treeView) projectEntry(p state.Project, n, w int) []kit.TreeLine {
 	return kit.ProjectHeading(p.Name, p.Path, branch, w)
 }
 
+// glyph turns only for a session at work: a program that waits on its
+// prompt spun too, and the user could not tell which session worked.
 func (t *treeView) glyph(s state.Session) (styled, plain string) {
-	if t.live.Running(s.Key) {
+	switch {
+	case t.works(s.Key):
 		g := kit.Spinner[(t.tick/2)%len(kit.Spinner)] // the tick is half a second; the spinner turns once a second
 		return kit.StyleBusy.Render(g), g
+	case t.live.Running(s.Key):
+		return kit.StyleDim.Render("●"), "●"
 	}
 	return kit.StyleDim.Render("○"), "○"
 }
+
+func (t *treeView) works(key string) bool { return t.working != nil && t.working(key) }
 
 // sessionEntry hangs a session off its project's line: ├─ for all but the
 // last, └─ for the last, whose rows below then leave the line open.
@@ -60,6 +69,16 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 	first, rest := "   ├─ ", "   │  "
 	if last {
 		first, rest = "   └─ ", "      "
+	}
+	// A session at work hangs on a heavy line in the busy colour down all its
+	// rows, so it is a lit block in the tree: the spinner and the sweep alone
+	// were too small to find it by.
+	working := t.works(s.Key)
+	if working {
+		first, rest = "   ┣━ ", "   ┃  "
+		if last {
+			first = "   ┗━ "
+		}
 	}
 	glyph, plainGlyph := t.glyph(s)
 	nameStyle := kit.StyleBold
@@ -77,6 +96,9 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 		glyph, plainGlyph, nameStyle = kit.StyleBusy.Bold(true).Render("✓"), "✓", kit.StyleBusy.Bold(true)
 	}
 	out := kit.TitleRows(first, rest, glyph+" ", plainGlyph+" ", s.Name, nameStyle, w-2, nameLines)
+	if working {
+		out = kit.Sweep(out, glyph+" ", plainGlyph+" ", t.beat)
+	}
 	// The tool leads the row under the name, in its colour, so sessions of
 	// different tools tell apart down the list; the turn time follows.
 	tool := s.Tool
@@ -100,7 +122,11 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 	if t.draft != nil && t.draft(s) {
 		styled, plain = styled+kit.StyleAccent.Render(" ✎"), plain+" ✎"
 	}
-	return append(out, kit.TreeLine{Prefix: rest, Styled: "  " + kit.ToolBadge(tool) + styled, Plain: "  " + tool + plain})
+	out = append(out, kit.TreeLine{Prefix: rest, Styled: "  " + kit.ToolBadge(tool) + styled, Plain: "  " + tool + plain})
+	for i := range out {
+		out[i].Lit = working
+	}
+	return out
 }
 
 // turnFoot is a session's turn time after its tool: counting while it

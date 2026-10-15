@@ -360,6 +360,12 @@ func (r *Reader) mainLine(line []byte) {
 			if ok && strings.HasPrefix(strings.TrimSpace(text), "<local-command-std") {
 				r.s.Ends = append(r.s.Ends, rec.Timestamp)
 			}
+			// An answer cut short writes this note and seldom a turn_duration:
+			// the note is its turn's end.
+			if isList && interrupted(bs) {
+				r.s.Ends = append(r.s.Ends, rec.Timestamp)
+				r.s.Cuts = append(r.s.Cuts, rec.Timestamp)
+			}
 			if ok {
 				if p, ok := prompt(text); ok {
 					r.s.UserMessages++
@@ -448,7 +454,7 @@ func listPrompt(bs []block) (string, bool) {
 	}
 	text := strings.TrimSpace(strings.Join(texts, "\n"))
 	switch {
-	case strings.HasPrefix(text, "[Request interrupted"):
+	case interrupted(bs):
 		return "", false
 	case text == "" && images > 0:
 		return "(an image)", true
@@ -828,4 +834,15 @@ func shellParts(line string) []string {
 	}
 	flush()
 	return parts
+}
+
+// interrupted says the line is Claude Code's note of an answer cut short:
+// "[Request interrupted by user]", or "… for tool use" during a call.
+func interrupted(bs []block) bool {
+	for _, b := range bs {
+		if b.Type == "text" && strings.HasPrefix(strings.TrimSpace(b.Text), "[Request interrupted") {
+			return true
+		}
+	}
+	return false
 }

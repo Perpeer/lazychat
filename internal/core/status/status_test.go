@@ -269,6 +269,15 @@ func TestTurnOpen(t *testing.T) {
 	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("an ended turn, nothing out", Rest)
 
+	// An answer cut short during a call: the call never gets its result,
+	// and the interrupt's end must still hold the session at rest.
+	c = newClock(t)
+	call = usage.ToolUse{ID: "cut", Name: "Bash", Time: c.now}
+	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now}, Last: c.now, End: c.now, Steps: []usage.ToolUse{call}}
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("an interrupted turn, its call never back", Rest)
+
 	// A question while the turn is open.
 	c = newClock(t)
 	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now}, Last: c.now}

@@ -25,12 +25,13 @@ type Capture struct {
 	// Beside is a left click beside the pane while it held the keys, at a
 	// screen cell: the tab puts its cursor there, without opening anything.
 	Beside func(msg tea.MouseMsg)
-	// HeldNewline makes Shift+Enter and Option+Enter the program's new line
-	// where the terminal sends them as a plain Enter (Terminal.app without
-	// Option as Meta): claude's sessions want it, an editor does not.
+	// HeldNewline makes Shift+Enter and Option+Enter the program's new line,
+	// and Ctrl+Enter its own key, where the terminal sends them as a plain
+	// Enter (Terminal.app without Option as Meta): claude's sessions want
+	// them — Ctrl+Enter sends a queued prompt now — an editor does not.
 	HeldNewline bool
 	// heldKeys is what is held on the keyboard now; tests stand it in.
-	heldKeys func() (shift, option bool)
+	heldKeys func() (shift, option, control bool)
 }
 
 // The messages a Capture sends itself from the router's and the emulator's
@@ -57,8 +58,10 @@ func (c *Capture) newline(b []byte, kitty int) []byte {
 	if !c.HeldNewline || len(b) != 1 || b[0] != '\r' {
 		return b
 	}
-	shift, option := c.heldKeys()
+	shift, option, control := c.heldKeys()
 	switch {
+	case control && kitty != 0:
+		return []byte("\x1b[13;5u")
 	case shift && kitty != 0:
 		return []byte("\x1b[13;2u")
 	case option && kitty != 0:

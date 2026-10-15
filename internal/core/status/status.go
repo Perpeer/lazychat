@@ -75,8 +75,9 @@ func agentsOut(t *usage.Turn, now time.Time) bool {
 }
 
 // turnOpenWithin is how lately a turn the transcript has not ended must
-// have moved to count as at work: an answer cut short never writes its end,
-// and an open turn left behind must not hold a session at work for good.
+// have moved to count as at work: a process killed mid-answer never writes
+// its end, and an open turn left behind must not hold a session at work for
+// good. An answer the user cut short ends at Claude Code's note of it.
 const turnOpenWithin = 2 * time.Minute
 
 // callOutWithin bounds a tool call with no result yet: a test run or a

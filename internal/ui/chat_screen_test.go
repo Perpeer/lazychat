@@ -377,14 +377,13 @@ func TestOpenWithoutConversation(t *testing.T) {
 	d.quitApp()
 }
 
-// Sessions running when lazychat last ended without the quit question come
-// back as conversations on the next start: one with a saved conversation is
-// resumed, one with none is let go and no longer marked. Quitting through the
-// question closes them: the start after brings none back.
-func TestResumeAtStart(t *testing.T) {
+// Sessions are opened by the user alone: ones marked running when
+// lazychat last ended without the quit question (the window closed, a
+// crash) are not started, and their marks are cleared; Enter still resumes
+// one.
+func TestNoResumeAtStart(t *testing.T) {
 	e, _ := seeded(t,
 		state.Session{Tool: "claude", Name: "ivy", ID: "aaaa1111-2222"},
-		state.Session{Tool: "claude", Name: "ghost", ID: "8ac2835a-dead-0000"},
 		state.Session{Tool: "claude", Name: "idle", ID: "aaaa1111-0003"},
 	)
 	st, err := state.Load(e.state)
@@ -392,33 +391,29 @@ func TestResumeAtStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, r := range st.Sessions {
-		if r.Name != "idle" {
+		if r.Name == "ivy" {
 			if err := st.SetRunning(r.Key, true); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
 	d := start(t, e, 120, 32)
-	d.expect("resumed 1 session(s) that ran when lazychat quit")
-	d.until("ivy was not resumed", func() bool { return strings.Contains(d.screen(), "args:--resume aaaa1111-2222") })
-	running := map[string]bool{}
-	for _, r := range d.sessions() {
-		running[r.Name] = r.Running
-	}
-	if !running["ivy"] || running["ghost"] || running["idle"] {
-		t.Fatalf("marks after the start: %v", running)
-	}
-	d.quitApp()
-	for _, r := range d.sessions() {
-		if r.Running {
-			t.Errorf("%s kept its mark through a deliberate quit", r.Name)
+	d.expect("○ ivy", "○ idle")
+	d.until("ivy kept its running mark", func() bool {
+		for _, r := range d.sessions() {
+			if r.Running {
+				return false
+			}
 		}
+		return true
+	})
+	if strings.Contains(d.screen(), "resumed") || strings.Contains(d.screen(), "args:") {
+		t.Fatalf("a session was started at start:\n%s", d.screen())
 	}
-	d = start(t, e, 120, 32)
-	d.expect("ivy", "idle")
-	if strings.Contains(d.screen(), "resumed") || strings.Contains(d.screen(), "args:--resume") {
-		t.Errorf("a session came back after a deliberate quit:\n%s", d.screen())
-	}
+	d.selectSession("ivy")
+	d.key("enter")
+	d.expect("args:--resume aaaa1111-2222")
+	d.leave()
 	d.quitApp()
 }
 
@@ -629,5 +624,28 @@ func TestCloseKeepsTheRow(t *testing.T) {
 	d.expect("delete oak (demo2)?")
 	d.key("y")
 	d.expectSessions(0)
+	d.quitApp()
+}
+
+// The workspace box names the folder of the project the cursor is on, over
+// the right box, and follows the cursor to another project.
+func TestFolderOverTheSession(t *testing.T) {
+	e, dir := seeded(t, state.Session{Tool: "claude", Name: "oak"})
+	other := project(t, e)
+	st, err := state.Load(e.state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.AddProject(other, "shed"); err != nil {
+		t.Fatal(err)
+	}
+	d := start(t, e, 160, 32)
+	top := func() string { return strings.Split(d.screen(), "\n")[1] }
+	at := func(path string) func() bool {
+		return func() bool { return strings.Contains(top(), "│ "+kit.Folder(path, 200)) }
+	}
+	d.until("the top does not name demo2's folder", at(dir))
+	d.key("down", "down", "down", "down")
+	d.until("the top does not follow the cursor to shed's folder", at(other))
 	d.quitApp()
 }

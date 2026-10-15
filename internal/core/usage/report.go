@@ -18,6 +18,7 @@ func (s *Session) Clone() *Session {
 	c.Resumes = append([]time.Time(nil), s.Resumes...)
 	c.Prompts = append([]Prompt(nil), s.Prompts...)
 	c.Ends = append([]time.Time(nil), s.Ends...)
+	c.Cuts = append([]time.Time(nil), s.Cuts...)
 	c.Waits = append([]Span(nil), s.Waits...)
 	c.ToolUses = append([]ToolUse(nil), s.ToolUses...)
 	c.Uses = make([]*Use, len(s.Uses))

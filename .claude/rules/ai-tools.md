@@ -69,10 +69,11 @@ paths:
   (a claude started outside it cannot be seen). Claude's trust question
   (Renamer.Untrusted) ends the run at once: trusting a folder is the
   user's call, made in a session they see.
-- Resume at start: sessions marked running when lazychat ended any way
-  but a deliberate quit (`q`, Ctrl+C on a list) are resumed as
-  conversations; a deliberate quit closes them all. A resume refused as
-  "running as a background session" within 15 s offers fork, attach,
-  stop-then-resume, create.
+- Nothing resumes at start: the user opens each session (Enter, r). The
+  start clears the running marks lazychat does not run now
+  (actions.ForgetRunning), which a closed window or a crash left; resuming
+  marked sessions at start was taken out at the user's word.
+- A resume refused as "running as a background session" within 15 s
+  offers fork, attach, stop-then-resume, create.
 - Checks run in the background with a timeout (3 s); under `./check.sh`'s
   load `TestDoctor` and `TestClaudeCheck` can time out — rerun alone first.

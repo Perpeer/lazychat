@@ -9,13 +9,9 @@ import (
 	"lazychat/internal/ui/text"
 )
 
-// dirLines is how many rows a heading's directory may wrap to; a longer one
-// keeps its end, the part that tells projects apart. nameLines is the same
-// for its name, which keeps its start.
-const (
-	dirLines  = 3
-	nameLines = 2
-)
+// nameLines is how many rows a heading's name may wrap to; it keeps its
+// start.
+const nameLines = 2
 
 // ChildGap is the row above each entry hanging off a project — a session,
 // a shell, a branch — so entries tell apart at a glance; the tree's line runs
@@ -58,9 +54,8 @@ func ProjectHeading(name, path, branch string, w int) []TreeLine {
 		out = append(out, TreeLine{Styled: style.Render(" " + n), Plain: " " + n})
 	}
 	// The folder starts where the name does.
-	for _, d := range dirRows(text.ShortHome(path), w-2) {
-		out = append(out, TreeLine{Styled: StyleDim.Render(" " + d), Plain: " " + d})
-	}
+	d := Folder(path, w-2)
+	out = append(out, TreeLine{Styled: StyleDim.Render(" " + d), Plain: " " + d})
 	if branch == NoGit {
 		out = append(out, TreeLine{Styled: StyleDim.Render(" " + branch), Plain: " " + branch})
 	} else if branch != "" {
@@ -103,22 +98,44 @@ func HeadLabel(h git.Head, ok bool) string {
 // every tab so the column does not jump when the tab changes.
 func ListWidth(cols int) int { return Clamp(cols*28/100, 32, 40) }
 
-// dirRows breaks a path into rows of w columns, character by character —
-// paths have no spaces to break at — keeping the last rows when it is longer.
-func dirRows(path string, w int) []string {
-	var rows []string
-	cur := ""
-	for _, r := range path {
-		if text.Width(cur+string(r)) > w {
-			rows = append(rows, cur)
-			cur = ""
+// Folder is a project's folder on one row of w columns, home as ~: whole
+// when it fits, else its end filling the row after "…", since the end is
+// what tells projects apart. Cutting only between parts left the row
+// half empty.
+func Folder(path string, w int) string { return text.FitLeft(text.ShortHome(path), w) }
+
+// sweepBand is how many characters the sweep lights, sweepGap how many beats
+// it rests past the name's end before it starts again.
+const sweepBand, sweepGap = 3, 6
+
+// Sweep redraws TitleRows' rows with a band in the busy colour running
+// across the title, one character a beat, so a session at work moves where
+// its name is and not only in its glyph.
+func Sweep(rows []TreeLine, lead, plainLead string, beat int) []TreeLine {
+	indent := strings.Repeat(" ", text.Width(plainLead))
+	var runes [][]rune
+	n := 0
+	for i, r := range rows {
+		p := strings.TrimPrefix(r.Plain, indent)
+		if i == 0 {
+			p = strings.TrimPrefix(r.Plain, plainLead)
 		}
-		cur += string(r)
+		runes = append(runes, []rune(p))
+		n += len(runes[i])
 	}
-	rows = append(rows, cur)
-	if len(rows) > dirLines {
-		rows = rows[len(rows)-dirLines:]
-		rows[0] = text.FitLeft("…"+rows[0], w)
+	at := beat % (n + sweepGap)
+	out := make([]TreeLine, len(rows))
+	off := 0
+	for i, rs := range runes {
+		from := min(max(at-sweepBand+1-off, 0), len(rs))
+		to := min(max(at+1-off, 0), len(rs))
+		styled := StyleBold.Render(string(rs[:from])) + StyleBusy.Bold(true).Render(string(rs[from:to])) + StyleBold.Render(string(rs[to:]))
+		off += len(rs)
+		head := indent
+		if i == 0 {
+			head = lead
+		}
+		out[i] = TreeLine{Prefix: rows[i].Prefix, Styled: head + styled, Plain: rows[i].Plain}
 	}
-	return rows
+	return out
 }

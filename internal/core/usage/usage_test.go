@@ -642,3 +642,21 @@ func TestLocalCommandEnds(t *testing.T) {
 		t.Fatalf("turns %+v", turns)
 	}
 }
+
+// An answer cut short writes Claude Code's note and seldom a turn's end:
+// the note ends its turn, else the session counted as at work for minutes,
+// for half an hour with a tool call out.
+func TestInterruptEnds(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s-11.jsonl")
+	w := newTranscript(t, path)
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "paint the blue door"}})
+	w.call("msg-01", 10, 0, 0, 5, "Bash")
+	w.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": "[Request interrupted by user for tool use]"}}}})
+	cut := w.at
+	w.flush()
+	s, _ := Open(path).Update()
+	turns := s.Turns()
+	if len(turns) != 1 || turns[0].Text != "paint the blue door" || !turns[0].Ended() || !turns[0].Cut || !turns[0].End.Equal(cut) {
+		t.Fatalf("turns %+v", turns)
+	}
+}

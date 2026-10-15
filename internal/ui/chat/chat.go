@@ -23,7 +23,7 @@ type termMsg struct{}
 type Chat struct {
 	kit.PaneTab
 	core    *api.Core
-	resumed bool // the sessions running at the last quit were brought back
+	started bool // the marks the last run left were cleared
 
 	act   *actions.Actions
 	tree  *model.Tree
@@ -67,6 +67,7 @@ func New(core *api.Core, screen kit.Screen) *Chat {
 	}
 	c.list.turn = c.turnTime
 	c.list.draft = c.hasDraft
+	c.list.working = c.board.Working
 	c.Capture.HeldNewline = true
 	// Leaving the terminal lands on what was just in use, and on a narrow
 	// screen the lists come back with the keys.

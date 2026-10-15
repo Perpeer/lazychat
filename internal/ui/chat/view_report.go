@@ -272,7 +272,7 @@ func turnState(t usage.Turn, newest, working bool) string {
 			}
 		}
 		return "running"
-	case t.Ended():
+	case t.Ended() && !t.Cut:
 		return "done"
 	}
 	return "stopped"
@@ -312,7 +312,7 @@ func costsOf(s *usage.Session, turns []usage.Turn, prices usage.Prices) []string
 
 // turnEnd is when a turn ended as the list writes it, and whether it is
 // still under way: the newest one runs while the session works, and one
-// whose end was never written (an interrupted answer) ends at its last
+// whose end was never written (a process killed mid-answer) ends at its last
 // call.
 func turnEnd(t usage.Turn, newest, working bool, now time.Time) (string, bool) {
 	switch {

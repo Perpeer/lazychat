@@ -315,7 +315,7 @@ func endNode(t usage.Turn, now time.Time, running bool, cost string) kit.FlowNod
 	}
 	took := text.Span(t.Took(now, running))
 	switch {
-	case t.Ended():
+	case t.Ended() && !t.Cut:
 		return kit.FlowNode{Kind: kit.FlowEnd, Name: "done · " + took + " · " + tokens}
 	case running:
 		return kit.FlowNode{Kind: kit.FlowEnd, Name: "running · " + took + " · " + tokens, State: kit.FlowBusy}
@@ -347,6 +347,8 @@ func relFiles(files []string, dir string) []string {
 	return out
 }
 
-// Animating says the details page shows a prompt at work, so the shell
-// sends the fast beat that turns its spinners.
-func (c *Chat) Animating() bool { return c.rep.shown && c.rep.moving }
+// Animating says the details page shows a prompt at work, or a session in
+// the tree works, so the shell sends the fast beat that moves them.
+func (c *Chat) Animating() bool {
+	return c.rep.shown && c.rep.moving || c.MascotState().Busy > 0
+}

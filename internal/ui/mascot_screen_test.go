@@ -13,6 +13,7 @@ import (
 	"lazychat/internal/core/sound"
 	"lazychat/internal/core/state"
 	"lazychat/internal/core/status"
+	"lazychat/internal/ui/kit"
 	"slices"
 )
 
@@ -499,5 +500,38 @@ func TestInbox(t *testing.T) {
 	d.pump(0)
 	d.expect("waiting on you")
 	d.key("esc")
+	d.quitApp()
+}
+
+// Only a session at work spins: one whose program waits on its prompt
+// shows a steady ●, so two open sessions tell apart at a glance. A
+// finished one, its program still open, shows ● too between its blinks.
+func TestOnlyWorkSpins(t *testing.T) {
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	d := start(t, e, 120, 32)
+	spins := func(name string) bool {
+		for _, g := range kit.Spinner {
+			if strings.Contains(d.screen(), g+" "+name) {
+				return true
+			}
+		}
+		return false
+	}
+	// A session at work hangs on the heavy line, ┣━ or ┗━.
+	lit := func(name string) bool {
+		for _, g := range kit.Spinner {
+			if strings.Contains(d.screen(), "━ "+g+" "+name) {
+				return true
+			}
+		}
+		return false
+	}
+	d.session("ivy", "")
+	d.session("oak", "work long")
+	d.until("oak at work does not spin on the heavy line", func() bool { return spins("oak") && lit("oak") })
+	d.untilIn(5*waitFor, "ivy, open and waiting, does not show ●", func() bool { return strings.Contains(d.screen(), "● ivy") && !spins("ivy") })
+	d.untilIn(5*waitFor, "oak, done, still spins or shows no ●", func() bool {
+		return strings.Contains(d.screen(), "─ ● oak") && !spins("oak") && !strings.Contains(d.screen(), "┃")
+	})
 	d.quitApp()
 }

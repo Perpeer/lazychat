@@ -65,6 +65,13 @@ it from there.
   call and a subagent still out are real work and keep it working; a
   shell call sent to the background gets its result at once and holds
   nothing.
+- An answer the user cut short (Esc) is no work: Claude Code's note
+  "[Request interrupted by user]" (or "… for tool use") ends its turn
+  (usage reader.go interrupted), since it seldom writes a `turn_duration`
+  then (5 of 6 cut answers read). Before, the turn stayed open, so the
+  session and Lazy showed working for turnOpenWithin after the cancel,
+  and for callOutWithin when a tool call was cut; the user saw Lazy at
+  work with no chat running.
 - A question on screen counts only while the session does not work; it
   ends when the session works again (that is the answer) or leaves the
   screen with no word from the hook.

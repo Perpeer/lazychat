@@ -60,6 +60,30 @@ paths:
   session or shell the right side showed. Settings and Git's commit list
   keep kit.DrawEntry's focus-bound fill. The chosen session's names in the
   right box's title were tried and taken out at the user's word.
+- A session row's glyph is the board's: the spinner only while
+  Board.Working, `●` while its program runs and waits, `○` saved; a
+  working session's name has a band of the busy colour sweeping across it
+  (kit.Sweep, one character a fast beat; Chat animates while any session
+  works), and its rows hang on a heavy connector in the busy colour
+  (`┣━`/`┗━`, `┃` down the block; TreeLine.Lit): the sweep and spinner
+  alone were still too small to find it by, and the user picked the bar
+  (and to keep the sweep) over a green name or a "working" word. The
+  spinner followed the program alone, so every open session spun and the
+  user could not tell which one worked. A mark on the project
+  heading was offered and declined: the rows show it.
+- A project's folder is one row everywhere (kit.Folder): whole when it
+  fits, else its end filling the row after `…` — the user found two or
+  three wrapped rows hard to read and wanted the end kept; cutting only
+  between parts (`…/` and whole parts) left the row half empty, and the
+  user asked for more of it. The workspace box
+  names the cursor project's folder after a `│` over the right box's left
+  edge (App.cursorFolder, any kit.ProjectTab), so the session's project is
+  read at the top; the user picked that over moving the box.
+- Ctrl+Enter reaches claude as `CSI 13;5u` (Capture.newline, Control from
+  keylayout.Held): Terminal.app sends it as a plain CR. claude 2.1.300
+  pushes kitty flags 5 (`CSI >5u`) once lazychat answers its query, and
+  binds ctrl+enter to chat:sendNow. A lone LF with Control is Ctrl+J,
+  claude's new line, and passes.
 - Rail order Chat, Git, Terminal, Settings (⌘1–4); tabs can be hidden in
   Settings.
 - The projects column is `kit.ListWidth`: 28 %, 32–40 columns, in every
