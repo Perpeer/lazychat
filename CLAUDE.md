@@ -74,6 +74,10 @@ enforces the lines, so a wrong import fails the check.
   in the status area, the footer's last row before the version, first.
 - Zones are one global manager: tests in `internal/ui` never run in
   parallel.
+- Input to a program — keys, pastes, mouse reports, the emulator's
+  replies — goes through `term.Session`'s queue, never a `pty.Write` of its
+  own: a program in raw mode that does not read (codex at work) blocks the
+  write, and one made on the UI or under the emulator's lock froze lazychat.
 
 ## Rules by area
 

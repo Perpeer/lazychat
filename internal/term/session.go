@@ -83,6 +83,13 @@ type Session struct {
 	// claude leads with a spinner while it works; titled says one was set.
 	title  atomic.Value
 	titled atomic.Bool
+	// in holds the input writeLoop has not yet given the pty. A program that
+	// does not read its input blocks a pty write, and a write made on the UI,
+	// on the output reader or under the emulator's lock froze lazychat for good.
+	inMu   sync.Mutex
+	in     []byte
+	inWake chan struct{}
+	ended  chan struct{}
 }
 
 // Start launches argv in dir inside a pty of the given size. notify is called
@@ -103,6 +110,7 @@ func Start(id int, name, project, dir string, argv []string, cols, rows int, not
 	s := &Session{
 		ID: id, Name: name, Project: project, Started: time.Now(),
 		cmd: cmd, pty: f, emu: vt.NewSafeEmulator(cols, rows), cols: cols, rows: rows, notify: notify,
+		inWake: make(chan struct{}, 1), ended: make(chan struct{}),
 	}
 	s.trace = openTrace(id, name, argv, cols, rows)
 	s.cursorOn.Store(true)
@@ -117,6 +125,7 @@ func Start(id int, name, project, dir string, argv []string, cols, rows int, not
 	s.installKitty()
 	go s.readLoop()
 	go s.replyLoop()
+	go s.writeLoop()
 	go s.waitLoop()
 	return s, nil
 }
@@ -184,7 +193,7 @@ func (s *Session) installKitty() {
 	s.emu.RegisterCsiHandler(ansi.Command('?', 0, 'u'), func(ansi.Params) bool {
 		reply := fmt.Sprintf("\x1b[?%du", s.kitty.Load())
 		s.trace.event("reply %q", reply)
-		_, _ = s.pty.Write([]byte(reply))
+		s.put([]byte(reply))
 		return true
 	})
 }
@@ -233,9 +242,7 @@ func (s *Session) replyLoop() {
 		n, err := s.emu.Read(buf)
 		if n > 0 {
 			s.trace.event("reply %q", buf[:n])
-			if _, werr := s.pty.Write(buf[:n]); werr != nil {
-				return
-			}
+			s.put(buf[:n])
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -253,11 +260,41 @@ func (s *Session) replyLoop() {
 	}
 }
 
+// put queues input for the program; it never waits on the program.
+func (s *Session) put(b []byte) {
+	s.inMu.Lock()
+	s.in = append(s.in, b...)
+	s.inMu.Unlock()
+	select {
+	case s.inWake <- struct{}{}:
+	default:
+	}
+}
+
+// writeLoop gives the queued input to the pty in the order it was put.
+func (s *Session) writeLoop() {
+	for {
+		select {
+		case <-s.inWake:
+		case <-s.ended:
+			return
+		}
+		s.inMu.Lock()
+		b := s.in
+		s.in = nil
+		s.inMu.Unlock()
+		if _, err := s.pty.Write(b); err != nil {
+			return
+		}
+	}
+}
+
 func (s *Session) waitLoop() {
 	err := s.cmd.Wait()
 	s.mu.Lock()
 	s.done, s.exitErr = true, err
 	s.mu.Unlock()
+	close(s.ended)
 	s.gen.Add(1)
 	s.trace.event("exit %v", err)
 	s.trace.close()
@@ -487,8 +524,8 @@ func (s *Session) send(b []byte) error {
 		return fmt.Errorf("%s has ended", s.Name)
 	}
 	s.trace.event("input %q", b)
-	_, err := s.pty.Write(b)
-	return err
+	s.put(b)
+	return nil
 }
 
 // Alive is false once the process has exited.

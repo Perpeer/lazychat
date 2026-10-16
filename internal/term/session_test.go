@@ -203,3 +203,41 @@ func TestResizeKeepsTheBottom(t *testing.T) {
 		t.Errorf("scrollback has %d lines, want the 31 above the screen", n)
 	}
 }
+
+// A program in raw mode that does not read its input — codex while it works —
+// fills the pty's input. The wheel and keys sent then must not stop lazychat:
+// they wait in the session's queue while the screen still draws.
+func TestInputNeverBlocks(t *testing.T) {
+	s, err := Start(3, "busy", "p", t.TempDir(), []string{"/bin/sh", "-c", `stty raw -echo; printf '\033[?1049h\033[?1000h\033[?1006hready'; sleep 30`}, 80, 24, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer StopAll([]*Session{s}, time.Second)
+	deadline := time.Now().Add(3 * time.Second)
+	for !strings.Contains(stripANSI(s.Render()), "ready") {
+		if time.Now().After(deadline) {
+			t.Fatalf("the program never started:\n%s", s.Render())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	sent := make(chan struct{})
+	go func() {
+		for i := 0; i < 3000; i++ {
+			s.Mouse(65, 10, 10, false)
+			_ = s.Write([]byte("k"))
+		}
+		close(sent)
+	}()
+	select {
+	case <-sent:
+	case <-time.After(5 * time.Second):
+		t.Fatal("input to a program that does not read blocked the sender")
+	}
+	drawn := make(chan struct{})
+	go func() { s.Render(); close(drawn) }()
+	select {
+	case <-drawn:
+	case <-time.After(time.Second):
+		t.Fatal("the screen no longer draws")
+	}
+}
