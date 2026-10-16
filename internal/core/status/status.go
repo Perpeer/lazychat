@@ -85,8 +85,8 @@ const turnOpenWithin = 2 * time.Minute
 const callOutWithin = 30 * time.Minute
 
 // turnOpen says the transcript has the newest prompt still being answered:
-// its end not written and its calls moving lately, or a call of the main
-// agent still out. Claude Code 2.1 stopped turning a spinner in its window
+// its end not written and its calls or their results moving lately, or a
+// call of the main agent still out. Claude Code 2.1 stopped turning a spinner in its window
 // title — it set "✳ name" once and kept it through an 18 s answer — so the
 // title alone called a working session done and the done sound played
 // while it ran.
@@ -94,14 +94,22 @@ func turnOpen(t *usage.Turn, now time.Time) bool {
 	if t == nil || t.Ended() || t.Time.IsZero() {
 		return false
 	}
-	for _, s := range t.Steps {
-		if s.Agent == "" && s.Back.IsZero() && !s.Time.IsZero() && now.Sub(s.Time) <= callOutWithin {
-			return true
-		}
-	}
 	moved := t.Time
 	if t.Last.After(moved) {
 		moved = t.Last
+	}
+	for _, s := range t.Steps {
+		if s.Agent != "" {
+			continue
+		}
+		if s.Back.IsZero() && !s.Time.IsZero() && now.Sub(s.Time) <= callOutWithin {
+			return true
+		}
+		// A result moves the turn too: after a call of minutes claude thinks
+		// before its next call, and the turn read closed then.
+		if s.Back.After(moved) {
+			moved = s.Back
+		}
 	}
 	return now.Sub(moved) <= turnOpenWithin
 }

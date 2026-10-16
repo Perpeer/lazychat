@@ -29,8 +29,8 @@ it from there.
   "Action Required"), the `--settings` Notification hook
   (`Hooked`). Working comes from the process (title spinner, else output
   in the last 2 s) or from the tool's record (turnOpen over Signals.Last:
-  the newest turn's end unwritten and its calls moved within
-  turnOpenWithin, 2 min, or a main-agent call with no result within
+  the newest turn's end unwritten and its calls or their results moved
+  within turnOpenWithin, 2 min, or a main-agent call with no result within
   callOutWithin, 30 min). Claude Code 2.1.291 sets "✳ name" once and
   never spins it (recorded: an 18 s answer, one OSC 0 in 46 kB), so the
   title alone called a working claude done or never working, and the
@@ -72,6 +72,12 @@ it from there.
   session and Lazy showed working for turnOpenWithin after the cancel,
   and for callOutWithin when a tool call was cut; the user saw Lazy at
   work with no chat running.
+- A tool result moves the turn as a call does: when a call of over two
+  minutes came back, nothing was out and the last call was old, so the
+  turn read closed while claude thought before its next call; the user
+  heard the done sound mid-answer (MCP calls, "Galloping… (44s)"). A
+  replay of 40 local transcripts found 82 such windows over stopGrace,
+  3 once results count.
 - A question on screen counts only while the session does not work; it
   ends when the session works again (that is the answer) or leaves the
   screen with no word from the hook.

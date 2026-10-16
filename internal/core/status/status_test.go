@@ -251,6 +251,19 @@ func TestTurnOpen(t *testing.T) {
 	c.past(Signals{Given: true, Inputs: 1, Last: turn})
 	c.want("a call out an hour", Done)
 
+	// A call that ran three minutes is back and claude thinks: the result
+	// moved the turn, so no done while it thinks.
+	c = newClock(t)
+	call = usage.ToolUse{ID: "figma", Name: "mcp__design__context", Time: c.now.Add(-3 * time.Minute), Back: c.now.Add(-5 * time.Second)}
+	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now.Add(-4 * time.Minute)}, Last: call.Time, Steps: []usage.ToolUse{call}}
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("thinking after a three-minute call", Working)
+	turn.End = c.now
+	c.tick(Signals{Given: true, Inputs: 1, Last: turn})
+	c.past(Signals{Given: true, Inputs: 1, Last: turn})
+	c.want("the long call's turn ended", Done)
+
 	// An open turn quiet for long — an answer cut short — holds nothing.
 	c = newClock(t)
 	turn = &usage.Turn{Prompt: usage.Prompt{Time: c.now.Add(-time.Hour)}, Last: c.now.Add(-time.Hour)}
