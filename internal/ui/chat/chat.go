@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"lazychat/internal/core/agent"
 	"lazychat/internal/core/api"
 	"lazychat/internal/core/status"
 	"lazychat/internal/ui/chat/actions"
@@ -44,6 +45,9 @@ type Chat struct {
 	beat     int         // the shell's fast beat, turning the flow's spinners
 	files    transcripts // the transcripts the report, the clocks and the sums read
 	repFocus bool
+	// use is what the cursor session's status line last heard, read each
+	// tick for the title row.
+	use agent.Use
 }
 
 var _ kit.Tab = (*Chat)(nil)

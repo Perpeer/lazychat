@@ -21,10 +21,35 @@ paths:
   notice file, and a status line only when none of the user's three
   settings files names one (needs `jq`). Never write into `~/.claude` or a
   project's `.claude`; those are only read.
+- Every claude status line runs through a tap (statusline.go tap): the
+  `--settings` statusLine is the user's own (fields kept, the most local
+  file winning) or lazychat's, its command wrapped to save Claude's JSON as
+  `<notice>.status` (written as .tmp, then moved: lazychat reads on its own
+  clock) and run with `LAZYCHAT_SHOWN=limits`. They are drawn in the
+  session box's bottom border (kit.BoxFoot): the title row beside the tabs
+  left too little room, and the border costs the pane no row. Claude Code sends the
+  context window and `rate_limits` only to a status line (no hook, no
+  file), and the user wanted them beside the session, gone from the
+  status line, in the words and order of Claude's usage page (Current
+  session, All models, a model's own weekly limit when sent — none seen —,
+  then Context, Cost, Cache, Time and the extras: lines, PR, warm cache;
+  chat/view_use.go). A Team plan does send rate_limits: an earlier reading
+  that it did not was wrong. Tried with
+  claude 2.1.302: the line runs at start (context null, no limits before a
+  reply) and on each message, not while idle, so reset times are counted
+  by lazychat at draw time. The limits are the account's: a session
+  without them borrows the newest any session heard (agent.UseIn). A
+  settings file that does not parse keeps lazychat out of the status line
+  as before, and a session with no status line gets none: even an empty
+  one hides claude's footer hints, which Settings' `status line` row
+  brings back (TestDraft caught the made-up line).
 - The status line script (`agent/statusline.sh`) has two twins kept
   identical by hand: the user's `~/.claude/hooks/statusline.sh` and
   prompter's `claude/hooks/statusline.sh` (its example line names
-  `garden-shed`); change all three together. Groups in brackets, side by
+  `garden-shed`); change all three together. `LAZYCHAT_SHOWN=limits`
+  makes the script leave out ctx, session, week, cost, cache and time:
+  the bottom border draws them (the user moved each, so a number shows
+  once). Groups in brackets, side by
   side before the context bar: the session, the workspace, the plan's limits
   `[session N% ↻… · week N% ↻…]`, which Claude Code sends only after a
   session's first reply (`rate_limits.five_hour` / `seven_day`).

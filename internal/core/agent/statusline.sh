@@ -46,6 +46,11 @@ export LC_NUMERIC=C
 # colour), as lazychat's own lists draw them: lazychat passes its theme's
 # colours as LAZYCHAT_ACCENT and LAZYCHAT_WORKTREE (#rrggbb or a 256-colour
 # number); without them Gruvbox's, lazychat's start theme, stand in.
+#
+# LAZYCHAT_SHOWN=limits: lazychat draws the context, the plan's limits, the
+# cost, the cache and the time on the session's title row, so this row
+# leaves them out. Claude outside
+# lazychat does not set it and draws them here.
 
 case ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} in
   *UTF-8*|*utf8*) ;;
@@ -94,6 +99,7 @@ fg() { # a #rrggbb or 256-colour number as a foreground escape
 }
 ACCENT=$(fg "${LAZYCHAT_ACCENT:-#fabd2f}")
 WTREE=$(fg "${LAZYCHAT_WORKTREE:-#83a598}")
+SHOWN=0; [[ ${LAZYCHAT_SHOWN:-} == *limits* ]] && SHOWN=1
 
 # Segment titles. Set any to "" to render that segment without a title.
 L_MODEL=""       L_SESSION=""  L_GIT=""      L_DIR=""      L_EFFORT=""        L_CTX="ctx"
@@ -176,7 +182,7 @@ while :; do
     ws+=("$(lbl "$L_GIT")${ACCENT}⎇ ${branch}${R}")
   fi
 
-  if [[ -n $CTX_PCT ]]; then
+  if [[ -n $CTX_PCT ]] && (( ! SHOWN )); then
     win=""
     if (( show_win )) && [[ -n $CTX_SIZE ]]; then
       if (( CTX_SIZE >= 1000000 )); then win="${DIM}/$(( CTX_SIZE / 1000000 ))M${R}"
@@ -189,22 +195,22 @@ while :; do
     seg+=("$(lbl "$L_CTX")$(heat "$CTX_PCT")${bar}${R} ${BOLD}$(heat "$CTX_PCT")${CTX_PCT}%${R}${win}")
   fi
 
-  (( show_cost )) && [[ -n $COST ]] && seg+=("$(lbl "$L_COST")$(printf "${DIM}\$%.2f${R}" "$COST")")
-  if (( show_cache )) && [[ -n $CACHE_PCT ]]; then
+  (( show_cost && ! SHOWN )) && [[ -n $COST ]] && seg+=("$(lbl "$L_COST")$(printf "${DIM}\$%.2f${R}" "$COST")")
+  if (( show_cache && ! SHOWN )) && [[ -n $CACHE_PCT ]]; then
     seg+=("$(lbl "$L_CACHE")$(cool "$CACHE_PCT")${CACHE_PCT}%${R}")
   fi
-  if (( show_dur )) && [[ -n $DUR ]]; then
+  if (( show_dur && ! SHOWN )) && [[ -n $DUR ]]; then
     mins=$(( DUR / 60000 ))
     if   (( mins >= 1440 )); then dur_txt="$(( mins / 1440 ))d $(( mins % 1440 / 60 ))h"
     elif (( mins >= 60 ));   then dur_txt="$(( mins / 60 ))h $(( mins % 60 ))m"
     else dur_txt="${mins}m"; fi
     seg+=("$(lbl "$L_TIME")${DIM}${dur_txt}${R}")
   fi
-  if [[ -n $FIVE ]]; then
+  if [[ -n $FIVE ]] && (( ! SHOWN )); then
     at=""; (( show_reset )) && [[ -n $FIVE_AT ]] && at=$(until_reset "$FIVE_AT")
     lim+=("$(lbl "$L_5H")$(heat "$FIVE")${FIVE}%${R}${at}")
   fi
-  if (( show_week )) && [[ -n $SEVEN ]]; then
+  if (( show_week && ! SHOWN )) && [[ -n $SEVEN ]]; then
     at=""; (( show_reset )) && [[ -n $SEVEN_AT ]] && at=$(until_reset "$SEVEN_AT")
     lim+=("$(lbl "$L_WK")$(heat "$SEVEN")${SEVEN}%${R}${at}")
   fi

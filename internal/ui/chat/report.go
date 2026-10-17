@@ -270,3 +270,11 @@ func (c *Chat) tabClick(msg tea.MouseMsg) bool {
 func playSound(n sound.Name) tea.Cmd {
 	return func() tea.Msg { return kit.PlaySound{Name: n} }
 }
+
+// cursorKey is the tree cursor's session; "" on a project.
+func (c *Chat) cursorKey() string {
+	if r, ok := c.tree.Current(); ok && r.Session != nil {
+		return r.Session.Key
+	}
+	return ""
+}

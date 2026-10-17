@@ -368,6 +368,21 @@ them, and the session runs on behind the details. `2` only chooses the
 session; `Enter` goes in. A Codex session has the session tab alone: Codex
 keeps no record lazychat reads, so `3` does nothing there.
 
+The box's bottom border holds what claude's status line hears, in the
+words and order of Claude's usage page: `Current session 12% · resets in 25
+min │ All models 38% · resets Thu 09:00 │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24% of 1M ·
+Cost $3.75 · Cache 87% · Time 2h 5m · +120 −7 · PR #12 approved · warm
+4m` — a model's own weekly limit (Fable) after all models when Claude sends
+one; the lines the session changed, the branch's pull request, and how long
+the prompt cache stays warm. Green under 60%, yellow under 85%, red above
+(the cache the other way round). The limits are your account's, so every
+session shows the newest any session heard; the rest is the cursor
+session's. Claude Code sends them only to a session's status line, after
+its first reply, so they show for sessions lazychat runs with a status line.
+On a narrow screen the time goes first, then the extras, the cache, the
+window, the weekly resets, the cost, the other weekly limits and all
+models.
+
 ### Details
 
 The tree cursor's Claude session prompt by prompt — on a project, its
@@ -734,7 +749,8 @@ them — lazychat passes its colours to its sessions as `LAZYCHAT_ACCENT`
 and `LAZYCHAT_WORKTREE` — the effort green —
 is a script lazychat carries and writes to
 `~/.lazychat/claude/statusline.sh`. A session gets it only when none of
-the settings it reads names a status line: yours (`~/.claude/settings.json`,
+the settings it reads names a status line (it gets yours otherwise, run as
+below): yours (`~/.claude/settings.json`,
 or `$CLAUDE_CONFIG_DIR`'s), the project's `.claude/settings.json` and its
 `.claude/settings.local.json`. A status line is one setting, not a list, so
 the command line's would replace yours; when you have one, lazychat adds
@@ -742,6 +758,15 @@ none. It needs `jq` (macOS has it in `/usr/bin` since 15; without it none is
 added). With a status line, claude hides most of its footer hints — `esc to
 interrupt`, `? for shortcuts`; Settings' `status line` row hides lazychat's
 to bring them back.
+
+Every claude session lazychat runs with a status line, yours or lazychat's,
+gets it through a small wrapper on the same command line: it saves what Claude Code sends the
+status line into lazychat's notices folder, then hands it on unchanged to
+your status line, or lazychat's. That is where the bottom border's numbers come
+from. It also sets `LAZYCHAT_SHOWN=limits`, and lazychat's script then
+leaves the limits, the context, the cost, the cache and the time out of
+the status line, since the session box's bottom border shows them; claude started outside lazychat draws them as before. A
+script of your own reads the same variable to do the same.
 
 ## Menu bar
 

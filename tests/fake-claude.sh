@@ -164,6 +164,14 @@ while IFS= read -r line; do
     printf 'asked\n'
     [ -n "$q" ] && (sleep 1; printf '{"notification_type":"permission_prompt","message":"Claude needs your permission"}' > "$q") &
   fi
+  # "status <json>" is claude sending its status line the session's context
+  # and the plan's limits: the tap lazychat gave it in --settings saves them
+  # to its file.
+  case $line in status\ *)
+    s=$(printf '%s' "$*" | grep -o "'[^']*\.status'" | head -n 1 | tr -d "'")
+    [ -n "$s" ] && printf '%s' "${line#status }" > "$s"
+    printf 'status sent\n'
+  esac
   # "fail" is an answer ending on an API error: the StopFailure hook writes
   # its event to the file beside the question's.
   if [ "$line" = fail ]; then

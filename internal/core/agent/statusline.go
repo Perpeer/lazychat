@@ -46,11 +46,12 @@ var jqThere = func() bool {
 	return err == nil
 }
 
-// hasStatusLine says one of the settings files a claude session in project
-// reads below the command line names a status line: statusLine is one key,
-// not a list, so the command line's would replace it. A file that does not
-// parse counts as naming one, so lazychat stays out of the way.
-func hasStatusLine(home, project string) bool {
+// statusLineOf is the status line the settings files a claude session in
+// project reads below the command line name, the most local one winning as
+// Claude reads them; nil for none. statusLine is one key, not a list, so the
+// command line's replaces it. known is false when a file does not parse:
+// lazychat then stays out of the way.
+func statusLineOf(home, project string) (line map[string]any, known bool) {
 	paths := []string{filepath.Join(files.ClaudeConfig(home), "settings.json")}
 	if project != "" {
 		paths = append(paths, filepath.Join(project, ".claude", "settings.json"), filepath.Join(project, ".claude", "settings.local.json"))
@@ -62,20 +63,58 @@ func hasStatusLine(home, project string) bool {
 		}
 		var s map[string]json.RawMessage
 		if json.Unmarshal(b, &s) != nil {
-			return true
+			return nil, false
 		}
-		if _, ok := s["statusLine"]; ok {
-			return true
+		if raw, ok := s["statusLine"]; ok {
+			line = map[string]any{}
+			if json.Unmarshal(raw, &line) != nil {
+				return nil, false
+			}
 		}
 	}
-	return false
+	return line, true
 }
 
-// statuslinePiece offers lazychat's status line to a session whose settings
-// name none, when the script was written and jq is there to run it.
+// statuslinePiece gives a session its status line: the one its settings
+// name, else lazychat's when the script was written and jq is there to run
+// it; none when neither. With a notice file the line runs through tap, so
+// lazychat learns what Claude Code tells it.
 func statuslinePiece(x Extras) map[string]any {
-	if x.StatusLine == "" || hasStatusLine(x.Home, x.Dir) || !jqThere() {
+	line, known := statusLineOf(x.Home, x.Dir)
+	if !known {
 		return nil
 	}
-	return map[string]any{"statusLine": map[string]any{"type": "command", "command": shellQuote(x.StatusLine)}}
+	own := line != nil
+	if !own && x.StatusLine != "" && jqThere() {
+		line = map[string]any{"type": "command", "command": shellQuote(x.StatusLine)}
+	}
+	// No line stays no line: a status line, even an empty one, hides
+	// claude's footer hints, which the user may have kept on purpose.
+	if line == nil {
+		return nil
+	}
+	if x.NoticeFile == "" {
+		if own {
+			return nil
+		}
+		return map[string]any{"statusLine": line}
+	}
+	out := map[string]any{}
+	for k, v := range line {
+		out[k] = v
+	}
+	cmd, _ := line["command"].(string)
+	out["command"] = tap(x.NoticeFile+UseSuffix, cmd)
+	return map[string]any{"statusLine": out}
+}
+
+// tap saves what Claude Code sends a status line at path, then hands it on
+// to cmd unchanged. LAZYCHAT_SHOWN tells lazychat's script that the
+// session's title row draws the limits and the context, so it leaves them
+// out. The file is written whole under another name and moved: lazychat
+// reads it on its own clock.
+func tap(path, cmd string) string {
+	tmp := shellQuote(path + ".tmp")
+	save := "mv -f " + tmp + " " + shellQuote(path)
+	return "tee " + tmp + " | LAZYCHAT_SHOWN=limits sh -c " + shellQuote(cmd) + "; " + save
 }

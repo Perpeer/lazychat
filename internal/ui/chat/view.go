@@ -39,7 +39,7 @@ func (c *Chat) View() string {
 			right = c.projectPanel(r.Project.Name, w, h)
 		default:
 			// The block blinks with the tick while the session has the keys; unfocused it is a steady underline.
-			term := kit.Box(c.chatTabs(c.Pane.State()), c.Pane.View(w-2, h-2, c.Capture.Held(), c.Tick%2 == 0), w, h, c.Capture.Held() || c.PaneSel, true)
+			term := c.rightBox(c.chatTabs(c.Pane.State()), c.Pane.View(w-2, h-2, c.Capture.Held(), c.Tick%2 == 0), w, h, c.Capture.Held() || c.PaneSel, true)
 			from, length := c.Pane.Scrollbar(h - 2)
 			right = kit.WithScrollbar(term, from, length)
 		}
@@ -77,7 +77,7 @@ func (c *Chat) projectPanel(project string, w, h int) string {
 		for _, l := range text.Wrap(hint+".", w-4, "") {
 			lines = append(lines, kit.StyleDim.Render(" "+l))
 		}
-		return kit.Box(c.chatTabs(""), append([]string{""}, lines...), w, h, false, false)
+		return c.rightBox(c.chatTabs(""), append([]string{""}, lines...), w, h, false, false)
 	}
 	for _, s := range running {
 		glyph, _ := c.list.glyph(s)
@@ -92,5 +92,5 @@ func (c *Chat) projectPanel(project string, w, h int) string {
 		foot, _ := turnFoot(c.turnTime(s.Key))
 		lines = append(lines, "   "+kit.ToolBadge(tool)+foot, "")
 	}
-	return kit.Box(c.chatTabs(""), append([]string{""}, lines...), w, h, false, false)
+	return c.rightBox(c.chatTabs(""), append([]string{""}, lines...), w, h, false, false)
 }

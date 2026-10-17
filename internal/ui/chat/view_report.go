@@ -70,11 +70,11 @@ func (c *Chat) reportBox(w, h int) string {
 			for len(body) < room {
 				body = append(body, "")
 			}
-			return kit.Box(c.chatTabs(""), append(body, table...), w, h, c.repFocus, false)
+			return c.rightBox(c.chatTabs(""), append(body, table...), w, h, c.repFocus, false)
 		}
 		lines = append(top, table...)
 	}
-	return kit.Box(c.chatTabs(""), scrolled(lines, &r.scroll, rows), w, h, c.repFocus, false)
+	return c.rightBox(c.chatTabs(""), scrolled(lines, &r.scroll, rows), w, h, c.repFocus, false)
 }
 
 // scrolled is lines from the scroll offset, the offset kept in range.

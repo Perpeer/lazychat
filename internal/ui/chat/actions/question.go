@@ -67,6 +67,10 @@ func (a *Actions) Failed(key string) bool {
 	return true
 }
 
+// Use is what the session's status line last heard: its context, and the
+// plan's limits from whichever session heard them last.
+func (a *Actions) Use(key string) agent.Use { return agent.UseIn(a.questions, key) }
+
 // Answered forgets a session's question: it was seen, answered, or the
 // session ended.
 func (a *Actions) Answered(key string) {
