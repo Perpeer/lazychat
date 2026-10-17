@@ -33,10 +33,6 @@ type Use struct {
 	Took   int64   // the session's time so far, ms; -1 unknown
 	// Added and Removed are the lines the session changed.
 	Added, Removed int
-	PR             int    // the branch's pull request; 0 none
-	PRState        string // its review state, as Claude says it
-	// WarmUntil is when the prompt cache goes cold, Unix seconds; 0 cold.
-	WarmUntil int64
 }
 
 // Limit is one of the plan's limits: its name, how much of it is used and
@@ -70,14 +66,6 @@ func ParseUse(b []byte) (Use, bool) {
 			Removed *float64 `json:"total_lines_removed"`
 		} `json:"cost"`
 		Limits map[string]limit `json:"rate_limits"`
-		PR     *struct {
-			Number int    `json:"number"`
-			State  string `json:"review_state"`
-		} `json:"pr"`
-		Cache *struct {
-			Warm    bool     `json:"warm"`
-			Expires *float64 `json:"expires_at"`
-		} `json:"prompt_cache"`
 	}
 	if json.Unmarshal(b, &p) != nil {
 		return Use{}, false
@@ -108,12 +96,6 @@ func ParseUse(b []byte) (Use, bool) {
 		}
 	}
 	sort.Slice(u.Weekly, func(i, j int) bool { return u.Weekly[i].Name < u.Weekly[j].Name })
-	if p.PR != nil && p.PR.Number > 0 {
-		u.PR, u.PRState = p.PR.Number, p.PR.State
-	}
-	if c := p.Cache; c != nil && c.Warm && c.Expires != nil {
-		u.WarmUntil = int64(*c.Expires)
-	}
 	return u, true
 }
 

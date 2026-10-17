@@ -55,6 +55,7 @@ var _ kit.Tab = (*Chat)(nil)
 func New(core *api.Core, screen kit.Screen) *Chat {
 	c := &Chat{core: core}
 	c.Init(screen)
+	c.FootRows = useRows
 	c.act = actions.New(core, c, func() { screen.Send(termMsg{}) })
 	c.tree = &model.Tree{Store: core.Store}
 	c.list = treeView{tree: c.tree, live: c.act.Live,

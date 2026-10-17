@@ -368,20 +368,20 @@ them, and the session runs on behind the details. `2` only chooses the
 session; `Enter` goes in. A Codex session has the session tab alone: Codex
 keeps no record lazychat reads, so `3` does nothing there.
 
-The box's bottom border holds what claude's status line hears, in the
-words and order of Claude's usage page: `Current session 12% · resets in 25
-min │ All models 38% · resets Thu 09:00 │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24% of 1M ·
-Cost $3.75 · Cache 87% · Time 2h 5m · +120 −7 · PR #12 approved · warm
-4m` — a model's own weekly limit (Fable) after all models when Claude sends
-one; the lines the session changed, the branch's pull request, and how long
-the prompt cache stays warm. Green under 60%, yellow under 85%, red above
-(the cache the other way round). The limits are your account's, so every
+The box's last row, under a dim line and inside its border, holds what
+claude's status line hears, in short words between bullets: `Session 12%
+↻25m • Week 38% ↻Thu 09:00 • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • $3.75 • Cache 87% •
++120 −7 • 2h5m` — the plan's session and weekly limits with their resets
+(a model's own weekly limit, Fable, after the week when Claude sends one),
+the session's context, cost and cache, the lines it changed and, last, how
+long it has been open. Green under 60%, yellow under 85%, red above (the
+cache the other way round). The limits are your account's, so every
 session shows the newest any session heard; the rest is the cursor
 session's. Claude Code sends them only to a session's status line, after
 its first reply, so they show for sessions lazychat runs with a status line.
-On a narrow screen the time goes first, then the extras, the cache, the
-window, the weekly resets, the cost, the other weekly limits and all
-models.
+On a narrow screen the time goes first, then the lines, the cache, the
+window, the weekly resets, the cost, the other weekly limits and the
+week.
 
 ### Details
 
@@ -762,10 +762,9 @@ to bring them back.
 Every claude session lazychat runs with a status line, yours or lazychat's,
 gets it through a small wrapper on the same command line: it saves what Claude Code sends the
 status line into lazychat's notices folder, then hands it on unchanged to
-your status line, or lazychat's. That is where the bottom border's numbers come
-from. It also sets `LAZYCHAT_SHOWN=limits`, and lazychat's script then
+your status line, or lazychat's. That is where that row's numbers come from. It also sets `LAZYCHAT_SHOWN=limits`, and lazychat's script then
 leaves the limits, the context, the cost, the cache and the time out of
-the status line, since the session box's bottom border shows them; claude started outside lazychat draws them as before. A
+the status line, since the session box's last row shows them; claude started outside lazychat draws them as before. A
 script of your own reads the same variable to do the same.
 
 ## Menu bar

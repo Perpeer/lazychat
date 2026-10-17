@@ -39,8 +39,8 @@ func (c *Chat) View() string {
 			right = c.projectPanel(r.Project.Name, w, h)
 		default:
 			// The block blinks with the tick while the session has the keys; unfocused it is a steady underline.
-			term := c.rightBox(c.chatTabs(c.Pane.State()), c.Pane.View(w-2, h-2, c.Capture.Held(), c.Tick%2 == 0), w, h, c.Capture.Held() || c.PaneSel, true)
-			from, length := c.Pane.Scrollbar(h - 2)
+			term := c.rightBox(c.chatTabs(c.Pane.State()), c.Pane.View(w-2, h-2-useRows, c.Capture.Held(), c.Tick%2 == 0), w, h, c.Capture.Held() || c.PaneSel, true)
+			from, length := c.Pane.Scrollbar(h - 2 - useRows)
 			right = kit.WithScrollbar(term, from, length)
 		}
 		right = hits.Panel(2, right)

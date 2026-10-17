@@ -121,7 +121,8 @@ func TestReport(t *testing.T) {
 	}
 	rows := strings.Split(d.screen(), "\n")
 	bottom := lineOf(d.screen(), "┴")
-	if bottom < 0 || bottom+2 >= len(rows) || !strings.Contains(rows[bottom+2], "(↑↓) pick prompt") {
+	// Under the table: the box's dim line, its use row, its border.
+	if bottom < 0 || bottom+4 >= len(rows) || !strings.Contains(rows[bottom+4], "(↑↓) pick prompt") {
 		t.Fatalf("the prompts table is not at the box's bottom:\n%s", d.screen())
 	}
 	d.key("down")

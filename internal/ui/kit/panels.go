@@ -14,12 +14,6 @@ import (
 // so the eye finds the cursor. exact keeps rows as they are (a terminal's rows
 // are already the right width); otherwise a long row ends with an ellipsis.
 func Box(title string, lines []string, w, h int, focused, exact bool) string {
-	return BoxFoot(title, "", lines, w, h, focused, exact)
-}
-
-// BoxFoot is Box with foot in its bottom border, left out when it does not
-// fit; FootRoom is the room it has.
-func BoxFoot(title, foot string, lines []string, w, h int, focused, exact bool) string {
 	inner := max(1, w-2)
 	frame := StyleDim
 	if focused {
@@ -41,18 +35,9 @@ func BoxFoot(title, foot string, lines []string, w, h int, focused, exact bool) 
 		// Reset styles at the row's end so a terminal row's colours never bleed into the frame.
 		out = append(out, frame.Render("│")+line+"\x1b[0m"+frame.Render("│"))
 	}
-	if foot != "" && text.Width(foot) <= FootRoom(w) {
-		// foot keeps its own colours: the frame is drawn around it.
-		out = append(out, frame.Render("└ ")+foot+frame.Render(" "+strings.Repeat("─", w-4-text.Width(foot))+"┘"))
-	} else {
-		out = append(out, frame.Render("└"+strings.Repeat("─", inner)+"┘"))
-	}
+	out = append(out, frame.Render("└"+strings.Repeat("─", inner)+"┘"))
 	return strings.Join(out, "\n")
 }
-
-// FootRoom is how wide BoxFoot's foot may be in a box w wide: a dash at
-// least before the corner.
-func FootRoom(w int) int { return w - 5 }
 
 // TreeLine is one screen row of a tree entry: the connector drawn in front of
 // it, and its text styled and unstyled, so the selected entry can be filled

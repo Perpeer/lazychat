@@ -24,6 +24,8 @@ type PaneTab struct {
 	PaneSel bool
 	Pane    TermPane
 	Capture *Capture
+	// FootRows are the box's rows under the pane, kept from its program.
+	FootRows int
 }
 
 // Init wires the pane's capture of the keys; the PaneTab must already sit
@@ -50,10 +52,10 @@ func (p *PaneTab) BodyH() int { return max(8, p.Rect.Rows) }
 // what the ptys get.
 func (p *PaneTab) PaneRect() Rect {
 	if p.Narrow() {
-		return Rect{X0: p.Rect.X0 + 1, Y0: p.Rect.Y0 + 1, Cols: p.Rect.Cols - 2, Rows: p.BodyH() - 2}
+		return Rect{X0: p.Rect.X0 + 1, Y0: p.Rect.Y0 + 1, Cols: p.Rect.Cols - 2, Rows: p.BodyH() - 2 - p.FootRows}
 	}
 	lw := p.LeftW()
-	return Rect{X0: p.Rect.X0 + lw + 1, Y0: p.Rect.Y0 + 1, Cols: p.Rect.Cols - lw - 2, Rows: p.BodyH() - 2}
+	return Rect{X0: p.Rect.X0 + lw + 1, Y0: p.Rect.Y0 + 1, Cols: p.Rect.Cols - lw - 2, Rows: p.BodyH() - 2 - p.FootRows}
 }
 
 func (p *PaneTab) PaneSize() (cols, rows int) {

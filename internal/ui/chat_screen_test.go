@@ -159,7 +159,8 @@ func TestNarrow(t *testing.T) {
 	d.expectCount(1, 1)
 	d.expectNot("[3] details")
 	d.key("n", "tab", "tab", "enter")
-	d.expect("FAKE CLAUDE READY")
+	// The fake's first line wraps past the top of so short a pane.
+	d.expect("args:-n session")
 	d.leave()
 	d.expect("[1] projects", "○ codex   log in: codex login")
 	d.expectSessions(2)

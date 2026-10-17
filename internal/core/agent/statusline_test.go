@@ -220,14 +220,14 @@ func TestStatusLineTap(t *testing.T) {
 // them, the session's facts and any other weekly limit by its name; what
 // Claude did not send is unknown.
 func TestParseUse(t *testing.T) {
-	u, ok := ParseUse([]byte(`{"context_window":{"used_percentage":62.7,"context_window_size":1000000,"current_usage":{"input_tokens":10,"cache_creation_input_tokens":20,"cache_read_input_tokens":170}},"cost":{"total_cost_usd":12.345,"total_duration_ms":90000,"total_lines_added":120,"total_lines_removed":7},"rate_limits":{"five_hour":{"used_percentage":81.2,"resets_at":1792250000},"seven_day":{"used_percentage":46,"resets_at":1792600000},"seven_day_fable":{"used_percentage":7.9,"resets_at":1792600000}},"pr":{"number":12,"review_state":"approved","url":"x"},"prompt_cache":{"warm":true,"expires_at":1792250300}}`))
+	u, ok := ParseUse([]byte(`{"context_window":{"used_percentage":62.7,"context_window_size":1000000,"current_usage":{"input_tokens":10,"cache_creation_input_tokens":20,"cache_read_input_tokens":170}},"cost":{"total_cost_usd":12.345,"total_duration_ms":90000,"total_lines_added":120,"total_lines_removed":7},"rate_limits":{"five_hour":{"used_percentage":81.2,"resets_at":1792250000},"seven_day":{"used_percentage":46,"resets_at":1792600000},"seven_day_fable":{"used_percentage":7.9,"resets_at":1792600000}}}`))
 	want := Use{Context: 62, Window: 1000000, Session: 81, Week: 46, SessionAt: 1792250000, WeekAt: 1792600000,
 		Weekly: []Limit{{Name: "Fable", Used: 7, At: 1792600000}}, Cost: 12.345, Cache: 85, Took: 90000,
-		Added: 120, Removed: 7, PR: 12, PRState: "approved", WarmUntil: 1792250300}
+		Added: 120, Removed: 7}
 	if !ok || !reflect.DeepEqual(u, want) {
 		t.Errorf("full:\n got %+v\nwant %+v", u, want)
 	}
-	u, ok = ParseUse([]byte(`{"context_window":{"used_percentage":null,"context_window_size":200000},"pr":null,"prompt_cache":{"warm":false,"expires_at":1}}`))
+	u, ok = ParseUse([]byte(`{"context_window":{"used_percentage":null,"context_window_size":200000}}`))
 	want = NoUse
 	want.Window = 200000
 	if !ok || !reflect.DeepEqual(u, want) {

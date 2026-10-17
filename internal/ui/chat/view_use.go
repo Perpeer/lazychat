@@ -12,22 +12,31 @@ import (
 	"lazychat/internal/ui/text"
 )
 
+// useRows are the right box's rows under its content: a dim line, then
+// what the session's status line heard. They stay when there is nothing to
+// show, so a session's pane keeps one size.
+const useRows = 2
+
 // rightBox is the right side's box with what the cursor session's status
-// line heard in its bottom border: the title row left too little room
-// beside the tabs, and the border costs the pane no row.
+// line heard on its last row, inside: on the title row it found too little
+// room beside the tabs, and on the bottom border it cluttered the screen.
 func (c *Chat) rightBox(title string, lines []string, w, h int, focused, exact bool) string {
-	return kit.BoxFoot(title, useTitle(c.use, kit.FootRoom(w), time.Now()), lines, w, h, focused, exact)
+	n := max(0, h-2-useRows)
+	body := make([]string, n, n+useRows)
+	copy(body, lines)
+	body = append(body, kit.StyleDim.Render(strings.Repeat("─", max(0, w-2))), " "+useTitle(c.use, w-3, time.Now()))
+	return kit.Box(title, body, w, h, focused, exact)
 }
 
-// useTitle draws what claude's status line heard in the order and words of
-// Claude's usage page, which the user reads there: the current session,
-// the weekly limits, then the session's own numbers. To fit w it drops,
-// in turn, the time, the extras (lines, PR, warm cache), the cache, the
-// window, the weekly resets, the cost, the other weekly limits and all
-// models; nothing when even that does not fit.
+// useTitle draws what claude's status line heard in short words, a bullet
+// between every part, so more of it fits: the plan's limits, the session's
+// context, cost and cache, then the lines it changed and, at the right end,
+// how long it has been open. To fit w it drops, in turn, the time, the
+// lines, the cache, the window, the weekly resets, the cost, the other
+// weekly limits and the week; nothing when even that does not fit.
 func useTitle(u agent.Use, w int, now time.Time) string {
 	keep := useKeep{true, true, true, true, true, true, true, true}
-	for _, drop := range []*bool{nil, &keep.took, &keep.extras, &keep.cache, &keep.window, &keep.weekReset, &keep.cost, &keep.others, &keep.week} {
+	for _, drop := range []*bool{nil, &keep.took, &keep.lines, &keep.cache, &keep.window, &keep.weekReset, &keep.cost, &keep.others, &keep.week} {
 		if drop != nil {
 			*drop = false
 		}
@@ -38,80 +47,67 @@ func useTitle(u agent.Use, w int, now time.Time) string {
 	return ""
 }
 
-// useKeep is what useLine draws beyond the current session and the context,
+// useKeep is what useLine draws beyond the session limit and the context,
 // which it always draws.
-type useKeep struct{ took, extras, cache, window, weekReset, cost, others, week bool }
+type useKeep struct{ took, lines, cache, window, weekReset, cost, others, week bool }
 
 // useCells is the context bar's width, the status line script's.
 const useCells = 12
 
 func useLine(u agent.Use, now time.Time, keep useKeep) string {
 	dim := kit.StyleDim.Render
-	dot := dim(" · ")
 	used := func(name string, pct int) string { return dim(name+" ") + heat(pct).Render(fmt.Sprintf("%d%%", pct)) }
-	var groups []string
+	var parts []string
 	if u.Session >= 0 {
-		g := used("Current session", u.Session)
+		p := used("Session", u.Session)
 		if in := resetsIn(u.SessionAt, now); in != "" {
-			g += dot + dim("resets "+in)
+			p += dim(" ↻" + in)
 		}
-		groups = append(groups, g)
+		parts = append(parts, p)
 	}
 	weekly := func(name string, pct int, at int64) string {
-		g := used(name, pct)
+		p := used(name, pct)
 		if keep.weekReset && at > now.Unix() {
-			g += dot + dim("resets "+time.Unix(at, 0).Format("Mon 15:04"))
+			p += dim(" ↻" + time.Unix(at, 0).Format("Mon 15:04"))
 		}
-		return g
+		return p
 	}
 	if keep.week && u.Week >= 0 {
-		groups = append(groups, weekly("All models", u.Week, u.WeekAt))
+		parts = append(parts, weekly("Week", u.Week, u.WeekAt))
 	}
 	for _, l := range u.Weekly {
 		if keep.others {
-			groups = append(groups, weekly(l.Name, l.Used, l.At))
+			parts = append(parts, weekly(l.Name, l.Used, l.At))
 		}
 	}
-	var own []string
 	if u.Context >= 0 {
 		filled := min(u.Context*useCells/100, useCells)
 		bar := strings.Repeat("▮", filled) + strings.Repeat("▯", useCells-filled)
-		ctx := dim("Context ") + heat(u.Context).Render(bar) + " " + heat(u.Context).Bold(true).Render(fmt.Sprintf("%d%%", u.Context))
+		ctx := dim("Ctx ") + heat(u.Context).Render(bar) + " " + heat(u.Context).Bold(true).Render(fmt.Sprintf("%d%%", u.Context))
 		if keep.window && u.Window >= 1_000_000 {
-			ctx += dim(fmt.Sprintf(" of %dM", u.Window/1_000_000))
+			ctx += dim(fmt.Sprintf("/%dM", u.Window/1_000_000))
 		} else if keep.window && u.Window > 0 {
-			ctx += dim(fmt.Sprintf(" of %dk", u.Window/1000))
+			ctx += dim(fmt.Sprintf("/%dk", u.Window/1000))
 		}
-		own = append(own, ctx)
+		parts = append(parts, ctx)
 	}
 	if keep.cost && u.Cost >= 0 {
-		own = append(own, dim("Cost ")+fmt.Sprintf("$%.2f", u.Cost))
+		parts = append(parts, fmt.Sprintf("$%.2f", u.Cost))
 	}
 	if keep.cache && u.Cache >= 0 {
-		own = append(own, dim("Cache ")+cool(u.Cache).Render(fmt.Sprintf("%d%%", u.Cache)))
+		parts = append(parts, dim("Cache ")+cool(u.Cache).Render(fmt.Sprintf("%d%%", u.Cache)))
+	}
+	if keep.lines && (u.Added > 0 || u.Removed > 0) {
+		parts = append(parts, heat(0).Render(fmt.Sprintf("+%d", max(u.Added, 0)))+" "+heat(100).Render(fmt.Sprintf("−%d", max(u.Removed, 0))))
 	}
 	if keep.took && u.Took >= 0 {
-		own = append(own, dim("Time ")+tookText(u.Took))
+		parts = append(parts, tookText(u.Took))
 	}
-	if keep.extras {
-		if u.Added > 0 || u.Removed > 0 {
-			own = append(own, heat(0).Render(fmt.Sprintf("+%d", max(u.Added, 0)))+" "+heat(100).Render(fmt.Sprintf("−%d", max(u.Removed, 0))))
-		}
-		if u.PR > 0 {
-			own = append(own, strings.TrimSpace(fmt.Sprintf("PR #%d %s", u.PR, strings.ToLower(strings.ReplaceAll(u.PRState, "_", " ")))))
-		}
-		if left := u.WarmUntil - now.Unix(); u.WarmUntil > 0 && left > 0 {
-			own = append(own, dim("warm ")+fmt.Sprintf("%dm", (left+59)/60))
-		}
-	}
-	if len(own) > 0 {
-		groups = append(groups, strings.Join(own, dot))
-	}
-	return strings.Join(groups, dim(" │ "))
+	return strings.Join(parts, dim(" • "))
 }
 
-// resetsIn is a reset as the usage page says it: "in 11 min", "in 2 hr
-// 14 min"; "" when unknown or past.
+// resetsIn is the time to a reset, short: "25m", "2h14m"; "" when unknown
+// or past.
 func resetsIn(at int64, now time.Time) string {
 	secs := at - now.Unix()
 	if at == 0 || secs <= 0 {
@@ -119,19 +115,19 @@ func resetsIn(at int64, now time.Time) string {
 	}
 	mins := (secs + 59) / 60
 	if mins < 60 {
-		return fmt.Sprintf("in %d min", mins)
+		return fmt.Sprintf("%dm", mins)
 	}
-	return fmt.Sprintf("in %d hr %d min", mins/60, mins%60)
+	return fmt.Sprintf("%dh%dm", mins/60, mins%60)
 }
 
-// tookText is the session's time: "2d 4h", "3h 12m", "45m".
+// tookText is the session's time, short: "2d4h", "3h12m", "45m".
 func tookText(ms int64) string {
 	mins := ms / 60000
 	switch {
 	case mins >= 1440:
-		return fmt.Sprintf("%dd %dh", mins/1440, mins%1440/60)
+		return fmt.Sprintf("%dd%dh", mins/1440, mins%1440/60)
 	case mins >= 60:
-		return fmt.Sprintf("%dh %dm", mins/60, mins%60)
+		return fmt.Sprintf("%dh%dm", mins/60, mins%60)
 	}
 	return fmt.Sprintf("%dm", mins)
 }

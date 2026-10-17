@@ -46,7 +46,7 @@ func num(n int64) string {
 
 // reportBox is the report on the right, w by h.
 func (c *Chat) reportBox(w, h int) string {
-	inner, rows := w-2, h-2
+	inner, rows := w-2, h-2-useRows
 	r := &c.rep
 	var lines []string
 	switch {

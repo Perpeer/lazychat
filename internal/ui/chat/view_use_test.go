@@ -20,44 +20,44 @@ func useOf() agent.Use {
 	u.SessionAt, u.WeekAt = useNow.Unix()+25*60-30, useNow.Unix()+3*86400
 	u.Weekly = []agent.Limit{{Name: "Fable", Used: 9, At: useNow.Unix() + 3*86400}}
 	u.Cost, u.Cache, u.Took = 3.75, 87, (2*60+5)*60*1000
-	u.Added, u.Removed, u.PR, u.PRState, u.WarmUntil = 120, 7, 12, "APPROVED", useNow.Unix()+4*60
+	u.Added, u.Removed = 120, 7
 	return u
 }
 
-// The row reads as Claude's usage page: the current session and its reset,
-// the weekly limits with their day, then the session's own numbers.
+// The row is short words parted by bullets: the limits, the context, the
+// cost and the cache, then the lines changed and the session's time last.
 func TestUseRow(t *testing.T) {
 	day := time.Unix(useNow.Unix()+3*86400, 0).Format("Mon 15:04")
-	want := "Current session 12% · resets in 25 min │ All models 38% · resets " + day + " │ Fable 9% · resets " + day +
-		" │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24% of 1M · Cost $3.75 · Cache 87% · Time 2h 5m · +120 −7 · PR #12 approved · warm 4m"
+	want := "Session 12% ↻25m • Week 38% ↻" + day + " • Fable 9% ↻" + day +
+		" • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • $3.75 • Cache 87% • +120 −7 • 2h5m"
 	if got := ansi.Strip(useTitle(useOf(), 300, useNow)); got != want {
 		t.Errorf("\n got %q\nwant %q", got, want)
 	}
 	u := useOf()
-	u.SessionAt = useNow.Unix() + 2*3600 + 14*60
-	u.Weekly, u.PR, u.WarmUntil, u.Added, u.Removed = nil, 0, 0, -1, -1
-	if got := ansi.Strip(useTitle(u, 300, useNow)); !strings.HasPrefix(got, "Current session 12% · resets in 2 hr 14 min │ All models") || strings.Contains(got, "Fable") || strings.Contains(got, "PR") {
+	u.SessionAt, u.Took = useNow.Unix()+2*3600+14*60, (2*24+4)*3600*1000
+	u.Weekly, u.Added, u.Removed = nil, -1, -1
+	got := ansi.Strip(useTitle(u, 300, useNow))
+	if !strings.HasPrefix(got, "Session 12% ↻2h14m • Week") || !strings.HasSuffix(got, "Cache 87% • 2d4h") || strings.Contains(got, "Fable") {
 		t.Errorf("no extras: %q", got)
 	}
 }
 
-// Short of room the row drops, in turn, the time, the extras, the cache,
-// the window, the weekly resets, the cost, the other weekly limits and all
-// models.
+// Short of room the row drops, in turn, the time, the lines, the cache, the
+// window, the weekly resets, the cost, the other weekly limits and the week.
 func TestUseTitleDrops(t *testing.T) {
 	u := useOf()
-	full := ansi.Strip(useTitle(u, 300, useNow))
 	day := time.Unix(useNow.Unix()+3*86400, 0).Format("Mon 15:04")
+	head := "Session 12% ↻25m • Week 38% ↻" + day + " • Fable 9% ↻" + day + " • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%"
 	steps := []string{
-		full,
-		strings.Replace(full, " · Time 2h 5m", "", 1),
-		strings.Replace(strings.Replace(full, " · Time 2h 5m", "", 1), " · +120 −7 · PR #12 approved · warm 4m", "", 1),
-		"Current session 12% · resets in 25 min │ All models 38% · resets " + day + " │ Fable 9% · resets " + day + " │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24% of 1M · Cost $3.75",
-		"Current session 12% · resets in 25 min │ All models 38% · resets " + day + " │ Fable 9% · resets " + day + " │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24% · Cost $3.75",
-		"Current session 12% · resets in 25 min │ All models 38% │ Fable 9% │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24% · Cost $3.75",
-		"Current session 12% · resets in 25 min │ All models 38% │ Fable 9% │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24%",
-		"Current session 12% · resets in 25 min │ All models 38% │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24%",
-		"Current session 12% · resets in 25 min │ Context ▮▮▯▯▯▯▯▯▯▯▯▯ 24%",
+		head + "/1M • $3.75 • Cache 87% • +120 −7 • 2h5m",
+		head + "/1M • $3.75 • Cache 87% • +120 −7",
+		head + "/1M • $3.75 • Cache 87%",
+		head + "/1M • $3.75",
+		head + " • $3.75",
+		"Session 12% ↻25m • Week 38% • Fable 9% • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24% • $3.75",
+		"Session 12% ↻25m • Week 38% • Fable 9% • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%",
+		"Session 12% ↻25m • Week 38% • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%",
+		"Session 12% ↻25m • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%",
 	}
 	for _, want := range steps {
 		if got := ansi.Strip(useTitle(u, ansi.StringWidth(want), useNow)); got != want {
