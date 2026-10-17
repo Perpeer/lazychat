@@ -34,15 +34,7 @@ func StatusOf(dir string) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	args := []string{"status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"}
-	// git gives the top with symlinks resolved (/private/var on macOS), so
-	// dir is resolved too before it is made relative.
-	if real, err := filepath.EvalSymlinks(dir); err == nil {
-		dir = real
-	}
-	if rel, err := filepath.Rel(root, dir); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
-		args = append(args, "--", rel)
-	}
+	args := append([]string{"status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"}, under(root, dir)...)
 	out, err := run(root, nil, args...)
 	if err != nil {
 		return Status{}, err
@@ -50,6 +42,20 @@ func StatusOf(dir string) (Status, error) {
 	st := parseStatus(out)
 	st.Root = root
 	return st, nil
+}
+
+// under limits a command run at root to dir's paths: "--" and dir relative
+// to root, nothing when dir is root.
+func under(root, dir string) []string {
+	// git gives the top with symlinks resolved (/private/var on macOS), so
+	// dir is resolved too before it is made relative.
+	if real, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = real
+	}
+	if rel, err := filepath.Rel(root, dir); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
+		return []string{"--", rel}
+	}
+	return nil
 }
 
 // parseStatus reads porcelain v2 with -z: NUL-ended records, a rename's

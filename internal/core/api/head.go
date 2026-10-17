@@ -46,3 +46,40 @@ func (c *Core) readHead(path string) (git.Head, bool) {
 	c.heads[path] = headRead{h, ok, time.Now()}
 	return h, ok
 }
+
+type linesRead struct {
+	added, removed int
+	ok             bool
+	at             time.Time
+}
+
+// Lines is the lines changed in a project's folder and not committed
+// (git.LinesChanged), read as Head is: a folder's first answer at once,
+// then again off the loop once headFresh has passed, the last answer
+// standing until then.
+func (c *Core) Lines(path string) (added, removed int, ok bool) {
+	c.mu.Lock()
+	r, known := c.lines[path]
+	if known {
+		if time.Since(r.at) >= headFresh {
+			r.at = time.Now() // one read at a time per folder
+			c.lines[path] = r
+			go c.readLines(path)
+		}
+		c.mu.Unlock()
+		return r.added, r.removed, r.ok
+	}
+	c.mu.Unlock()
+	return c.readLines(path)
+}
+
+func (c *Core) readLines(path string) (int, int, bool) {
+	a, r, ok := git.LinesChanged(path)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.lines == nil {
+		c.lines = map[string]linesRead{}
+	}
+	c.lines[path] = linesRead{a, r, ok, time.Now()}
+	return a, r, ok
+}

@@ -34,8 +34,12 @@ paths:
   context window and `rate_limits` only to a status line (no hook, no
   file), and the user wanted them beside the session, gone from the
   status line, in short words between bullets so more fits (Session ↻,
-  Week ↻day, a model's own weekly limit when sent — none seen —, Ctx, $,
-  Cache, the lines changed, the time open last; chat/view_use.go). The PR
+  Week ↻day, a model's own weekly limit when sent — none seen —, Ctx,
+  Cache, the lines changed, the time open, the cost last; chat/view_use.go). The
+  lines are the cursor project's uncommitted changes from git
+  (git.LinesChanged, api.Lines cached like Head): Claude's
+  cost.total_lines_added is every line the session ever wrote, whatever
+  project, and stood still as the user moved between projects. The PR
   and the warm cache were tried and taken out at the user's word. A Team plan does send rate_limits: an earlier reading
   that it did not was wrong. Tried with
   claude 2.1.302: the line runs at start (context null, no limits before a

@@ -24,12 +24,12 @@ func useOf() agent.Use {
 	return u
 }
 
-// The row is short words parted by bullets: the limits, the context, the
-// cost and the cache, then the lines changed and the session's time last.
+// The row is short words parted by bullets: the limits, the context and
+// the cache, then the lines changed, the session's time and its cost last.
 func TestUseRow(t *testing.T) {
 	day := time.Unix(useNow.Unix()+3*86400, 0).Format("Mon 15:04")
 	want := "Session 12% ↻25m • Week 38% ↻" + day + " • Fable 9% ↻" + day +
-		" • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • $3.75 • Cache 87% • +120 −7 • 2h5m"
+		" • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • Cache 87% • +120 −7 • 2h5m • $3.75"
 	if got := ansi.Strip(useTitle(useOf(), 300, useNow)); got != want {
 		t.Errorf("\n got %q\nwant %q", got, want)
 	}
@@ -37,7 +37,7 @@ func TestUseRow(t *testing.T) {
 	u.SessionAt, u.Took = useNow.Unix()+2*3600+14*60, (2*24+4)*3600*1000
 	u.Weekly, u.Added, u.Removed = nil, -1, -1
 	got := ansi.Strip(useTitle(u, 300, useNow))
-	if !strings.HasPrefix(got, "Session 12% ↻2h14m • Week") || !strings.HasSuffix(got, "Cache 87% • 2d4h") || strings.Contains(got, "Fable") {
+	if !strings.HasPrefix(got, "Session 12% ↻2h14m • Week") || !strings.HasSuffix(got, "Cache 87% • 2d4h • $3.75") || strings.Contains(got, "Fable") {
 		t.Errorf("no extras: %q", got)
 	}
 }
@@ -49,9 +49,9 @@ func TestUseTitleDrops(t *testing.T) {
 	day := time.Unix(useNow.Unix()+3*86400, 0).Format("Mon 15:04")
 	head := "Session 12% ↻25m • Week 38% ↻" + day + " • Fable 9% ↻" + day + " • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%"
 	steps := []string{
-		head + "/1M • $3.75 • Cache 87% • +120 −7 • 2h5m",
-		head + "/1M • $3.75 • Cache 87% • +120 −7",
-		head + "/1M • $3.75 • Cache 87%",
+		head + "/1M • Cache 87% • +120 −7 • 2h5m • $3.75",
+		head + "/1M • Cache 87% • +120 −7 • $3.75",
+		head + "/1M • Cache 87% • $3.75",
 		head + "/1M • $3.75",
 		head + " • $3.75",
 		"Session 12% ↻25m • Week 38% • Fable 9% • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24% • $3.75",

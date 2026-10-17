@@ -278,3 +278,14 @@ func (c *Chat) cursorKey() string {
 	}
 	return ""
 }
+
+// cursorLines are the cursor project's lines changed and not committed;
+// -1 outside a repository or off a project.
+func (c *Chat) cursorLines() (added, removed int) {
+	if r, ok := c.tree.Current(); ok && r.Project != nil {
+		if a, rm, ok := c.core.Lines(r.Project.Path); ok {
+			return a, rm
+		}
+	}
+	return -1, -1
+}

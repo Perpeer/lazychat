@@ -37,6 +37,7 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		}
 		c.act.TellRenames(c.takesLine)
 		c.use = c.act.Use(c.cursorKey())
+		c.use.Added, c.use.Removed = c.cursorLines()
 		var clock tea.Cmd
 		if msg.N%2 == 0 {
 			clock = c.readClocks()

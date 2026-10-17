@@ -370,14 +370,15 @@ keeps no record lazychat reads, so `3` does nothing there.
 
 The box's last row, under a dim line and inside its border, holds what
 claude's status line hears, in short words between bullets: `Session 12%
-↻25m • Week 38% ↻Thu 09:00 • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • $3.75 • Cache 87% •
-+120 −7 • 2h5m` — the plan's session and weekly limits with their resets
+↻25m • Week 38% ↻Thu 09:00 • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • Cache 87% • +120
+−7 • 2h5m • $3.75` — the plan's session and weekly limits with their resets
 (a model's own weekly limit, Fable, after the week when Claude sends one),
-the session's context, cost and cache, the lines it changed and, last, how
-long it has been open. Green under 60%, yellow under 85%, red above (the
+the session's context and cache, the cursor project's lines changed and
+not committed (from git, new files counted, read again every few
+seconds), how long the session has been open and, last, its cost. Green under 60%, yellow under 85%, red above (the
 cache the other way round). The limits are your account's, so every
-session shows the newest any session heard; the rest is the cursor
-session's. Claude Code sends them only to a session's status line, after
+session shows the newest any session heard; the lines are the cursor
+project's, the rest the cursor session's. Claude Code sends them only to a session's status line, after
 its first reply, so they show for sessions lazychat runs with a status line.
 On a narrow screen the time goes first, then the lines, the cache, the
 window, the weekly resets, the cost, the other weekly limits and the

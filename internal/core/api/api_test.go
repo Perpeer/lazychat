@@ -1,8 +1,11 @@
 package api
 
 import (
+	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"lazychat/internal/core/agent"
 	"lazychat/internal/core/state"
@@ -88,5 +91,46 @@ func TestRelocate(t *testing.T) {
 	}
 	if again.Store.Workspace != "fresh" {
 		t.Errorf("the state file names the workspace %q", again.Store.Workspace)
+	}
+}
+
+// Lines answers a folder's first ask at once and later ones from the last
+// read, read again off the loop once it is old.
+func TestLines(t *testing.T) {
+	dir := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false"}, args...)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := &Core{}
+	if a, r, ok := c.Lines(dir); !ok || a != 1 || r != 0 {
+		t.Fatalf("first: +%d −%d %v", a, r, ok)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\ntwo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if a, _, _ := c.Lines(dir); a != 1 {
+		t.Errorf("a fresh answer was read again: +%d", a)
+	}
+	c.mu.Lock()
+	r := c.lines[dir]
+	r.at = time.Now().Add(-headFresh)
+	c.lines[dir] = r
+	c.mu.Unlock()
+	c.Lines(dir) // starts the read
+	deadline := time.Now().Add(3 * time.Second)
+	for a, _, _ := c.Lines(dir); a != 2; a, _, _ = c.Lines(dir) {
+		if time.Now().After(deadline) {
+			t.Fatalf("an old answer was not read again: +%d", a)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }

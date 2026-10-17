@@ -31,7 +31,9 @@ type Use struct {
 	Cost   float64 // the session's cost so far, USD; -1 unknown
 	Cache  int     // the share of the context read from cache, %
 	Took   int64   // the session's time so far, ms; -1 unknown
-	// Added and Removed are the lines the session changed.
+	// Added and Removed are the project's lines changed and not committed,
+	// which its caller reads from git; Claude's own count is every line the
+	// session ever wrote, whatever project it was in, and was taken out.
 	Added, Removed int
 }
 
@@ -60,10 +62,8 @@ func ParseUse(b []byte) (Use, bool) {
 			} `json:"current_usage"`
 		} `json:"context_window"`
 		Cost struct {
-			USD     *float64 `json:"total_cost_usd"`
-			MS      *float64 `json:"total_duration_ms"`
-			Added   *float64 `json:"total_lines_added"`
-			Removed *float64 `json:"total_lines_removed"`
+			USD *float64 `json:"total_cost_usd"`
+			MS  *float64 `json:"total_duration_ms"`
 		} `json:"cost"`
 		Limits map[string]limit `json:"rate_limits"`
 	}
@@ -74,7 +74,6 @@ func ParseUse(b []byte) (Use, bool) {
 	u := NoUse
 	u.Context, u.Session, u.Week = pct(p.Context.Used), pct(five.Used), pct(seven.Used)
 	u.SessionAt, u.WeekAt = five.at(), seven.at()
-	u.Added, u.Removed = count(p.Cost.Added), count(p.Cost.Removed)
 	if p.Context.Size != nil {
 		u.Window = int64(*p.Context.Size)
 	}
@@ -149,11 +148,4 @@ func pct(f *float64) int {
 		return -1
 	}
 	return int(math.Floor(*f))
-}
-
-func count(f *float64) int {
-	if f == nil {
-		return -1
-	}
-	return int(*f)
 }

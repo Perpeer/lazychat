@@ -104,3 +104,27 @@ func TestApplyLines(t *testing.T) {
 	}
 	_ = os.Remove(filepath.Join(dir, "new.txt"))
 }
+
+// The lines changed and not yet committed: an edit, a staged one, a new
+// file's lines as added, a binary file as none; a folder in the repository
+// counts only what is under it; outside a repository there is no count.
+func TestLinesChanged(t *testing.T) {
+	dir := repo(t)
+	if a, r, ok := LinesChanged(dir); !ok || a != 0 || r != 0 {
+		t.Errorf("clean: +%d −%d %v", a, r, ok)
+	}
+	write(t, dir, "a.txt", "one\nTWO\nthree\nfour\n") // 2 added, 1 removed
+	write(t, dir, "b.txt", "")                        // 1 removed, staged
+	sh(t, dir, "add", "b.txt")
+	write(t, dir, "shed/new.txt", "paint\nbrush\nlid") // 3 added, untracked
+	write(t, dir, "shed/tin.bin", "\x00\x01\x02")
+	if a, r, ok := LinesChanged(dir); !ok || a != 5 || r != 2 {
+		t.Errorf("changed: +%d −%d %v, want +5 −2", a, r, ok)
+	}
+	if a, r, ok := LinesChanged(filepath.Join(dir, "shed")); !ok || a != 3 || r != 0 {
+		t.Errorf("the shed folder: +%d −%d %v, want +3 −0", a, r, ok)
+	}
+	if _, _, ok := LinesChanged(t.TempDir()); ok {
+		t.Error("a count outside a repository")
+	}
+}

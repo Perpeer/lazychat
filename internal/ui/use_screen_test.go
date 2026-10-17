@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -48,7 +49,7 @@ func TestSessionUse(t *testing.T) {
 		now+2*3600+14*60+30, now+28*3600+30*60)
 	d.session("oak", "status "+payload)
 	week := "↻" + time.Unix(now+28*3600+30*60, 0).Format("Mon 15:04")
-	d.until("oak's bottom border does not hold all its use", bottom("Session 81% ↻2h15m • Week 46% "+week+" • Ctx ▮▮▮▮▮▮▮▯▯▯▯▯ 62%/1M • $12.50 • Cache 87% • 2h5m"))
+	d.until("oak's bottom border does not hold all its use", bottom("Session 81% ↻2h15m • Week 46% "+week+" • Ctx ▮▮▮▮▮▮▮▯▯▯▯▯ 62%/1M • Cache 87% • 2h5m • $12.50"))
 	// The pane gives the line and the row their rows: claude is told a
 	// screen two rows shorter than the box holds inside.
 	d.session("elm", "size")
@@ -64,5 +65,45 @@ func TestSessionUse(t *testing.T) {
 	})
 	d.session("pine", "")
 	d.until("pine does not borrow the limits, or shows a context it never had", bottom("Session 81% ↻2h15m • Week 46% "+week))
+	d.quitApp()
+}
+
+// The row's lines are the cursor project's changes not yet committed, from
+// git, and they follow the cursor to another project.
+func TestUseRowLines(t *testing.T) {
+	e, dir := seeded(t, state.Session{Tool: "claude", Name: "oak"})
+	other := project(t, e)
+	st, err := state.Load(e.state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.AddProject(other, "shed"); err != nil {
+		t.Fatal(err)
+	}
+	git := func(in string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false"}, args...)...)
+		cmd.Dir = in
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	put := func(path, body string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git(dir, "init", "-q", "-b", "main")
+	put(filepath.Join(dir, "door.txt"), "blue\ngreen\n")
+	git(dir, "add", ".")
+	git(dir, "commit", "-qm", "paint")
+	put(filepath.Join(dir, "door.txt"), "blue\nGREEN\nred\n") // +2 −1
+	git(other, "init", "-q", "-b", "main")
+	put(filepath.Join(other, "lid.txt"), "a\nb\nc\n") // +3, no commit yet
+	d := start(t, e, 160, 32)
+	d.until("the row does not show demo2's changes", func() bool { return strings.Contains(d.screen(), "│ +2 −1 ") })
+	d.key("down", "down", "down", "down")
+	d.until("the row does not follow the cursor to shed's changes", func() bool { return strings.Contains(d.screen(), "│ +3 −0 ") })
 	d.quitApp()
 }

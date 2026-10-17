@@ -34,6 +34,7 @@ type Core struct {
 	mu     sync.Mutex
 	status map[string]agent.Status // by tool id, from the last CheckTools
 	heads  map[string]headRead     // by project folder, from the last Head
+	lines  map[string]linesRead    // by project folder, from the last Lines
 }
 
 // Open reads a workspace's state file; one opened for the first time

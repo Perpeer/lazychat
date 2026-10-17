@@ -30,8 +30,8 @@ func (c *Chat) rightBox(title string, lines []string, w, h int, focused, exact b
 
 // useTitle draws what claude's status line heard in short words, a bullet
 // between every part, so more of it fits: the plan's limits, the session's
-// context, cost and cache, then the lines it changed and, at the right end,
-// how long it has been open. To fit w it drops, in turn, the time, the
+// context and cache, the project's lines changed, how long the session has
+// been open and, at the right end, what it cost. To fit w it drops, in turn, the time, the
 // lines, the cache, the window, the weekly resets, the cost, the other
 // weekly limits and the week; nothing when even that does not fit.
 func useTitle(u agent.Use, w int, now time.Time) string {
@@ -91,9 +91,6 @@ func useLine(u agent.Use, now time.Time, keep useKeep) string {
 		}
 		parts = append(parts, ctx)
 	}
-	if keep.cost && u.Cost >= 0 {
-		parts = append(parts, fmt.Sprintf("$%.2f", u.Cost))
-	}
 	if keep.cache && u.Cache >= 0 {
 		parts = append(parts, dim("Cache ")+cool(u.Cache).Render(fmt.Sprintf("%d%%", u.Cache)))
 	}
@@ -102,6 +99,9 @@ func useLine(u agent.Use, now time.Time, keep useKeep) string {
 	}
 	if keep.took && u.Took >= 0 {
 		parts = append(parts, tookText(u.Took))
+	}
+	if keep.cost && u.Cost >= 0 {
+		parts = append(parts, fmt.Sprintf("$%.2f", u.Cost))
 	}
 	return strings.Join(parts, dim(" • "))
 }
