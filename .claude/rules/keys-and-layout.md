@@ -70,7 +70,9 @@ paths:
   (and to keep the sweep) over a green name or a "working" word. The
   spinner followed the program alone, so every open session spun and the
   user could not tell which one worked. A mark on the project
-  heading was offered and declined: the rows show it.
+  heading was offered and declined: the rows show it. A braille spinner turns
+  in the two empty cells before the tool on the second row (workFrames, one
+  a fast beat): the user wanted the block to move where it was blank.
 - A project's folder is one row everywhere (kit.Folder): whole when it
   fits, else its end filling the row after `…` — the user found two or
   three wrapped rows hard to read and wanted the end kept; cutting only

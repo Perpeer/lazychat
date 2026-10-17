@@ -50,3 +50,36 @@ func TestSessionClickTarget(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+// A session at work turns a braille spinner in the empty cells before its
+// tool, one frame a beat; one at rest keeps them empty.
+func TestWorkingRowMoves(t *testing.T) {
+	store, err := state.Load(filepath.Join(t.TempDir(), "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.AddProject(t.TempDir(), "app"); err != nil {
+		t.Fatal(err)
+	}
+	s, err := store.AddSession("claude", "porch", "app", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	working := false
+	tr := treeView{tree: &model.Tree{Store: store}, live: actions.New(&api.Core{Store: store}, nil, nil).Live,
+		working: func(string) bool { return working }}
+	toolRow := func(beat int) string {
+		tr.beat = beat
+		out := tr.sessionEntry(s, 34, true, false)
+		return out[len(out)-1].Plain
+	}
+	if got := toolRow(0); !strings.HasPrefix(got, "  claude") {
+		t.Errorf("at rest: %q", got)
+	}
+	working = true
+	for beat, frame := range []string{"⣾", "⣽", "⣻"} {
+		if got := toolRow(beat); !strings.HasPrefix(got, frame+" claude") {
+			t.Errorf("beat %d: %q, want %q first", beat, got, frame)
+		}
+	}
+}

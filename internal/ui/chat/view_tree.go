@@ -48,6 +48,9 @@ func (t *treeView) projectEntry(p state.Project, n, w int) []kit.TreeLine {
 	return kit.ProjectHeading(p.Name, p.Path, branch, w)
 }
 
+// workFrames turn under a working session's glyph, one a beat.
+var workFrames = []string{"⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"}
+
 // glyph turns only for a session at work: a program that waits on its
 // prompt spun too, and the user could not tell which session worked.
 func (t *treeView) glyph(s state.Session) (styled, plain string) {
@@ -122,7 +125,14 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 	if t.draft != nil && t.draft(s) {
 		styled, plain = styled+kit.StyleAccent.Render(" ✎"), plain+" ✎"
 	}
-	out = append(out, kit.TreeLine{Prefix: rest, Styled: "  " + kit.ToolBadge(tool) + styled, Plain: "  " + tool + plain})
+	// At work, a braille spinner turns in the cells under the glyph, on the
+	// fast beat, so the session is found by movement as well as colour.
+	lead, plainLead := "  ", "  "
+	if working {
+		f := workFrames[t.beat%len(workFrames)]
+		lead, plainLead = kit.StyleBusy.Render(f)+" ", f+" "
+	}
+	out = append(out, kit.TreeLine{Prefix: rest, Styled: lead + kit.ToolBadge(tool) + styled, Plain: plainLead + tool + plain})
 	for i := range out {
 		out[i].Lit = working
 	}
