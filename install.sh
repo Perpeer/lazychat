@@ -225,7 +225,7 @@ build_menubar() {
   if [ "$(xcrun --show-sdk-version 2>/dev/null | cut -d. -f1)" -gt "$os_major" ] 2>/dev/null; then
     sdk="$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*.sdk "$(xcode-select -p 2>/dev/null)"/Platforms/MacOSX.platform/Developer/SDKs/MacOSX[0-9]*.sdk 2>/dev/null \
       | awk -v os="$os_major" '{ v = $0; sub(/.*MacOSX/, "", v); sub(/\.sdk$/, "", v); split(v, p, "."); if (p[1] + 0 <= os + 0) print v "\t" $0 }' \
-      | sort -t. -k1,1n -k2,2n | tail -1 | cut -f2)"
+      | sort -t. -k1,1n -k2,2n | tail -1 | cut -f2)" || true # ls fails on a folder that is not there (no Xcode): pipefail ended the build with no word
   fi
   target="$(uname -m)-apple-macos13.0"
   # The sum covers what the app is built from and with — its files, the SDK
