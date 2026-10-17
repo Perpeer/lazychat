@@ -36,6 +36,7 @@ func run(m *testing.M) int {
 		"HOME":              home,
 		"TMPDIR":            tmp,
 		"CLAUDE_CONFIG_DIR": filepath.Join(home, ".claude"),
+		"CODEX_HOME":        filepath.Join(home, ".codex"),
 		"XDG_CONFIG_HOME":   filepath.Join(home, ".config"),
 		// The user's hooks, signing and aliases must not run in a test repo.
 		"GIT_CONFIG_GLOBAL":   os.DevNull,

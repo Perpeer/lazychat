@@ -75,6 +75,12 @@ func (l Lister) List(cwd string) ([]Past, error) {
 // Path is the transcript's file.
 func (p Past) Path() string { return p.path }
 
+// Saved is a session another tool's own files list, its title already
+// read: Title reads Claude Code's format alone.
+func Saved(id string, modified time.Time, path, title string) Past {
+	return Past{ID: id, Modified: modified, path: path, title: title}
+}
+
 // All lists the saved sessions of every directory, newest first.
 func (l Lister) All() ([]Past, error) {
 	dirs, err := os.ReadDir(l.Dir)

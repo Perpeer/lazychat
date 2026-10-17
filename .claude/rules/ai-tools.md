@@ -18,12 +18,15 @@ paths:
   fails when they part — paste what it prints.
 - What lazychat adds to a claude session goes on its command line only
   (`--settings <json>`, `overlay.go`): a Notification hook writing the
-  notice file, and a status line only when none of the user's three
-  settings files names one (needs `jq`). Never write into `~/.claude` or a
+  notice file, and lazychat's status line over any the user's three
+  settings files name (needs `jq`): a user's copy of the script stays at
+  the version copied — the user's own twin was two releases old and their
+  sessions never got the new line — so lazychat's wins unless Settings'
+  `status line` row hides it, and then the user's own runs. Never write into `~/.claude` or a
   project's `.claude`; those are only read.
 - Every claude status line runs through a tap (statusline.go tap): the
-  `--settings` statusLine is the user's own (fields kept, the most local
-  file winning) or lazychat's, its command wrapped to save Claude's JSON as
+  `--settings` statusLine is lazychat's, or with it hidden the user's own
+  (fields kept, the most local file winning), its command wrapped to save Claude's JSON as
   `<notice>.status` (written as .tmp, then moved: lazychat reads on its own
   clock) and run with `LAZYCHAT_SHOWN=limits`. They are drawn on the
   session box's last row, under a dim line (chat.rightBox, useRows): the
@@ -62,6 +65,27 @@ paths:
   side before the context bar: the session, the workspace, the plan's limits
   `[session N% ↻… · week N% ↻…]`, which Claude Code sends only after a
   session's first reply (`rate_limits.five_hour` / `seven_day`).
+- A codex session's use row comes from codex's rollout (agent/codexuse.go,
+  the UseTeller capability): the rollout its id names, else the newest
+  `~/.codex/sessions/…/rollout-*.jsonl` of the session's folder written since
+  its process started — `codex resume` writes on in the old file (tried with
+  codex 0.163.0: the old file grew, no new one) — its last `token_count`
+  read from the file's end. Before, actions.Use borrowed the newest limits
+  any session heard, so a codex session showed Claude's plan (the user saw
+  it). Codex writes no rollout before the first prompt. Its limits come by
+  window_minutes: 300 Session, 10080 Week, another a named Limit (a free
+  plan sent one 43200-minute window: Month). Codex's own footer line was
+  left as it is at the user's word: `-c tui.status_line=…` works, but any
+  `-c` takes codex off its shared background server (embedded mode) with a
+  startup warning every time (codex 0.163.0).
+- Codex is a Historian (agent/codexpast.go): its saved sessions of a folder
+  are the rollouts whose session_meta cwd is the folder, titled by
+  `~/.codex/session_index.jsonl`'s thread_name (a later line renames), else
+  the first `input_text` that is not codex's own `<…>` context. The `r`
+  picker puts each tool's sessions under its name (Row.Heading), in the
+  registry's order: the user wanted claude's and codex's apart. A resume
+  from another folder makes codex ask which folder to use; lazychat resumes
+  in the project's, the one the session recorded.
 - Codex has no hook; its question is its window title, which leads with
   "[ ! ] Action Required" (blinking to "[ . ]") while an approval waits,
   by default (Codex.Asking, the title through AskReader). Its tui.notifications

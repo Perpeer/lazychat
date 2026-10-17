@@ -137,6 +137,13 @@ type (
 		// Untrusted reads the tool's question whether to trust the folder.
 		Untrusted(screen string) bool
 	}
+	// UseTeller tells a session's use — its context, cache and the plan's
+	// limits — from the tool's own record of the session in dir, by its id
+	// when known, else the one written since its process started. A tool
+	// with it never borrows another tool's limits.
+	UseTeller interface {
+		UseOf(dir, id string, since time.Time) (Use, bool)
+	}
 )
 
 // Capability is one thing only some tools can do, by the name the screen
@@ -165,6 +172,7 @@ var Capabilities = []Capability{
 	{"commit message", Has[Suggester]},
 	{"usage report", Has[UsageReader]},
 	{"rename", Has[Renamer]},
+	{"use row from its record", Has[UseTeller]},
 }
 
 // Options are what tests change about the tools: Bins maps a tool's id to a
@@ -187,7 +195,7 @@ func NewRegistry(o Options) Registry {
 	}
 	return Registry{tools: []Tool{
 		NewClaude(o.Bins[ClaudeID], home),
-		&Codex{Bin: o.Bins[CodexID]},
+		&Codex{Bin: o.Bins[CodexID], Home: home},
 	}}
 }
 

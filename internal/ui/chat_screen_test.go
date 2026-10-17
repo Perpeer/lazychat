@@ -2,8 +2,10 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -125,11 +127,25 @@ func TestChatFlow(t *testing.T) {
 	d.expect("[1] projects", "deleted ivy (demo2)")
 	d.expectSessions(1)
 
+	// A codex session of the same folder, saved by codex itself.
+	real, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	codexDay := filepath.Join(os.Getenv("CODEX_HOME"), "sessions", "2026", "03", "14")
+	if err := os.MkdirAll(codexDay, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(codexDay, "rollout-2026-03-14T09-26-53-0199aaaa-shed.jsonl"),
+		`{"type":"session_meta","payload":{"id":"0199aaaa-shed","cwd":`+strconv.Quote(real)+`}}`+"\n"+
+			`{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>"}]}}`+"\n"+
+			`{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"paint the shed door"}]}}`+"\n")
+
 	d.key("r")
-	d.expect("demo2 · newest first", "▸ blue porch session", "old prompt 8", "3 more below")
+	d.expect("demo2 · newest first", "Claude Code", "▸ blue porch session", "old prompt 7", "6 more below")
 	d.expectNot("which project?")
 	d.key("G")
-	d.expect("▸ old prompt 11", "above")
+	d.expect("Codex", "▸ paint the shed door", "above")
 	d.key("g", "enter")
 	d.expect("[1] projects", "blue porch session", "args:--resume aaaa1111-2222")
 	d.expectSessions(2)
@@ -142,6 +158,13 @@ func TestChatFlow(t *testing.T) {
 	if !found {
 		t.Errorf("the resumed session is not remembered: %+v", d.sessions())
 	}
+	// Codex's sessions come under their own heading, last; one resumes by id.
+	d.key("r")
+	d.key("G")
+	d.expect("Codex", "▸ paint the shed door")
+	d.key("enter")
+	d.expect("FAKE CODEX READY", "args:resume 0199aaaa-shed")
+	d.leave()
 	d.key("?")
 	d.expect("project tree", "Session", "second what can be done with its project")
 	d.expectNot("1-9")

@@ -365,8 +365,8 @@ whole screen while shown and `Esc` brings the tree back.
 The right side has two tabs in its top border, as a browser has:
 `[2] session` and `[3] details`; `2` and `3`, or a click on one, switch
 them, and the session runs on behind the details. `2` only chooses the
-session; `Enter` goes in. A Codex session has the session tab alone: Codex
-keeps no record lazychat reads, so `3` does nothing there.
+session; `Enter` goes in. A Codex session has the session tab alone: lazychat
+reads no report from Codex's record, so `3` does nothing there.
 
 The box's last row, under a dim line and inside its border, holds what
 claude's status line hears, in short words between bullets: `Session 12%
@@ -380,6 +380,12 @@ cache the other way round). The limits are your account's, so every
 session shows the newest any session heard; the lines are the cursor
 project's, the rest the cursor session's. Claude Code sends them only to a session's status line, after
 its first reply, so they show for sessions lazychat runs with a status line.
+A Codex session's row is Codex's own, read from the file Codex records the
+session in (`~/.codex/sessions`, or `$CODEX_HOME`'s), from its first
+prompt on: its plan's limits by their window (5 hours as Session, 7 days as
+Week, another by its length — the free plan's 30 days as `Month`), the
+context, the cache, the lines and the time open; Codex sends no cost.
+Claude's limits are never shown under Codex.
 On a narrow screen the time goes first, then the lines, the cache, the
 window, the weekly resets, the cost, the other weekly limits and the
 week.
@@ -484,7 +490,7 @@ the tree too.
 | `↑↓` `j k` `g` `G` | from session to session, over the headings; on a running one the pane follows. A click on a heading goes to its first session |
 | `Enter` (`2` then `Enter`) | into the session's terminal when it runs, else resume it (`claude --resume`); refused because it is open elsewhere, a popup offers the ways on (see How a session works) |
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
-| `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): newest first, `/rename` titles, ten at a time — scrolling reads older ones |
+| `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): Claude Code's and Codex's under their own headings, each newest first, `/rename` titles (Codex's thread names), ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow, and so does Claude: a running Claude session gets `/rename <name>` typed at its prompt once it works on nothing, asks nothing and holds no line you typed but did not send; a stopped one is resumed out of sight with `-n <name>`, without your hooks and MCP servers, and ended as soon as Claude has written the name (nothing is typed, so nothing goes to the model; resuming it yourself first ends that run, and a folder Claude asks to trust ends it at once); when that fails, it gets `-n <name>` at its next resume. Claude opens a new session under the name given (`-n`). Codex keeps no names |
 | `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
 | `x` | close it: its program ends (SIGTERM, SIGKILL after 3 s), its row stays and `Enter` resumes the conversation; asked only while it works, since its answer is cut off |
@@ -661,7 +667,7 @@ saves it at once; `esc`, `1` or `ctrl+q` go back.
 | Appearance | version | shown | the corner's `v1.0.3` |
 | Appearance | syntax colours | on | a diff's code in its language's colours in the Git tab (see Git) |
 | Sound | sounds | on | on macOS, Lazy's sounds: hello once as the main screen first shows, a session starting on a new prompt (not on an answer), asking something, finishing (looked at or not) or ending on an API error; in the details, a subagent of the newest prompt coming back |
-| Integrations | status line | shown | lazychat's status line in claude sessions that have none of their own (see How a session works) |
+| Integrations | status line | shown | lazychat's status line in every claude session lazychat starts, over your own; hidden, a session runs yours or none (see How a session works) |
 | Integrations | menu bar | shown | on macOS, Lazy in the menu bar (see Menu bar) |
 
 One accent colour, the theme's, marks the focused frame, fills the selected
@@ -749,16 +755,18 @@ accent (a worktree `⑂` in its worktree colour), as lazychat's lists draw
 them — lazychat passes its colours to its sessions as `LAZYCHAT_ACCENT`
 and `LAZYCHAT_WORKTREE` — the effort green —
 is a script lazychat carries and writes to
-`~/.lazychat/claude/statusline.sh`. A session gets it only when none of
-the settings it reads names a status line (it gets yours otherwise, run as
-below): yours (`~/.claude/settings.json`,
-or `$CLAUDE_CONFIG_DIR`'s), the project's `.claude/settings.json` and its
-`.claude/settings.local.json`. A status line is one setting, not a list, so
-the command line's would replace yours; when you have one, lazychat adds
-none. It needs `jq` (macOS has it in `/usr/bin` since 15; without it none is
-added). With a status line, claude hides most of its footer hints — `esc to
-interrupt`, `? for shortcuts`; Settings' `status line` row hides lazychat's
-to bring them back.
+`~/.lazychat/claude/statusline.sh` at each start, so a new lazychat brings
+its new status line to every session. Every claude session lazychat starts
+gets it, over a status line the settings it reads name — yours
+(`~/.claude/settings.json`, or `$CLAUDE_CONFIG_DIR`'s), the project's
+`.claude/settings.json` and its `.claude/settings.local.json`: a status line
+is one setting, not a list, so the command line's replaces yours. claude
+started outside lazychat keeps yours. It needs `jq` (macOS has it in
+`/usr/bin` since 15; without it a session runs yours, or none). A settings
+file that does not parse keeps lazychat out. With a status line, claude
+hides most of its footer hints — `esc to interrupt`, `? for shortcuts`.
+Settings' `status line` row hides lazychat's: a session then runs yours, or
+none and the hints come back.
 
 Every claude session lazychat runs with a status line, yours or lazychat's,
 gets it through a small wrapper on the same command line: it saves what Claude Code sends the
@@ -899,9 +907,13 @@ resume that fails within fifteen seconds counts.
 
 Claude is started with `--name` only when its `--help` offers it; an older
 Claude Code is started without one, the name kept in lazychat's record.
-Codex takes no name, and lazychat does not learn its ids: a Codex session
-is opened again with `codex resume --last` in its project. The `r` picker
-lists Claude Code's saved sessions only.
+Codex takes no name, and lazychat does not learn the id of a Codex session
+it starts: one is opened again with `codex resume --last` in its project.
+The `r` picker lists both tools' saved sessions of the project, each tool
+under its own heading — Claude Code's, then Codex's — newest first. Codex's
+are the sessions Codex recorded in that folder (`~/.codex/sessions`, or
+`$CODEX_HOME`'s), titled by Codex's thread name, else the first prompt;
+one picked is resumed with `codex resume <id>`, and lazychat keeps its id.
 
 ## Troubleshooting
 

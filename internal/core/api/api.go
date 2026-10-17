@@ -185,8 +185,8 @@ func (c *Core) Overlay(tool string, e agent.Exec, x agent.Extras) agent.Exec {
 	return o.Overlay(e, x)
 }
 
-// StatusLine is the status line script lazychat offers claude sessions,
-// written to lazychat's folder; "" when turned off in Settings or with no
+// StatusLine is the status line script lazychat gives claude sessions,
+// over their own, written to lazychat's folder; "" when turned off in Settings or with no
 // settings or folder to write to (the tests).
 func (c *Core) StatusLine() string {
 	if c.Settings == nil || c.Settings.NoStatusLine || c.Settings.Home == "" {

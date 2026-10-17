@@ -12,8 +12,8 @@ import (
 	"lazychat/internal/core/files"
 )
 
-// statusLineScript is the status line lazychat offers a claude session that
-// has none of its own.
+// statusLineScript is the status line lazychat gives every claude session it
+// starts, over the session's own.
 //
 //go:embed statusline.sh
 var statusLineScript []byte
@@ -75,9 +75,10 @@ func statusLineOf(home, project string) (line map[string]any, known bool) {
 	return line, true
 }
 
-// statuslinePiece gives a session its status line: the one its settings
-// name, else lazychat's when the script was written and jq is there to run
-// it; none when neither. With a notice file the line runs through tap, so
+// statuslinePiece gives a session its status line: lazychat's when the
+// script was written and jq is there to run it, over one its settings name,
+// since a user's copy of the script stops at the version they copied; else
+// the one its settings name; none when neither. With a notice file the line runs through tap, so
 // lazychat learns what Claude Code tells it.
 func statuslinePiece(x Extras) map[string]any {
 	line, known := statusLineOf(x.Home, x.Dir)
@@ -85,8 +86,9 @@ func statuslinePiece(x Extras) map[string]any {
 		return nil
 	}
 	own := line != nil
-	if !own && x.StatusLine != "" && jqThere() {
+	if x.StatusLine != "" && jqThere() {
 		line = map[string]any{"type": "command", "command": shellQuote(x.StatusLine)}
+		own = false
 	}
 	// No line stays no line: a status line, even an empty one, hides
 	// claude's footer hints, which the user may have kept on purpose.

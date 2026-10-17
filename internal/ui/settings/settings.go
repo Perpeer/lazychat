@@ -112,7 +112,7 @@ func (s *Settings) all() []setting {
 			}
 			return st.Save()
 		}),
-		onOff("status line", "lazychat's status line in claude sessions whose own settings name none (user, project or project local): model, branch, context, cost, limits. Claude then hides most of its footer hints (esc to interrupt, ? for shortcuts); hide it to get them back. A status line of your own always wins", &st.NoStatusLine, st.Save),
+		onOff("status line", "lazychat's status line in every claude session it starts, over one your settings name (user, project or project local): model, effort, session. Claude then hides most of its footer hints (esc to interrupt, ? for shortcuts). Hidden, a session runs your own status line, or none and the hints come back", &st.NoStatusLine, st.Save),
 		switched("updates", "ask GitHub every six hours whether a newer lazychat is out, and say so in green beside the version; nothing about this Mac goes with the question", "checked", "not checked", &st.NoUpdateCheck, st.Save),
 		switched("sounds", "Lazy's sounds, on macOS: a session asks something, finishes, or ends on an API error (a rate limit, an outage); in the details, a subagent comes back with its answer", "on", "off", &st.NoSounds, st.Save),
 		switched("syntax colours", "a diff's code in its language's colours in the Git tab: keywords, strings, comments, numbers, types and functions, in the theme's own, over the added and removed rows", "on", "off", &st.NoSyntax, st.Save),

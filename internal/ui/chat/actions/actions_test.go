@@ -3,7 +3,9 @@ package actions
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -370,5 +372,48 @@ func TestStopAllKeepsMarks(t *testing.T) {
 	}
 	if !a.core.Store.Sessions[0].Running {
 		t.Error("ivy lost its mark when lazychat left")
+	}
+}
+
+// A codex session's use row is codex's own, read from its rollout: the
+// limits a claude session heard are another plan's and are not borrowed.
+func TestCodexUseIsItsOwn(t *testing.T) {
+	codexHome := t.TempDir()
+	t.Setenv("CODEX_HOME", codexHome)
+	a, h, p := setup(t)
+	a.core.CheckTools(context.Background())
+	a.NewSession(p.Name)
+	label := ""
+	for _, o := range h.fields[1].Options {
+		if strings.HasPrefix(o, "codex") {
+			label = o
+		}
+	}
+	h.submit([]string{p.Name, label, "s"})
+	if len(a.core.Store.Sessions) != 1 {
+		t.Fatalf("no codex session: %q", h.lastNote())
+	}
+	key := a.core.Store.Sessions[0].Key
+	// A claude session's status line heard Claude's limits.
+	claude := a.questionFile("claude-1")
+	if err := os.WriteFile(claude+agent.UseSuffix, []byte(`{"rate_limits":{"five_hour":{"used_percentage":81},"seven_day":{"used_percentage":46}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if u := a.Use(key); u.Session != -1 || u.Week != -1 {
+		t.Errorf("codex borrowed Claude's limits: %+v", u)
+	}
+	s, _ := a.Live.Get(key)
+	at := s.Started.Add(time.Second)
+	day := filepath.Join(codexHome, "sessions", at.Format("2006"), at.Format("01"), at.Format("02"))
+	if err := os.MkdirAll(day, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rollout := `{"type":"session_meta","payload":{"cwd":` + strconv.Quote(p.Path) + `}}` + "\n" +
+		`{"type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":100,"cached_input_tokens":50,"total_tokens":120},"model_context_window":1000},"rate_limits":{"primary":{"used_percent":6,"window_minutes":300,"resets_at":1}}}}` + "\n"
+	if err := os.WriteFile(filepath.Join(day, "rollout-"+at.Format("2006-01-02T15-04-05")+"-garden-shed.jsonl"), []byte(rollout), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if u := a.Use(key); u.Session != 6 || u.Week != -1 || u.Context != 12 || u.Cache != 50 {
+		t.Errorf("codex's own use: %+v", u)
 	}
 }

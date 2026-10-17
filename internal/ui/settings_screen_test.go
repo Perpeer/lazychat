@@ -200,7 +200,7 @@ func TestSettingsStatusLine(t *testing.T) {
 	}
 	d.tab(4)
 	d.toSetting("status line")
-	d.expect("status line", "lazychat's status line in claude sessions")
+	d.expect("status line", "lazychat's status line in every claude session")
 	d.key("enter", "down", "enter")
 	d.expect("  hidden", "(enter) change")
 	if !d.core.Settings.NoStatusLine || d.core.StatusLine() != "" {

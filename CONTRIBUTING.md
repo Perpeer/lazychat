@@ -97,7 +97,7 @@ fails when they part:
 | --- | :-: | :-: |
 | resume | ✓ | ✓ |
 | resume the newest |   | ✓ |
-| saved sessions | ✓ |   |
+| saved sessions | ✓ | ✓ |
 | fork | ✓ | ✓ |
 | attach | ✓ |   |
 | stop in the background | ✓ |   |
@@ -108,6 +108,7 @@ fails when they part:
 | commit message | ✓ | ✓ |
 | usage report | ✓ |   |
 | rename | ✓ |   |
+| use row from its record |   | ✓ |
 <!-- /capabilities -->
 
 ## Changing it

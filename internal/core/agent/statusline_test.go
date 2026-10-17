@@ -39,9 +39,9 @@ func TestWriteStatusLine(t *testing.T) {
 	}
 }
 
-// lazychat's status line goes to a session only when no settings file it
-// reads names one — the user's, the project's, the project's local — and
-// jq is there; a file that does not parse counts as naming one.
+// lazychat's status line goes to every session, over one a settings file it
+// reads names — the user's, the project's, the project's local — when jq
+// is there; a file that does not parse keeps lazychat out.
 func TestStatuslinePiece(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 	was := jqThere
@@ -71,8 +71,8 @@ func TestStatuslinePiece(t *testing.T) {
 	} {
 		home, project := t.TempDir(), t.TempDir()
 		write(place(home, project), `{"statusLine":{"type":"command","command":"mine.sh"}}`)
-		if offered(home, project) {
-			t.Errorf("%s settings name a status line, yet lazychat's was offered", name)
+		if !offered(home, project) {
+			t.Errorf("%s settings name a status line, and lazychat's did not win", name)
 		}
 	}
 	home, project := t.TempDir(), t.TempDir()
@@ -83,8 +83,8 @@ func TestStatuslinePiece(t *testing.T) {
 	cfg := t.TempDir()
 	write(filepath.Join(cfg, "settings.json"), `{"statusLine":{}}`)
 	t.Setenv("CLAUDE_CONFIG_DIR", cfg)
-	if offered(t.TempDir(), t.TempDir()) {
-		t.Error("CLAUDE_CONFIG_DIR's settings name one, yet lazychat's was offered")
+	if !offered(t.TempDir(), t.TempDir()) {
+		t.Error("CLAUDE_CONFIG_DIR's settings name one, and lazychat's did not win")
 	}
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 	jqThere = func() bool { return false }
@@ -162,9 +162,10 @@ func TestStatusLineRow(t *testing.T) {
 	}
 }
 
-// With a notice file, every claude status line runs through the tap: the
-// user's own command, its other fields kept, or lazychat's script; with
-// neither there is no line to tap, and none is made up;
+// With a notice file, every claude status line runs through the tap:
+// lazychat's script whenever it is offered, over the user's own too, so
+// every session runs its newest version; else the user's own command, its
+// other fields kept; with neither there is no line to tap, and none is made up;
 // the tap saves Claude's JSON whole beside the notice file and hands it on.
 func TestStatusLineTap(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
@@ -186,12 +187,16 @@ func TestStatusLineTap(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(project, ".claude", "settings.local.json"), []byte(`{"statusLine":{"type":"command","command":"~/bin/mine.sh | cut -c1-80","padding":2}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got := line(home, project, "/lc/statusline.sh")
+	got := line(home, project, "")
 	want := `tee '/n/k.status.tmp' | LAZYCHAT_SHOWN=limits sh -c '~/bin/mine.sh | cut -c1-80'; mv -f '/n/k.status.tmp' '/n/k.status'`
 	if got["command"] != want || got["padding"] != float64(2) {
-		t.Errorf("the user's line: %v", got)
+		t.Errorf("the user's line, lazychat's turned off: %v", got)
 	}
-	if got := line(t.TempDir(), t.TempDir(), "/lc/statusline.sh"); got["command"] != `tee '/n/k.status.tmp' | LAZYCHAT_SHOWN=limits sh -c ''\''/lc/statusline.sh'\'''; mv -f '/n/k.status.tmp' '/n/k.status'` {
+	ours := `tee '/n/k.status.tmp' | LAZYCHAT_SHOWN=limits sh -c ''\''/lc/statusline.sh'\'''; mv -f '/n/k.status.tmp' '/n/k.status'`
+	if got := line(home, project, "/lc/statusline.sh"); got["command"] != ours || got["padding"] != nil {
+		t.Errorf("lazychat's line over the user's: %v", got)
+	}
+	if got := line(t.TempDir(), t.TempDir(), "/lc/statusline.sh"); got["command"] != ours {
 		t.Errorf("lazychat's line: %v", got)
 	}
 	if got := line(t.TempDir(), t.TempDir(), ""); got != nil {

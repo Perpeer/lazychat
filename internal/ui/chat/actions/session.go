@@ -117,11 +117,34 @@ func (a *Actions) resumeIn(p state.Project) {
 		a.host.Note("no saved session for %s (%s)", p.Name, p.Path)
 		return
 	}
+	// Each tool's sessions under its name, in the tools' order: the user
+	// wanted claude's and codex's apart. -1 marks a heading.
+	var rows []int
+	var heads []string
+	for _, t := range a.core.Tools.All() {
+		first := true
+		for i := range past {
+			if past[i].Tool != t.ID() {
+				continue
+			}
+			if first {
+				rows, heads, first = append(rows, -1), append(heads, t.Name()), false
+			}
+			rows, heads = append(rows, i), append(heads, "")
+		}
+	}
 	// Titles are read as rows come into view, so a long history opens at once.
-	a.host.Pick("resume a session · "+p.Name+" · newest first", len(past), 0, func(i int) Row {
-		return Row{Text: text.Fit(past[i].Title(), 52), Note: past[i].Tool + " · " + text.Ago(past[i].Modified)}
+	a.host.Pick("resume a session · "+p.Name+" · newest first", len(rows), 1, func(i int) Row {
+		if rows[i] < 0 {
+			return Row{Text: heads[i], Heading: true}
+		}
+		s := &past[rows[i]]
+		return Row{Text: text.Fit(s.Title(), 52), Note: text.Ago(s.Modified)}
 	}, func(i int) {
-		if _, err := a.resume(p, past[i]); err != nil {
+		if rows[i] < 0 {
+			return
+		}
+		if _, err := a.resume(p, past[rows[i]]); err != nil {
 			a.host.Note("resume: %v", err)
 		}
 	})

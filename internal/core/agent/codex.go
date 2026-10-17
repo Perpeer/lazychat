@@ -13,7 +13,10 @@ const CodexID = "codex"
 // Codex is OpenAI's Codex CLI; Bin replaces "codex" as its program when set.
 // It takes no session name, and lazychat does not learn its session ids: a
 // session is opened again as the newest one of its directory.
-type Codex struct{ Bin string }
+type Codex struct {
+	Bin  string
+	Home string // where ~/.codex is, unless CODEX_HOME names it
+}
 
 var (
 	_ Tool        = (*Codex)(nil)
