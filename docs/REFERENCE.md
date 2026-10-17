@@ -371,11 +371,11 @@ keeps no record lazychat reads, so `3` does nothing there.
 The box's last row, under a dim line and inside its border, holds what
 claude's status line hears, in short words between bullets: `Session 12%
 ↻25m • Week 38% ↻Thu 09:00 • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • Cache 87% • +120
-−7 • 2h5m • $3.75` — the plan's session and weekly limits with their resets
+−7 • $3.75 • 2h5m` — the plan's session and weekly limits with their resets
 (a model's own weekly limit, Fable, after the week when Claude sends one),
 the session's context and cache, the cursor project's lines changed and
 not committed (from git, new files counted, read again every few
-seconds), how long the session has been open and, last, its cost. Green under 60%, yellow under 85%, red above (the
+seconds), its cost and, last, how long the session has been open. Green under 60%, yellow under 85%, red above (the
 cache the other way round). The limits are your account's, so every
 session shows the newest any session heard; the lines are the cursor
 project's, the rest the cursor session's. Claude Code sends them only to a session's status line, after
@@ -764,8 +764,9 @@ Every claude session lazychat runs with a status line, yours or lazychat's,
 gets it through a small wrapper on the same command line: it saves what Claude Code sends the
 status line into lazychat's notices folder, then hands it on unchanged to
 your status line, or lazychat's. That is where that row's numbers come from. It also sets `LAZYCHAT_SHOWN=limits`, and lazychat's script then
-leaves the limits, the context, the cost, the cache and the time out of
-the status line, since the session box's last row shows them; claude started outside lazychat draws them as before. A
+leaves the limits, the context, the cost, the cache, the time, the folder
+and the branch out of the status line, since the session box and the tree
+show them, and draws what is left without brackets; claude started outside lazychat draws them as before. A
 script of your own reads the same variable to do the same.
 
 ## Menu bar

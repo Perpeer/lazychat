@@ -48,8 +48,8 @@ export LC_NUMERIC=C
 # number); without them Gruvbox's, lazychat's start theme, stand in.
 #
 # LAZYCHAT_SHOWN=limits: lazychat draws the context, the plan's limits, the
-# cost, the cache and the time on the session's title row, so this row
-# leaves them out. Claude outside
+# cost, the cache and the time on the session's box, and names the project
+# and its branch, so this row leaves them out. Claude outside
 # lazychat does not set it and draws them here.
 
 case ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} in
@@ -107,9 +107,10 @@ L_COST="cost"    L_CACHE="cache" L_TIME="time" L_5H="session"   L_WK="week"
 
 lbl() { [[ -n $1 ]] && printf '%s%s %s' "$DIM" "$1" "$R"; }
 
-group() { # its arguments joined by SEP, in dim brackets
+group() { # its arguments joined by SEP, in dim brackets; bare inside lazychat, where one group is left
   local inner
   inner=$(printf "%s${SEP}" "$@"); inner=${inner%"$SEP"}
+  if (( SHOWN )); then printf '%s' "$inner"; return; fi
   printf '%s[%s%s%s]%s' "$DIM" "$R" "$inner" "$DIM" "$R"
 }
 
@@ -175,8 +176,10 @@ while :; do
   [[ -n $FAST ]] && label="fast${label:+ · $label}"
   (( show_effort )) && [[ -n $label ]] && sess+=("$(lbl "$L_EFFORT")${GREEN}${label}${R}")
   (( show_session )) && [[ -n $SESSION ]] && sess+=("$(lbl "$L_SESSION")${BOLD}${SESSION}${R}")
-  (( show_dir )) && [[ -n $CWD ]] && ws+=("$(lbl "$L_DIR")${BOLD}${CWD##*/}${R}")
-  if [[ -n $WORKTREE ]]; then
+  (( show_dir && ! SHOWN )) && [[ -n $CWD ]] && ws+=("$(lbl "$L_DIR")${BOLD}${CWD##*/}${R}")
+  if (( SHOWN )); then
+    : # lazychat names the project and its branch
+  elif [[ -n $WORKTREE ]]; then
     ws+=("$(lbl "$L_GIT")${WTREE}⑂ ${branch}${R}")
   elif [[ -n $branch ]]; then
     ws+=("$(lbl "$L_GIT")${ACCENT}⎇ ${branch}${R}")

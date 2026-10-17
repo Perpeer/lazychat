@@ -142,7 +142,7 @@ func TestStatusLineRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.TrimSpace(ansi.ReplaceAllString(string(out), "")); got != "[Opus 5.5 · medium] [lazychat · ⑂ main]" {
+	if got := strings.TrimSpace(ansi.ReplaceAllString(string(out), "")); got != "Opus 5.5 · medium" {
 		t.Errorf("shown by lazychat: %q", got)
 	}
 	// The worktree's branch takes the colour lazychat passes, the session

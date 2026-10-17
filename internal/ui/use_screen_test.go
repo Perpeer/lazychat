@@ -49,7 +49,7 @@ func TestSessionUse(t *testing.T) {
 		now+2*3600+14*60+30, now+28*3600+30*60)
 	d.session("oak", "status "+payload)
 	week := "↻" + time.Unix(now+28*3600+30*60, 0).Format("Mon 15:04")
-	d.until("oak's bottom border does not hold all its use", bottom("Session 81% ↻2h15m • Week 46% "+week+" • Ctx ▮▮▮▮▮▮▮▯▯▯▯▯ 62%/1M • Cache 87% • 2h5m • $12.50"))
+	d.until("oak's bottom border does not hold all its use", bottom("Session 81% ↻2h15m • Week 46% "+week+" • Ctx ▮▮▮▮▮▮▮▯▯▯▯▯ 62%/1M • Cache 87% • $12.50 • 2h5m"))
 	// The pane gives the line and the row their rows: claude is told a
 	// screen two rows shorter than the box holds inside.
 	d.session("elm", "size")

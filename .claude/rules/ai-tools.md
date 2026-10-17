@@ -35,7 +35,7 @@ paths:
   file), and the user wanted them beside the session, gone from the
   status line, in short words between bullets so more fits (Session ↻,
   Week ↻day, a model's own weekly limit when sent — none seen —, Ctx,
-  Cache, the lines changed, the time open, the cost last; chat/view_use.go). The
+  Cache, the lines changed, the cost, the time open last; chat/view_use.go). The
   lines are the cursor project's uncommitted changes from git
   (git.LinesChanged, api.Lines cached like Head): Claude's
   cost.total_lines_added is every line the session ever wrote, whatever
@@ -54,9 +54,11 @@ paths:
   identical by hand: the user's `~/.claude/hooks/statusline.sh` and
   prompter's `claude/hooks/statusline.sh` (its example line names
   `garden-shed`); change all three together. `LAZYCHAT_SHOWN=limits`
-  makes the script leave out ctx, session, week, cost, cache and time:
-  the session box's last row draws them (the user moved each, so a number
-  shows once). Groups in brackets, side by
+  makes the script leave out ctx, session, week, cost, cache and time
+  (the session box's last row draws them), and the folder and the branch
+  (the workspace box and the tree name them): the user moved each, so a
+  thing shows once; the one group left is drawn without brackets. The
+  user's own twin does the same. Groups in brackets, side by
   side before the context bar: the session, the workspace, the plan's limits
   `[session N% ↻… · week N% ↻…]`, which Claude Code sends only after a
   session's first reply (`rate_limits.five_hour` / `seven_day`).
