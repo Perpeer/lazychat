@@ -103,39 +103,3 @@ func ListWidth(cols int) int { return Clamp(cols*28/100, 32, 40) }
 // what tells projects apart. Cutting only between parts left the row
 // half empty.
 func Folder(path string, w int) string { return text.FitLeft(text.ShortHome(path), w) }
-
-// sweepBand is how many characters the sweep lights, sweepGap how many beats
-// it rests past the name's end before it starts again.
-const sweepBand, sweepGap = 3, 6
-
-// Sweep redraws TitleRows' rows with a band in the busy colour running
-// across the title, one character a beat, so a session at work moves where
-// its name is and not only in its glyph.
-func Sweep(rows []TreeLine, lead, plainLead string, beat int) []TreeLine {
-	indent := strings.Repeat(" ", text.Width(plainLead))
-	var runes [][]rune
-	n := 0
-	for i, r := range rows {
-		p := strings.TrimPrefix(r.Plain, indent)
-		if i == 0 {
-			p = strings.TrimPrefix(r.Plain, plainLead)
-		}
-		runes = append(runes, []rune(p))
-		n += len(runes[i])
-	}
-	at := beat % (n + sweepGap)
-	out := make([]TreeLine, len(rows))
-	off := 0
-	for i, rs := range runes {
-		from := min(max(at-sweepBand+1-off, 0), len(rs))
-		to := min(max(at+1-off, 0), len(rs))
-		styled := StyleBold.Render(string(rs[:from])) + StyleBusy.Bold(true).Render(string(rs[from:to])) + StyleBold.Render(string(rs[to:]))
-		off += len(rs)
-		head := indent
-		if i == 0 {
-			head = lead
-		}
-		out[i] = TreeLine{Prefix: rows[i].Prefix, Styled: head + styled, Plain: rows[i].Plain}
-	}
-	return out
-}

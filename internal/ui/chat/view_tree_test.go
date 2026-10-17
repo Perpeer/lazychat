@@ -14,6 +14,7 @@ import (
 	"lazychat/internal/core/state"
 	"lazychat/internal/ui/chat/actions"
 	"lazychat/internal/ui/chat/model"
+	"lazychat/internal/ui/kit"
 )
 
 // A session is one click target over all its rows, not only its title: a
@@ -51,8 +52,9 @@ func TestSessionClickTarget(t *testing.T) {
 	}
 }
 
-// A session at work turns a braille spinner in the empty cells before its
-// tool, one frame a beat; one at rest keeps them empty.
+// A session at work moves in one place: a snake of three dots running
+// round the glyph's cell and the cell under it, one dot a beat; its name
+// stays as at rest. One at rest keeps the cell under its glyph empty.
 func TestWorkingRowMoves(t *testing.T) {
 	store, err := state.Load(filepath.Join(t.TempDir(), "state.json"))
 	if err != nil {
@@ -68,18 +70,34 @@ func TestWorkingRowMoves(t *testing.T) {
 	working := false
 	tr := treeView{tree: &model.Tree{Store: store}, live: actions.New(&api.Core{Store: store}, nil, nil).Live,
 		working: func(string) bool { return working }}
-	toolRow := func(beat int) string {
+	rows := func(beat int) (string, string) {
 		tr.beat = beat
 		out := tr.sessionEntry(s, 34, true, false)
-		return out[len(out)-1].Plain
+		return out[0].Plain, out[len(out)-1].Plain
 	}
-	if got := toolRow(0); !strings.HasPrefix(got, "  claude") {
-		t.Errorf("at rest: %q", got)
+	if _, tool := rows(0); !strings.HasPrefix(tool, "  claude") {
+		t.Errorf("at rest: %q", tool)
 	}
 	working = true
-	for beat, frame := range []string{"⣾", "⣽", "⣻"} {
-		if got := toolRow(beat); !strings.HasPrefix(got, frame+" claude") {
-			t.Errorf("beat %d: %q, want %q first", beat, got, frame)
+	// Down the left side of the two cells, then up the right.
+	for _, c := range []struct {
+		beat      int
+		top, tool string
+	}{
+		{0, "⠇ porch", "⠀ claude"},
+		{1, "⡆ porch", "⠀ claude"},
+		{2, "⡄ porch", "⠁ claude"},
+		{7, "⠀ porch", "⣠ claude"},
+		{9, "⠀ porch", "⠸ claude"},
+		{14, "⠙ porch", "⠀ claude"},
+	} {
+		top, tool := rows(c.beat)
+		if top != c.top || !strings.HasPrefix(tool, c.tool) {
+			t.Errorf("beat %d: %q / %q, want %q / %q", c.beat, top, tool, c.top, c.tool)
 		}
+	}
+	tr.beat = 3
+	if styled := tr.sessionEntry(s, 34, true, false)[0].Styled; !strings.Contains(styled, kit.StyleBold.Render("porch")) {
+		t.Errorf("the name is not drawn as at rest: %q", styled)
 	}
 }

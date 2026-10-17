@@ -26,7 +26,7 @@ type treeView struct {
 	draft    func(r state.Session) bool                         // the session has a draft waiting; nil for none
 	working  func(key string) bool                              // the board calls the session at work; nil for none
 	tick     int
-	beat     int // the fast beat, which sweeps a working session's name
+	beat     int // the fast beat, which runs a working session's snake
 	scroll   kit.Scroller
 	follow   kit.Follow
 }
@@ -48,15 +48,31 @@ func (t *treeView) projectEntry(p state.Project, n, w int) []kit.TreeLine {
 	return kit.ProjectHeading(p.Name, p.Path, branch, w)
 }
 
-// workFrames turn under a working session's glyph, one a beat.
-var workFrames = []string{"⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"}
+// snake is a working session's one animation: three dots running round
+// two braille cells, its glyph's and the one under it, down the left side
+// and up the right, one dot a beat. Three animations (a turning glyph, a
+// band over the name, a spinner under the glyph) were one too many.
+func snake(beat int) (top, bottom string) {
+	left := [4]rune{0x01, 0x02, 0x04, 0x40}
+	right := [4]rune{0x08, 0x10, 0x20, 0x80}
+	var cells [2]rune
+	for k := range 3 {
+		p := (beat + k) % 16
+		col, row := left, p
+		if p >= 8 {
+			col, row = right, 15-p
+		}
+		cells[row/4] |= col[row%4]
+	}
+	return string(0x2800 + cells[0]), string(0x2800 + cells[1])
+}
 
 // glyph turns only for a session at work: a program that waits on its
 // prompt spun too, and the user could not tell which session worked.
 func (t *treeView) glyph(s state.Session) (styled, plain string) {
 	switch {
 	case t.works(s.Key):
-		g := kit.Spinner[(t.tick/2)%len(kit.Spinner)] // the tick is half a second; the spinner turns once a second
+		g, _ := snake(t.beat)
 		return kit.StyleBusy.Render(g), g
 	case t.live.Running(s.Key):
 		return kit.StyleDim.Render("●"), "●"
@@ -74,8 +90,8 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 		first, rest = "   └─ ", "      "
 	}
 	// A session at work hangs on a heavy line in the busy colour down all its
-	// rows, so it is a lit block in the tree: the spinner and the sweep alone
-	// were too small to find it by.
+	// rows, so it is a lit block in the tree: the moving glyph alone was
+	// too small to find it by.
 	working := t.works(s.Key)
 	if working {
 		first, rest = "   ┣━ ", "   ┃  "
@@ -99,9 +115,6 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 		glyph, plainGlyph, nameStyle = kit.StyleBusy.Bold(true).Render("✓"), "✓", kit.StyleBusy.Bold(true)
 	}
 	out := kit.TitleRows(first, rest, glyph+" ", plainGlyph+" ", s.Name, nameStyle, w-2, nameLines)
-	if working {
-		out = kit.Sweep(out, glyph+" ", plainGlyph+" ", t.beat)
-	}
 	// The tool leads the row under the name, in its colour, so sessions of
 	// different tools tell apart down the list; the turn time follows.
 	tool := s.Tool
@@ -125,11 +138,10 @@ func (t *treeView) sessionEntry(s state.Session, w int, last, orphan bool) []kit
 	if t.draft != nil && t.draft(s) {
 		styled, plain = styled+kit.StyleAccent.Render(" ✎"), plain+" ✎"
 	}
-	// At work, a braille spinner turns in the cells under the glyph, on the
-	// fast beat, so the session is found by movement as well as colour.
+	// At work the snake runs on under the glyph.
 	lead, plainLead := "  ", "  "
 	if working {
-		f := workFrames[t.beat%len(workFrames)]
+		_, f := snake(t.beat)
 		lead, plainLead = kit.StyleBusy.Render(f)+" ", f+" "
 	}
 	out = append(out, kit.TreeLine{Prefix: rest, Styled: lead + kit.ToolBadge(tool) + styled, Plain: plainLead + tool + plain})

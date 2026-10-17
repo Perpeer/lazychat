@@ -13,7 +13,6 @@ import (
 	"lazychat/internal/core/sound"
 	"lazychat/internal/core/state"
 	"lazychat/internal/core/status"
-	"lazychat/internal/ui/kit"
 	"slices"
 )
 
@@ -509,22 +508,13 @@ func TestInbox(t *testing.T) {
 func TestOnlyWorkSpins(t *testing.T) {
 	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
 	d := start(t, e, 120, 32)
+	// At work its glyph is a braille cell of the moving snake.
 	spins := func(name string) bool {
-		for _, g := range kit.Spinner {
-			if strings.Contains(d.screen(), g+" "+name) {
-				return true
-			}
-		}
-		return false
+		return regexp.MustCompile(`[\x{2800}-\x{28FF}] ` + name).MatchString(d.screen())
 	}
 	// A session at work hangs on the heavy line, ┣━ or ┗━.
 	lit := func(name string) bool {
-		for _, g := range kit.Spinner {
-			if strings.Contains(d.screen(), "━ "+g+" "+name) {
-				return true
-			}
-		}
-		return false
+		return regexp.MustCompile(`━ [\x{2800}-\x{28FF}] ` + name).MatchString(d.screen())
 	}
 	d.session("ivy", "")
 	d.session("oak", "work long")

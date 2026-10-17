@@ -135,36 +135,6 @@ func TestWorktreeHeading(t *testing.T) {
 	}
 }
 
-// A session at work has a band of the busy colour running across its
-// name, one character a beat, over a wrapped name too; the plain text stays.
-func TestSweep(t *testing.T) {
-	defer lipgloss.SetColorProfile(lipgloss.ColorProfile())
-	lipgloss.SetColorProfile(termenv.ANSI256)
-	rows := TitleRows("└─ ", "   ", "◐ ", "◐ ", "garden-shed-paints/feature/blue-door", StyleBold, 25, 2)
-	band := StyleBusy.Bold(true)
-	for _, c := range []struct {
-		beat int
-		row  int
-		lit  string
-	}{{2, 0, "gar"}, {5, 0, "den"}, {21, 1, "fea"}} {
-		got := Sweep(rows, "◐ ", "◐ ", c.beat)
-		if !strings.Contains(got[c.row].Styled, band.Render(c.lit)) {
-			t.Errorf("beat %d: row %d does not light %q: %q", c.beat, c.row, c.lit, got[c.row].Styled)
-		}
-		for i := range got {
-			if got[i].Plain != rows[i].Plain || got[i].Prefix != rows[i].Prefix {
-				t.Errorf("beat %d changed row %d: %+v", c.beat, i, got[i])
-			}
-		}
-	}
-	rest := Sweep(rows, "◐ ", "◐ ", 36+sweepBand)
-	for i := range rest {
-		if strings.Contains(rest[i].Styled, band.Render("e")) {
-			t.Errorf("past the end the band still shows on row %d: %q", i, rest[i].Styled)
-		}
-	}
-}
-
 // A lit entry's connector takes the busy colour, bold; an unlit one stays
 // dim, so a session at work is a coloured block in the tree.
 func TestLitPrefix(t *testing.T) {

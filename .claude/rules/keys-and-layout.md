@@ -60,19 +60,19 @@ paths:
   session or shell the right side showed. Settings and Git's commit list
   keep kit.DrawEntry's focus-bound fill. The chosen session's names in the
   right box's title were tried and taken out at the user's word.
-- A session row's glyph is the board's: the spinner only while
-  Board.Working, `●` while its program runs and waits, `○` saved; a
-  working session's name has a band of the busy colour sweeping across it
-  (kit.Sweep, one character a fast beat; Chat animates while any session
-  works), and its rows hang on a heavy connector in the busy colour
-  (`┣━`/`┗━`, `┃` down the block; TreeLine.Lit): the sweep and spinner
-  alone were still too small to find it by, and the user picked the bar
-  (and to keep the sweep) over a green name or a "working" word. The
-  spinner followed the program alone, so every open session spun and the
-  user could not tell which one worked. A mark on the project
-  heading was offered and declined: the rows show it. A braille spinner turns
-  in the two empty cells before the tool on the second row (workFrames, one
-  a fast beat): the user wanted the block to move where it was blank.
+- A session row's glyph is the board's: moving only while Board.Working,
+  `●` while its program runs and waits, `○` saved. A working session has
+  one animation (chat/view_tree.go snake): three dots running round two
+  braille cells, the glyph's and the one under it, on the fast beat (Chat
+  animates while any session works). There were three — a turning
+  half-moon glyph, a band sweeping the name, a spinner under the glyph —
+  and the user asked for one over the two rows; the name stays as at
+  rest. Its rows hang on a heavy connector in the busy colour (`┣━`/`┗━`,
+  `┃` down the block; TreeLine.Lit), which does not move: the glyph alone
+  was too small to find it by, and the user picked the bar over a green
+  name or a "working" word. The glyph followed the program alone once, so
+  every open session moved and the user could not tell which one worked.
+  A mark on the project heading was offered and declined: the rows show it.
 - A project's folder is one row everywhere (kit.Folder): whole when it
   fits, else its end filling the row after `…` — the user found two or
   three wrapped rows hard to read and wanted the end kept; cutting only
