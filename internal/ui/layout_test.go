@@ -87,3 +87,20 @@ func TestNoWrap(t *testing.T) {
 		t.Errorf("after the program: %q, %v; want the wrap back and its error", out.String(), err)
 	}
 }
+
+// Terminal.app keeps line wrap per screen: wrap turned off before Bubble Tea
+// enters the alt screen is on again there. Both programs turn it off from
+// Init, which Bubble Tea runs once the alt screen is on.
+func TestWrapOffOnTheAltScreen(t *testing.T) {
+	var out bytes.Buffer
+	was := screenOut
+	screenOut = &out
+	defer func() { screenOut = was }()
+	for name, init := range map[string]func() tea.Cmd{"lazychat": (&App{}).Init, "the start screen": (&setupModel{}).Init} {
+		out.Reset()
+		init()
+		if out.String() != "\x1b[?7l" {
+			t.Errorf("%s's Init wrote %q, want the wrap turned off", name, out.String())
+		}
+	}
+}

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"io"
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -64,11 +65,20 @@ func (a *App) View() string {
 // x/ansi counts them — Bengali's vowel signs take cells of their own, a line
 // counted 40 wide took 45 — and a wrapped line pushed the whole screen up a
 // row on every frame. Without wrap such a line is cut at the window's edge.
+// Terminal.app keeps wrap per screen, so this reaches the normal screen
+// only: the programs' Init turns it off on the alt screen (wrapOff).
 func noWrap(w io.Writer, run func() error) error {
 	_, _ = io.WriteString(w, "\x1b[?7l")
 	defer func() { _, _ = io.WriteString(w, "\x1b[?7h") }()
 	return run()
 }
+
+// screenOut is the real terminal; tests read what is written to it.
+var screenOut io.Writer = os.Stdout
+
+// wrapOff turns line wrap off on the screen in use. Called from Init,
+// which Bubble Tea runs once it has entered the alt screen.
+func wrapOff() { _, _ = io.WriteString(screenOut, "\x1b[?7l") }
 
 // clearOnResize wipes the screen before the next frame: Terminal.app keeps
 // a narrowed window's cells past the new width and draws them in the part

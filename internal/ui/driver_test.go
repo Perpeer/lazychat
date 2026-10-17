@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,8 @@ func TestMain(m *testing.M) {
 	// What the app copies never reaches the system clipboard of the machine
 	// running the tests.
 	kit.CopyToClipboard = func(string) error { return nil }
+	// Nor does what it writes to the terminal beside its frames.
+	screenOut = io.Discard
 	testenv.Main(m)
 }
 

@@ -122,6 +122,7 @@ func (m *setupModel) newForm() {
 }
 
 func (m *setupModel) Init() tea.Cmd {
+	wrapOff()
 	if m.splash.on {
 		return splashTick()
 	}

@@ -209,7 +209,10 @@ func Run(core *api.Core, opts Options) (exit Exit, err error) {
 	return a.exit, err
 }
 
-func (a *App) Init() tea.Cmd { return tea.Batch(tickCmd(), a.checkTools) }
+func (a *App) Init() tea.Cmd {
+	wrapOff()
+	return tea.Batch(tickCmd(), a.checkTools)
+}
 
 // checkTools runs off the screen: a CLI that is not set up can take seconds
 // to answer, or never do.

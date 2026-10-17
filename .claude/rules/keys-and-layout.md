@@ -121,6 +121,12 @@ paths:
   wrap off (layout.go noWrap: ESC[?7l, ESC[?7h however they end), so a
   line drawn too wide is cut at the window's edge; fitFrame stays for the
   height and for every terminal that keeps wrap on anyway.
+  It came back a third time, with any text: Terminal.app keeps wrap per
+  screen, and the ?7l written before Bubble Tea enters the alt screen never
+  reached it (a probe: ?7l then ?1049h still wraps, ?1049h then ?7l does
+  not). Both programs now also write it from Init (layout.go wrapOff),
+  which Bubble Tea runs once the alt screen is on. Any line drawn wider than
+  counted, in any script or symbol, then cuts instead of sliding the screen.
 - Every resize clears the screen (layout.go clearOnResize, in App and the
   start screen). Terminal.app keeps a narrowed window's cells past the new
   width — each line stayed 160 wide after narrowing to 130, holding every
