@@ -275,15 +275,16 @@ func TestMoves(t *testing.T) {
 			}
 		}
 	}
+	// Two spaces after a name find the tree's heading, not the top's "name · folder".
 	d := start(t, e, 120, 32)
-	order(d, "│ demo2 ", "alpha", "beta", "│ second ", "gamma")
+	order(d, "│ demo2  ", "alpha", "beta", "│ second  ", "gamma")
 	d.selectSession("beta")
 	d.key("K", "J", "ctrl+k", "ctrl+j") // m is the one way to move: these do nothing
 	d.key("1", "2", "esc")              // and digits pick no project: the cursor stays on beta
 	d.expect("(enter) continue · (n) new")
-	order(d, "│ demo2 ", "alpha", "beta", "│ second ", "gamma")
+	order(d, "│ demo2  ", "alpha", "beta", "│ second  ", "gamma")
 	d.key("M", "j", "enter") // M carries beta's project, demo2, below second
-	order(d, "│ second ", "gamma", "│ demo2 ", "alpha", "beta")
+	order(d, "│ second  ", "gamma", "│ demo2  ", "alpha", "beta")
 	d.selectSession("beta")
 
 	// m picks the row up, j and k carry it, Enter puts it down: a session
@@ -291,16 +292,16 @@ func TestMoves(t *testing.T) {
 	d.key("m")
 	d.expect("↕ ○ beta", "(↑↓ j k) move · (enter) done")
 	d.key("k")
-	order(d, "│ demo2 ", "beta", "alpha")
+	order(d, "│ demo2  ", "beta", "alpha")
 	d.key("enter")
 	d.expectNot("↕")
 	d.expect("(enter) continue · (n) new")
 	d.key("M") // beta's project, from the session's row
 	d.expect("↕demo2")
 	d.key("k")
-	order(d, "↕demo2", "beta", "alpha", "│ second ", "gamma") // the mark goes with the heading it carries
+	order(d, "↕demo2", "beta", "alpha", "│ second  ", "gamma") // the mark goes with the heading it carries
 	d.key("j")
-	order(d, "│ second ", "↕demo2")
+	order(d, "│ second  ", "↕demo2")
 	d.expect("↕demo2")
 	d.key("k")
 	d.expect("↕demo2")
@@ -309,14 +310,14 @@ func TestMoves(t *testing.T) {
 	// Keys typed faster than the terminal is read come as one run of runes;
 	// each is still a key of its own.
 	d.typ("MjM")
-	order(d, "│ second ", "│ demo2 ")
+	order(d, "│ second  ", "│ demo2  ")
 	d.expectNot("↕")
 	d.typ("MkM")
-	order(d, "│ demo2 ", "│ second ")
+	order(d, "│ demo2  ", "│ second  ")
 	d.quitApp()
 
 	d = start(t, e, 120, 32)
-	order(d, "│ demo2 ", "beta", "alpha", "│ second ", "gamma")
+	order(d, "│ demo2  ", "beta", "alpha", "│ second  ", "gamma")
 	d.quitApp()
 }
 
@@ -340,18 +341,19 @@ func TestWheelScrollsTheList(t *testing.T) {
 			d.mouse(tea.MouseMsg{X: 10, Y: 10, Action: tea.MouseActionPress, Button: button})
 		}
 	}
+	// Two spaces after a name find the tree's heading, not the top's "name · folder".
 	for _, tab := range []int{1, 5} {
 		d.tab(tab)
 		d.key("g")
-		d.expect("│ demo2 ")
+		d.expect("│ demo2  ")
 		d.expectNot("extra19")
 		wheel(60, tea.MouseButtonWheelDown)
 		d.expect("extra19")
-		d.expectNot("│ demo2 ")
+		d.expectNot("│ demo2  ")
 		wheel(2, tea.MouseButtonWheelUp)
 		d.expectNot("extra19") // off the bottom again: the wheel stopped at the end
 		d.key("k")             // the cursor was still on demo2's first row, the top one
-		d.expect("│ demo2 ")
+		d.expect("│ demo2  ")
 		d.expectNot("extra19")
 	}
 }
@@ -627,8 +629,9 @@ func TestCloseKeepsTheRow(t *testing.T) {
 	d.quitApp()
 }
 
-// The workspace box names the folder of the project the cursor is on, over
-// the right box, and follows the cursor to another project.
+// The workspace box names the project the cursor is on and its folder, over
+// the right box, and follows the cursor to another project; on a narrow
+// screen the folder gives up room before the name.
 func TestFolderOverTheSession(t *testing.T) {
 	e, dir := seeded(t, state.Session{Tool: "claude", Name: "oak"})
 	other := project(t, e)
@@ -641,11 +644,17 @@ func TestFolderOverTheSession(t *testing.T) {
 	}
 	d := start(t, e, 160, 32)
 	top := func() string { return strings.Split(d.screen(), "\n")[1] }
-	at := func(path string) func() bool {
-		return func() bool { return strings.Contains(top(), "│ "+kit.Folder(path, 200)) }
+	at := func(name, path string) func() bool {
+		return func() bool { return strings.Contains(top(), "│ "+name+" · "+kit.Folder(path, 200)) }
 	}
-	d.until("the top does not name demo2's folder", at(dir))
+	d.until("the top does not name demo2 and its folder", at("demo2", dir))
 	d.key("down", "down", "down", "down")
-	d.until("the top does not follow the cursor to shed's folder", at(other))
+	d.until("the top does not follow the cursor to shed and its folder", at("shed", other))
+	d.quitApp()
+
+	d = start(t, e, 100, 32)
+	d.until("a narrow top does not keep demo2 and cut its folder's start", func() bool {
+		return strings.Contains(top(), "│ demo2 · …") && strings.HasSuffix(strings.TrimRight(strings.TrimSuffix(strings.TrimRight(top(), " "), "│"), " "), filepath.Base(dir))
+	})
 	d.quitApp()
 }

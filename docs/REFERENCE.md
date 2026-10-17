@@ -189,9 +189,10 @@ asked first. With none it is the form for a new one. `--workspace <name>`
 skips the screen, and the splash with it.
 
 In the app the open workspace is the box across the top: its name and how
-many projects it has, and over the right box, after a `│`, the folder of
-the project the cursor is on, on one row (its end, `…Data/github/lazychat`, when it is
-too long), so which project a session works in is read at the top. `Ctrl+W` or a click selects it; `↓` or `Esc`
+many projects it has, and over the right box, after a `│`, the name and
+the folder of the project the cursor is on, on one row (`lazychat ·
+~/code/lazychat`; the folder's end, `…/code/lazychat`, when it is too long),
+so which project a session works in is read at the top. `Ctrl+W` or a click selects it; `↓` or `Esc`
 goes back to the tab's list. Its keys:
 
 | Key | Does |

@@ -76,9 +76,11 @@ paths:
   three wrapped rows hard to read and wanted the end kept; cutting only
   between parts (`…/` and whole parts) left the row half empty, and the
   user asked for more of it. The workspace box
-  names the cursor project's folder after a `│` over the right box's left
-  edge (App.cursorFolder, any kit.ProjectTab), so the session's project is
-  read at the top; the user picked that over moving the box.
+  names the cursor project and its folder (`name · folder`, the name bold)
+  after a `│` over the right box's left edge (App.cursorProject, any
+  kit.ProjectTab), so the session's project is read at the top; the user
+  picked that over moving the box, and asked for the name as well. The
+  folder gives up room first; the name keeps at least half the row.
 - Ctrl+Enter reaches claude as `CSI 13;5u` (Capture.newline, Control from
   keylayout.Held): Terminal.app sends it as a plain CR. claude 2.1.300
   pushes kitty flags 5 (`CSI >5u`) once lazychat answers its query, and

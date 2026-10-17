@@ -45,14 +45,14 @@ func workspaceHelp() string {
 }
 
 // workspaceBox draws the open workspace across the top of the screen, its
-// title saying how to reach it. Over the right box it names the folder of
-// the project the cursor is on, so which project the session works in is
+// title saying how to reach it. Over the right box it names the project the
+// cursor is on and its folder, so which project the session works in is
 // read at the top.
 func (a *App) workspaceBox() string {
 	w := a.core.Workspace
 	count := fmt.Sprintf("%d project(s)", len(a.core.Store.Projects))
 	room := a.width - 2
-	folder, left := a.cursorFolder()
+	name, folder, left := a.cursorProject()
 	if rest := a.width - left - 2; folder != "" && rest >= 8 {
 		// The bar stands over the right box's left edge.
 		room = left - 1
@@ -64,30 +64,36 @@ func (a *App) workspaceBox() string {
 		line = kit.StyleSel.Render(text.Pad(text.Fit(" ▸ "+w.Name+"   "+count, room), room))
 	}
 	if folder != "" {
-		rest := a.width - 2 - room - 1
-		line = text.FitPad(line, room) + kit.StyleDim.Render("│") + " " + kit.Folder(folder, rest-1)
+		cols := a.width - 2 - room - 2
+		// The folder gives up room first, the name only past half the row.
+		n := text.Fit(name, max(cols/2, cols-text.Width(projectSep)-text.Width(text.ShortHome(folder))))
+		f := kit.Folder(folder, cols-text.Width(n)-text.Width(projectSep))
+		line = text.FitPad(line, room) + kit.StyleDim.Render("│") + " " + kit.StyleBold.Render(n) + kit.StyleDim.Render(projectSep+f)
 	}
 	box := kit.Box("workspace (ctrl+w)", []string{line}, a.width, wsRows, a.wsSel, false)
 	return strings.Join(kit.ZoneBlock(wsZone, strings.Split(box, "\n"), a.width), "\n")
 }
 
-// cursorFolder is the folder of the active tab's cursor project and the
-// screen column where the tab's right box starts; "" for a tab with no
-// project there.
-func (a *App) cursorFolder() (string, int) {
+// projectSep parts the cursor project's name from its folder at the top.
+const projectSep = " · "
+
+// cursorProject is the name and folder of the active tab's cursor project
+// and the screen column where the tab's right box starts; "" for a tab with
+// no project there.
+func (a *App) cursorProject() (string, string, int) {
 	t, ok := a.tab().(kit.ProjectTab)
 	if !ok {
-		return "", 0
+		return "", "", 0
 	}
 	name, ok := t.CurrentProject()
 	if !ok {
-		return "", 0
+		return "", "", 0
 	}
 	p, ok := a.core.Store.ProjectNamed(name)
 	if !ok {
-		return "", 0
+		return "", "", 0
 	}
-	return p.Path, railW + kit.ListWidth(a.width-railW)
+	return p.Name, p.Path, railW + kit.ListWidth(a.width-railW)
 }
 
 func (a *App) onWorkspaceBox(x, y int) bool {
