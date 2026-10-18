@@ -289,3 +289,17 @@ func (c *Chat) cursorLines() (added, removed int) {
 	}
 	return -1, -1
 }
+
+// runOut sets the use's run-out from the session limit's readings: a new
+// window, or a use lower than the first (kept limits from before), starts
+// them again.
+func (c *Chat) runOut(now time.Time) {
+	u := &c.use
+	if u.Session < 0 {
+		return
+	}
+	if f := &c.first; f.at != u.SessionAt || u.Session < f.used {
+		f.at, f.used, f.t = u.SessionAt, u.Session, now
+	}
+	u.RunOut = runOut(c.first.used, c.first.t, u.Session, now)
+}

@@ -52,7 +52,13 @@ paths:
   when none has this run, the ones kept in <home>/claude/limits.json
   (agent.LimitsKept), each until its reset passes: the notices folder
   dies with lazychat, and the user saw no limits for minutes after a
-  restart. A
+  restart.
+  The week's pace (chat paceMark: ▲/▼ past five points against the share
+  of the week gone by) and the session's run-out (Chat.first, runOut: the
+  rate since the window's first reading, shown as ⚠ only before the reset)
+  answer "will my limits last". The payload's percentages are whole numbers;
+  the usage page showed the week one higher at the same minute: Claude
+  Code's number, not a rounding of ours. A
   settings file that does not parse keeps lazychat out of the status line
   as before, and a session with no status line gets none: even an empty
   one hides claude's footer hints, which Settings' `status line` row

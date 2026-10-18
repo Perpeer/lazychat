@@ -63,10 +63,17 @@ func useLine(u agent.Use, now time.Time, keep useKeep) string {
 		if in := resetsIn(u.SessionAt, now); in != "" {
 			p += dim(" ↻" + in)
 		}
+		// Only a run-out before the reset matters: after it the use starts again.
+		if out := now.Unix() + u.RunOut; u.RunOut > 0 && out < u.SessionAt {
+			p += heat(100).Render(" ⚠" + resetsIn(out, now))
+		}
 		parts = append(parts, p)
 	}
 	weekly := func(name string, pct int, at int64) string {
 		p := used(name, pct)
+		if mark := paceMark(pct, at, now); mark != "" {
+			p += " " + mark
+		}
 		if keep.weekReset && at > now.Unix() {
 			p += dim(" ↻" + time.Unix(at, 0).Format("Mon 15:04"))
 		}
@@ -104,6 +111,37 @@ func useLine(u agent.Use, now time.Time, keep useKeep) string {
 		parts = append(parts, tookText(u.Took))
 	}
 	return strings.Join(parts, dim(" • "))
+}
+
+// week is a weekly limit's window.
+const week = 7 * 86400
+
+// paceMark says a week's limit is used faster or slower than its days go
+// by, past five points: a red ▲ ahead (it runs out before its reset at this
+// rate), a green ▼ behind; nothing on pace or with no reset known.
+func paceMark(used int, at int64, now time.Time) string {
+	left := at - now.Unix()
+	if at == 0 || left <= 0 || left > week {
+		return ""
+	}
+	switch d := used - int(100-left*100/week); {
+	case d > 5:
+		return heat(100).Render("▲")
+	case d < -5:
+		return heat(0).Render("▼")
+	}
+	return ""
+}
+
+// runOut is how long, in seconds, the session limit's rest would last at
+// the rate it rose from its first reading (used0 at t0) to now; 0 with
+// under ten minutes of readings or no rise, too little to go by.
+func runOut(used0 int, t0 time.Time, used int, now time.Time) int64 {
+	dt := now.Sub(t0)
+	if dt < 10*time.Minute || used <= used0 {
+		return 0
+	}
+	return int64(float64(100-used) * dt.Seconds() / float64(used-used0))
 }
 
 // resetsIn is the time to a reset, short: "25m", "2h14m"; "" when unknown

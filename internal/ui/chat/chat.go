@@ -48,6 +48,13 @@ type Chat struct {
 	// use is what the cursor session's status line last heard, read each
 	// tick for the title row.
 	use agent.Use
+	// first is the session limit's first reading in its window, the start
+	// of the rate its run-out is worked out from.
+	first struct {
+		at   int64 // the window's reset
+		used int
+		t    time.Time
+	}
 }
 
 var _ kit.Tab = (*Chat)(nil)

@@ -34,6 +34,9 @@ type Use struct {
 	Cost   float64 // the session's cost so far, USD; -1 unknown
 	Cache  int     // the share of the context read from cache, %
 	Took   int64   // the session's time so far, ms; -1 unknown
+	// RunOut is how long the session limit would last at its present rate,
+	// seconds, which the caller works out over its readings; 0 unknown.
+	RunOut int64
 	// Added and Removed are the project's lines changed and not committed,
 	// which its caller reads from git; Claude's own count is every line the
 	// session ever wrote, whatever project it was in, and was taken out.

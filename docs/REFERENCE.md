@@ -382,7 +382,13 @@ session shows the newest any session heard; the lines are the cursor
 project's, the rest the cursor session's. Claude Code sends them only to a session's status line, after
 its first reply, so they show for sessions lazychat runs with a status line;
 the limits last heard are kept in `~/.lazychat/claude/limits.json`, so a
-session shows them before its first reply, each until its reset passes.
+session shows them before its first reply, each until its reset passes. A
+weekly limit used more than five points ahead of the share of its week
+gone by gets a red `▲` (it runs out before its reset at this rate), five
+behind a green `▼`. The session limit gets a red `⚠1h40m` when, at the rate
+it rose since lazychat first saw its window (ten minutes at least), it would
+run out before its reset. Claude Code sends whole percentages; Claude's
+usage page can show one more for the week.
 A Codex session's row is Codex's own, read from the file Codex records the
 session in (`~/.codex/sessions`, or `$CODEX_HOME`'s), from its first
 prompt on: its plan's limits by their window (5 hours as Session, 7 days as

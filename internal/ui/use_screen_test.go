@@ -48,8 +48,9 @@ func TestSessionUse(t *testing.T) {
 	payload := fmt.Sprintf(`{"context_window":{"used_percentage":62.4,"context_window_size":1000000,"current_usage":{"input_tokens":13,"cache_read_input_tokens":87}},"cost":{"total_cost_usd":12.5,"total_duration_ms":7500000},"rate_limits":{"five_hour":{"used_percentage":81,"resets_at":%d},"seven_day":{"used_percentage":46,"resets_at":%d}}}`,
 		now+2*3600+14*60+30, now+28*3600+30*60)
 	d.session("oak", "status "+payload)
+	// Five of seven days gone, 46% used: behind its pace, ▼.
 	week := "↻" + time.Unix(now+28*3600+30*60, 0).Format("Mon 15:04")
-	d.until("oak's bottom border does not hold all its use", bottom("Session 81% ↻2h15m • Week 46% "+week+" • Ctx ▮▮▮▮▮▮▮▯▯▯▯▯ 62%/1M • Cache 87% • $12.50 • 2h5m"))
+	d.until("oak's bottom border does not hold all its use", bottom("Session 81% ↻2h15m • Week 46% ▼ "+week+" • Ctx ▮▮▮▮▮▮▮▯▯▯▯▯ 62%/1M • Cache 87% • $12.50 • 2h5m"))
 	// The pane gives the line and the row their rows: claude is told a
 	// screen two rows shorter than the box holds inside.
 	d.session("elm", "size")
@@ -64,7 +65,7 @@ func TestSessionUse(t *testing.T) {
 		return false
 	})
 	d.session("pine", "")
-	d.until("pine does not borrow the limits, or shows a context it never had", bottom("Session 81% ↻2h15m • Week 46% "+week))
+	d.until("pine does not borrow the limits, or shows a context it never had", bottom("Session 81% ↻2h15m • Week 46% ▼ "+week))
 	d.quitApp()
 }
 
@@ -131,7 +132,7 @@ func TestKeptLimitsShow(t *testing.T) {
 	d := start(t, e, 220, 32)
 	d.session("oak", "status "+`{"context_window":{"used_percentage":20,"context_window_size":200000}}`)
 	d.until("the kept limits do not show before a reply", func() bool {
-		return strings.Contains(d.screen(), "│ Session 33% ↻") && strings.Contains(d.screen(), "Week 44% ↻")
+		return strings.Contains(d.screen(), "│ Session 33% ↻") && strings.Contains(d.screen(), "Week 44% ▼ ↻")
 	})
 	d.quitApp()
 }
