@@ -68,7 +68,8 @@ func (a *Actions) Failed(key string) bool {
 }
 
 // Use is what the session's status line last heard: its context, and the
-// plan's limits from whichever session heard them last. A tool that tells
+// plan's limits from whichever session heard them last, or as kept from
+// before when none has this run. A tool that tells
 // its own (codex) is asked instead: Claude's limits under codex were
 // another plan's.
 func (a *Actions) Use(key string) agent.Use {
@@ -85,7 +86,11 @@ func (a *Actions) Use(key string) agent.Use {
 			}
 		}
 	}
-	return agent.UseIn(a.questions, key)
+	home := ""
+	if a.core.Settings != nil {
+		home = a.core.Settings.Home
+	}
+	return agent.LimitsKept(home, agent.UseIn(a.questions, key), time.Now())
 }
 
 // Answered forgets a session's question: it was seen, answered, or the

@@ -157,6 +157,7 @@ cannot hold become `-`):
 ~/.lazychat/
   workspaces.json                       the workspaces opened here: name, folder, when last opened
   settings.json                         the Settings tab's choices
+  claude/limits.json                    the plan's limits last heard, shown before a session's first reply
   workspaces/<name>/workspace.json      its projects and sessions (versioned, written atomically)
   workspaces/<name>/workspace.json.bak  the version before the last save
   workspaces/<name>/lock                held while a lazychat has it open
@@ -379,7 +380,9 @@ seconds), its cost and, last, how long the session has been open. Green under 60
 cache the other way round). The limits are your account's, so every
 session shows the newest any session heard; the lines are the cursor
 project's, the rest the cursor session's. Claude Code sends them only to a session's status line, after
-its first reply, so they show for sessions lazychat runs with a status line.
+its first reply, so they show for sessions lazychat runs with a status line;
+the limits last heard are kept in `~/.lazychat/claude/limits.json`, so a
+session shows them before its first reply, each until its reset passes.
 A Codex session's row is Codex's own, read from the file Codex records the
 session in (`~/.codex/sessions`, or `$CODEX_HOME`'s), from its first
 prompt on: its plan's limits by their window (5 hours as Session, 7 days as

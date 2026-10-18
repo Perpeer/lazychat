@@ -107,3 +107,31 @@ func TestUseRowLines(t *testing.T) {
 	d.until("the row does not follow the cursor to shed's changes", func() bool { return strings.Contains(d.screen(), "│ +3 −0 ") })
 	d.quitApp()
 }
+
+// Limits kept from before show at once in a session that has heard none
+// yet: Claude sends them only after a session's first reply.
+func TestKeptLimitsShow(t *testing.T) {
+	e, dir := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	e.lazyHome = t.TempDir()
+	settings := filepath.Join(dir, ".claude", "settings.local.json")
+	if err := os.MkdirAll(filepath.Dir(settings), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settings, []byte(`{"statusLine":{"type":"command","command":"cat"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Unix()
+	kept := fmt.Sprintf(`{"Session": 33, "SessionAt": %d, "Week": 44, "WeekAt": %d}`, now+3*3600, now+2*86400)
+	if err := os.MkdirAll(filepath.Join(e.lazyHome, "claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(e.lazyHome, "claude", "limits.json"), []byte(kept), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	d := start(t, e, 220, 32)
+	d.session("oak", "status "+`{"context_window":{"used_percentage":20,"context_window_size":200000}}`)
+	d.until("the kept limits do not show before a reply", func() bool {
+		return strings.Contains(d.screen(), "│ Session 33% ↻") && strings.Contains(d.screen(), "Week 44% ↻")
+	})
+	d.quitApp()
+}

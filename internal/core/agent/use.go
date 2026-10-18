@@ -5,9 +5,12 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
+
+	"lazychat/internal/core/files"
 )
 
 // UseSuffix names the file beside the notice file where a claude session's
@@ -125,6 +128,49 @@ func UseIn(dir, key string) Use {
 		if got, ok := ParseUse(b); ok && got.Session >= 0 {
 			newest = st.ModTime()
 			u.Session, u.Week, u.SessionAt, u.WeekAt, u.Weekly = got.Session, got.Week, got.SessionAt, got.WeekAt, got.Weekly
+		}
+	}
+	return u
+}
+
+// keptLimits are the plan's limits as last heard, in lazychat's folder:
+// Claude sends them only after a session's first reply, and a restart of
+// lazychat began with none to show until one came.
+type keptLimits struct {
+	Session, Week     int
+	SessionAt, WeekAt int64
+	Weekly            []Limit
+}
+
+// LimitsKept keeps u's limits in lazychat's folder home when u has them,
+// and else fills them from the kept ones, each while its reset has not
+// passed: past it, its window started again and its use is unknown.
+func LimitsKept(home string, u Use, now time.Time) Use {
+	if home == "" {
+		return u
+	}
+	path := filepath.Join(home, "claude", "limits.json")
+	var k keptLimits
+	if _, err := files.LoadJSON(path, &k, files.SetAside); err != nil {
+		return u
+	}
+	if u.Session >= 0 {
+		heard := keptLimits{u.Session, u.Week, u.SessionAt, u.WeekAt, u.Weekly}
+		if !reflect.DeepEqual(heard, k) {
+			_ = files.SaveJSON(path, heard, 0o600)
+		}
+		return u
+	}
+	live := func(at int64) bool { return at > now.Unix() }
+	if live(k.SessionAt) {
+		u.Session, u.SessionAt = k.Session, k.SessionAt
+	}
+	if live(k.WeekAt) {
+		u.Week, u.WeekAt = k.Week, k.WeekAt
+	}
+	for _, l := range k.Weekly {
+		if live(l.At) {
+			u.Weekly = append(u.Weekly, l)
 		}
 	}
 	return u

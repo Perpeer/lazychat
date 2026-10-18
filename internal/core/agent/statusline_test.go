@@ -274,3 +274,44 @@ func TestUseIn(t *testing.T) {
 		t.Errorf("no folder: %+v", u)
 	}
 }
+
+// Limits heard are kept in lazychat's folder, written only when they
+// change; a session with none shows the kept ones, each until its reset
+// passes; with no folder nothing is kept.
+func TestLimitsKept(t *testing.T) {
+	home := t.TempDir()
+	now := time.Unix(1_792_000_000, 0)
+	heard := NoUse
+	heard.Session, heard.SessionAt, heard.Week, heard.WeekAt = 12, now.Unix()+600, 38, now.Unix()+86400
+	heard.Weekly = []Limit{{Name: "Fable", Used: 9, At: now.Unix() - 1}}
+	if got := LimitsKept(home, heard, now); !reflect.DeepEqual(got, heard) {
+		t.Errorf("heard: %+v", got)
+	}
+	path := filepath.Join(home, "claude", "limits.json")
+	st, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	past := st.ModTime().Add(-time.Hour)
+	if err := os.Chtimes(path, past, past); err != nil {
+		t.Fatal(err)
+	}
+	LimitsKept(home, heard, now)
+	if st, _ := os.Stat(path); !st.ModTime().Equal(past) {
+		t.Error("the same limits were written again")
+	}
+
+	fresh := NoUse
+	fresh.Context = 40
+	got := LimitsKept(home, fresh, now)
+	if got.Context != 40 || got.Session != 12 || got.Week != 38 || len(got.Weekly) != 0 {
+		t.Errorf("a session with none: %+v, want the kept session and week, no Fable (its reset passed)", got)
+	}
+	got = LimitsKept(home, fresh, now.Add(20*time.Minute))
+	if got.Session != -1 || got.Week != 38 {
+		t.Errorf("past the session's reset: %+v", got)
+	}
+	if got := LimitsKept("", fresh, now); got.Session != -1 {
+		t.Errorf("no folder, yet %+v", got)
+	}
+}

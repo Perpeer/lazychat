@@ -48,7 +48,11 @@ paths:
   claude 2.1.302: the line runs at start (context null, no limits before a
   reply) and on each message, not while idle, so reset times are counted
   by lazychat at draw time. The limits are the account's: a session
-  without them borrows the newest any session heard (agent.UseIn). A
+  without them borrows the newest any session heard (agent.UseIn), and
+  when none has this run, the ones kept in <home>/claude/limits.json
+  (agent.LimitsKept), each until its reset passes: the notices folder
+  dies with lazychat, and the user saw no limits for minutes after a
+  restart. A
   settings file that does not parse keeps lazychat out of the status line
   as before, and a session with no status line gets none: even an empty
   one hides claude's footer hints, which Settings' `status line` row
