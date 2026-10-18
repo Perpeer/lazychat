@@ -42,3 +42,8 @@ paths:
   its box and stopped a release. The driver marks the frame's end through
   App.zoneSync (tests only) and waits until that zone is stored — the
   worker stores in order, so every zone before it is there too.
+- The fakes print `args:` on a line of its own, under `FAKE … READY in
+  <folder>`: on one line, the temp folder's name (its random digits change
+  in length) moved the wrap, which now and then split `args:--resume
+  garden-1` across two rows; TestRenameAtResume failed so in a release run
+  and passed 25 times in a row locally.

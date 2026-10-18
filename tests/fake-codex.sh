@@ -10,7 +10,10 @@ case "$1" in
     if [ -n "$FAKE_CODEX_LOGGED_OUT" ]; then echo "Not logged in"; exit 1; fi
     echo "Logged in using ChatGPT"; exit 0 ;;
 esac
-printf 'FAKE CODEX READY in %s args:%s\n' "$(pwd)" "$*"
+# The args start a line of their own: after the folder, whose length
+# changes with each test's temp name, a wrap could split what a test
+# looks for.
+printf 'FAKE CODEX READY in %s\nargs:%s\n' "$(pwd)" "$*"
 while IFS= read -r line; do
   printf 'got: %s\n' "$line"
   case "$line" in

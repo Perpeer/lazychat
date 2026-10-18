@@ -77,7 +77,10 @@ if [ -n "$FAKE_CLAUDE_HISTORY" ]; then
     done
   fi
 fi
-printf 'FAKE CLAUDE READY in %s args:%s\n' "$(pwd)" "$*"
+# The args start a line of their own: after the folder, whose length
+# changes with each test's temp name, a wrap could split what a test
+# looks for.
+printf 'FAKE CLAUDE READY in %s\nargs:%s\n' "$(pwd)" "$*"
 # FAKE_CLAUDE_BRACKETS=1 asks for bracketed paste, as claude does, and goes
 # on reading lines: a paste then Enter arrives as one line.
 [ -n "$FAKE_CLAUDE_BRACKETS" ] && printf '\033[?2004h'
