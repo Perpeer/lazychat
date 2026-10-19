@@ -81,6 +81,7 @@ var ChatKeys = struct {
 	PaneWheel     Key
 	PaneOther     Key
 	SideClose     Key
+	SideHide      Key
 }{
 	Up:            Key{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from session to session, across the projects; the headings take no cursor; on a running session the pane follows"},
 	New:           Key{Keys: []string{"n"}, Hint: Hint{Key: "n", Does: "new"}, Help: "a new session in the cursor's project: a popup asks the AI tool and a name"},
@@ -99,6 +100,7 @@ var ChatKeys = struct {
 	DraftBack:     Key{Hint: Hint{Key: "esc", Does: "back"}, Help: "back to the tree, the draft kept; " + LeaveLabel + " too, and a click outside the box"},
 	DraftDrag:     Key{Hint: Hint{Key: "drag", Does: "select · copy"}, Help: "drag over the draft to select, the release copies it; a click puts the cursor there; Enter is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field"},
 	DetailsBack:   Key{Keys: []string{"esc"}, Hint: Hint{Key: "esc", Does: "back"}, Help: "back to the chat"},
+	SideHide:      Key{Keys: []string{"z"}, Hint: Hint{Key: "z", Does: "hide pane"}, Help: "hide the pane the session opened under itself to one row, its command running on, or show it again; a click on its title offers the same"},
 	SideClose:     Key{Keys: []string{"ctrl+x"}, Hint: Hint{Key: "ctrl+x", Does: "close pane"}, Help: "close the pane the session opened under itself (lazychat's MCP tool open_pane); it closes by itself a few seconds after its command ends"},
 	PickPrompt:    Key{Keys: []string{"up", "k"}, Hint: Hint{Key: "↑↓", Does: "pick prompt"}, Help: "pick the prompt shown in full under the list: up to a newer one, down to an older one; on the newest the page follows the next prompt"},
 	DetailsPageUp: Key{Keys: []string{"pgup"}, Name: "PgUp PgDn", Help: "scroll the page; the wheel too"},

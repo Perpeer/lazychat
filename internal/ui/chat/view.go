@@ -39,10 +39,15 @@ func (c *Chat) View() string {
 			right = c.projectPanel(r.Project.Name, w, h)
 		default:
 			// The block blinks with the tick while the session has the keys; unfocused it is a steady underline.
-			lines := append(c.Pane.View(w-2, h-2-c.FootRows, c.Capture.Held(), c.Tick%2 == 0), c.sideLines(w)...)
-			term := c.rightBox(c.chatTabs(c.Pane.State()), lines, w, h, c.Capture.Held() || c.PaneSel, true)
+			lines := c.Pane.View(w-2, h-2-c.FootRows, c.Capture.Held(), c.Tick%2 == 0)
+			side := c.sideLines(w)
+			term := c.rightBoxOver(c.chatTabs(c.Pane.State()), lines, make([]string, max(0, len(side)-1)), w, h, c.Capture.Held() || c.PaneSel, true)
 			from, length := c.Pane.Scrollbar(h - 2 - c.FootRows)
 			right = kit.WithScrollbar(term, from, length)
+			if rows := strings.Split(right, "\n"); len(side) > 0 && len(rows) >= len(side) {
+				// Over the box's lower rows, as the draft: the session keeps its size.
+				right = strings.Join(append(rows[:len(rows)-len(side)], side...), "\n")
+			}
 		}
 		right = hits.Panel(2, right)
 		if dh > 0 {

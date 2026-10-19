@@ -73,12 +73,18 @@ func init() {
 	}, moves...)
 	// A session with a pane under it: the same, and the key that closes it,
 	// named only while there is one.
-	sidePaneKeys = append([]binding{{Key: kit.ChatKeys.SideClose, Run: act(func(c *Chat) {
-		if r, ok := c.tree.Session(); ok {
-			c.closePane(r.Key)
-			c.fitPanes()
-		}
-	})}}, sessionKeys...)
+	sidePaneKeys = append([]binding{
+		{Key: kit.ChatKeys.SideHide, Run: act(func(c *Chat) {
+			if r, ok := c.tree.Session(); ok {
+				c.togglePane(r.Key)
+			}
+		})},
+		{Key: kit.ChatKeys.SideClose, Run: act(func(c *Chat) {
+			if r, ok := c.tree.Session(); ok {
+				c.closePane(r.Key)
+			}
+		})},
+	}, sessionKeys...)
 	// On the empty row Enter makes the first session, as n does.
 	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyResume, keyHelp, keyQuit}, moves...)
 	// The project's row, under the session's or the empty row's, the same

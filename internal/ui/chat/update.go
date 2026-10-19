@@ -13,7 +13,7 @@ import (
 // the model, the pane and the actions.
 
 // hits are the zones the view marks.
-var hits = kit.Hits{Row: "row", Heading: "proj", Pane: "term", Panels: []string{"cpanel-1", "cpanel-2", "cpanel-3"}}
+var hits = kit.Hits{Row: "row", Heading: "proj", Pane: "term", Item: "side", Panels: []string{"cpanel-1", "cpanel-2", "cpanel-3"}}
 
 func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 	c.mascot.valid = false
@@ -227,10 +227,18 @@ func (c *Chat) cursorProject() string {
 // project, which takes no keys.
 func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 	c.mascot.valid = false
+	if c.sideMouse(msg) {
+		return nil
+	}
 	if kit.LeftClick(msg) {
 		// A click is aimed: it goes where it lands, past a selected pane.
 		c.PaneSel = false
 		if c.tabClick(msg) {
+			return nil
+		}
+		// The shown session's pane's title: its actions.
+		if _, ok := hits.ItemAt(msg, 1); ok && c.side[c.Pane.Key] != nil {
+			c.sideMenu(c.Pane.Key)
 			return nil
 		}
 	}

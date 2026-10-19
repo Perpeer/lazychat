@@ -99,8 +99,8 @@ func (c *Chat) Resize(r kit.Rect) {
 	c.SetRect(r)
 	c.act.Live.ResizeAll(c.PaneSize())
 	cols, _ := c.PaneSize()
-	for _, sp := range c.side {
-		sp.s.Resize(cols, sp.rows)
+	for key, sp := range c.side {
+		sp.pane.Point(key, sp.s, cols, sp.rows)
 	}
 }
 

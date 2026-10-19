@@ -4,6 +4,9 @@ import (
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
+
 	"lazychat/internal/core/mcp"
 	"lazychat/internal/core/state"
 	"lazychat/internal/term"
@@ -11,15 +14,17 @@ import (
 	"lazychat/internal/ui/text"
 )
 
-// sidePane is a pane a session opened under itself through lazychat's MCP
-// server (open_pane), to watch something beside it: a test run's screen, a
-// log. It shows while its session is shown; the session's pane gives up
-// its rows.
+// sidePane is a pane a session opened through lazychat's MCP server
+// (open_pane), to watch something beside it: a test run's screen, a log. It
+// shows while its session is shown, in a box over the session box's lower
+// rows, under the use row; the session keeps its size.
 type sidePane struct {
 	s       *term.Session
+	pane    kit.TermPane // its view, with the session pane's selection
 	rows    int
 	command string
 	ended   time.Time // its command's end; the pane goes sideLinger later
+	hidden  bool      // drawn as its title bar alone, its command running on
 }
 
 // sideLinger keeps an ended command's last screen readable a moment.
@@ -29,8 +34,8 @@ const sideLinger = 3 * time.Second
 const sideRows = 8
 
 // takePanes opens, replaces and closes the panes the live sessions asked
-// for, ends those whose command ended a moment ago or whose session went,
-// and fits the shown session's pane to what is left.
+// for, and ends those whose command ended a moment ago or whose session
+// went.
 func (c *Chat) takePanes(now time.Time) {
 	for _, r := range c.core.Store.Sessions {
 		if req, ok := c.act.PaneAsked(r.Key); ok {
@@ -51,7 +56,6 @@ func (c *Chat) takePanes(now time.Time) {
 			c.closePane(key)
 		}
 	}
-	c.fitPanes()
 }
 
 func (c *Chat) openPane(r state.Session, req mcp.PaneRequest) {
@@ -65,12 +69,17 @@ func (c *Chat) openPane(r state.Session, req mcp.PaneRequest) {
 	}
 	// At most half of what the session's pane has, at least three rows.
 	rows = max(3, min(rows, (c.BodyH()-2-useRows)/2))
-	s, err := c.act.StartPane(p.Path, req.Command, c.PaneRect().Cols, rows)
+	cols := c.PaneRect().Cols
+	s, err := c.act.StartPane(p.Path, req.Command, cols, rows)
 	if err != nil {
 		c.Note("the pane %s asked for: %v", r.Name, err)
 		return
 	}
-	c.side[r.Key] = &sidePane{s: s, rows: rows, command: req.Command}
+	// Hidden at first, its title bar alone: the user opens it when they
+	// want to look.
+	sp := &sidePane{s: s, rows: rows, command: req.Command, hidden: true}
+	sp.pane.Point(r.Key, s, cols, rows)
+	c.side[r.Key] = sp
 }
 
 func (c *Chat) closePane(key string) {
@@ -82,43 +91,93 @@ func (c *Chat) closePane(key string) {
 	}
 }
 
-// fitPanes gives the shown session's pane the rows its own pane, if any,
-// leaves, and its program the size it is drawn at.
-func (c *Chat) fitPanes() {
-	want := useRows
-	if sp := c.side[c.Pane.Key]; sp != nil {
-		want += 1 + sp.rows // its title line, then its rows
-	}
-	if want == c.FootRows {
-		return
-	}
-	c.FootRows = want
-	if s, ok := c.act.Live.Get(c.Pane.Key); ok {
-		s.Resize(c.PaneSize())
-	}
-}
-
-// sideLines draws the shown session's pane w wide: a dim line naming its
-// command, then its screen; none without one.
+// sideLines draws the shown session's pane w wide, the rows it takes off
+// the bottom of the session's box: a box of its own, its command and state
+// in the top border, a click target there; hidden, the session box's
+// bottom border alone with that title. None without a pane.
 func (c *Chat) sideLines(w int) []string {
 	sp := c.side[c.Pane.Key]
 	if sp == nil {
 		return nil
 	}
-	label := sp.command
+	inner := max(1, w-2)
+	state, mark := "running", "▾"
 	if !sp.ended.IsZero() {
-		label += " · ended"
+		state = "ended"
 	}
-	label = " " + text.Fit(label, max(1, w-8)) + " "
-	head := kit.StyleDim.Render("──" + label + strings.Repeat("─", max(0, w-2-text.Width(label))))
-	screen := strings.Split(sp.s.Render(), "\n")
-	out := []string{head}
-	for i := range sp.rows {
-		line := ""
-		if i < len(screen) {
-			line = screen[i]
+	if sp.hidden {
+		mark = "▸"
+	}
+	// The command's end is kept, as a folder's: a long one's file is there.
+	label := " " + mark + " " + text.FitLeft(sp.command, max(1, inner-20)) + " · " + state + " "
+	fill := strings.Repeat("─", max(0, inner-text.Width(label)))
+	if sp.hidden {
+		return []string{zone.Mark(hits.ItemZone(0), kit.StyleDim.Render("└"+label+fill+"┘"))}
+	}
+	out := []string{zone.Mark(hits.ItemZone(0), kit.StyleDim.Render("┌"+label+fill+"┐"))}
+	for _, line := range sp.pane.View(inner, sp.rows, false, false) {
+		out = append(out, kit.StyleDim.Render("│")+text.FitExactPad(line, inner)+"\x1b[0m"+kit.StyleDim.Render("│"))
+	}
+	return append(out, kit.StyleDim.Render("└"+strings.Repeat("─", inner)+"┘"))
+}
+
+// sideMenu is what a click on a pane's title offers: its actions, each with
+// its key.
+func (c *Chat) sideMenu(key string) {
+	sp := c.side[key]
+	if sp == nil {
+		return
+	}
+	hide := "hide the pane to one row   z"
+	if sp.hidden {
+		hide = "show the pane   z"
+	}
+	items := []string{hide, "close the pane, its command stopped   ctrl+x"}
+	p := kit.NewPicker(sp.command, len(items), func(i int) string { return items[i] }, func(i int) {
+		if i == 0 {
+			c.togglePane(key)
+		} else {
+			c.closePane(key)
 		}
-		out = append(out, line)
+	})
+	p.Settle()
+	c.Screen.Push(&p)
+}
+
+func (c *Chat) togglePane(key string) {
+	if sp := c.side[key]; sp != nil {
+		sp.hidden = !sp.hidden
 	}
-	return out
+}
+
+// sideRect is where the shown session's pane's rows sit on the screen,
+// inside its box at the bottom of the session's.
+func (c *Chat) sideRect(sp *sidePane) kit.Rect {
+	r := c.PaneRect()
+	return kit.Rect{X0: r.X0, Y0: c.Rect.Y0 + c.BodyH() - 1 - sp.rows, Cols: r.Cols, Rows: sp.rows}
+}
+
+// sideMouse gives a press, a drag with the button held and its release
+// over the shown session's pane to its selection, as the session's own
+// pane has: the release copies. True when the pane took it.
+func (c *Chat) sideMouse(msg tea.MouseMsg) bool {
+	sp := c.side[c.Pane.Key]
+	if sp == nil || sp.hidden {
+		return false
+	}
+	r := c.sideRect(sp)
+	in := msg.X >= r.X0 && msg.X < r.X0+r.Cols && msg.Y >= r.Y0 && msg.Y < r.Y0+r.Rows
+	left := msg.Button == tea.MouseButtonLeft
+	switch {
+	case msg.Action == tea.MouseActionPress && left && in:
+		sp.pane.Mouse(r, 0, msg.X, msg.Y, false)
+	case msg.Action == tea.MouseActionMotion && left && sp.pane.Drag.Active:
+		sp.pane.Mouse(r, 32, msg.X, msg.Y, false)
+	case msg.Action == tea.MouseActionRelease && sp.pane.Drag.Active:
+		// Released past the pane's edge, the selection still ends there.
+		sp.pane.Release()
+	default:
+		return false
+	}
+	return true
 }

@@ -376,9 +376,16 @@ yours with `--mcp-config`) with three tools: `open_pane` (a shell command,
 run in the project's folder, and its height, 8 rows when not given, 3 to
 half the box), `close_pane`, and `list_sessions` (the workspace's sessions).
 Ask the session in words ("open a pane and follow the run's log"). The
-session's pane gives up the rows; the pane shows while its session is
-shown, closes three seconds after its command ends, with `Ctrl+X` on the
-session's row, or when the session ends; a second `open_pane` replaces it.
+pane is a box over the session box's lower rows, as the draft is, with the
+use row above it, so the session keeps its size; its command and whether
+it runs are in its top border (a long command shows its end, `…` before
+it). It shows while its session is shown. It opens hidden, its title alone
+in the session box's bottom border, its command running. On the session's
+row `z` shows it and hides it again, `Ctrl+X` closes it and stops its
+command; a click on its title offers both. A drag over its
+rows selects their text, and the release copies it. It also closes three
+seconds after its command ends, or when the session ends; a second
+`open_pane` replaces it.
 
 The box's last row, under a dim line and inside its border, holds what
 claude's status line hears, in short words between bullets: `Session 12%

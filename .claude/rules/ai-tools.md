@@ -105,9 +105,19 @@ paths:
   socket was added. The user asked for an MCP over a command line; tried
   with claude 2.1.302: `/mcp` shows "lazychat · 3 tools", the client's
   first `server/discover` probe gets "no method" and connects anyway. The
-  pane is the session's (Chat.side), its rows taken off the session's pane
-  through kit.PaneTab.FootRows; its `Ctrl+X` is named only on a session
-  with one (sidePaneKeys).
+  pane is the session's (Chat.side); its `z` (hide to its title bar, one row)
+  and `Ctrl+X` (close, its command stopped) are named only on a session
+  with one (sidePaneKeys), and a click on its title (hits.Item) offers
+  both in a kit.Picker. At the user's word it is a box over the session
+  box's lower rows, as the draft is, the use row moved up above it
+  (rightBoxOver): the session keeps its size, since a resize makes claude
+  redraw. A frame inside the box under the use row, rows taken off the
+  session through FootRows, came first; the user asked for the overlay.
+  It opens hidden, its title in the box's bottom border, the user opens
+  it to look; its title keeps the command's
+  end (text.FitLeft), where a log's file is; and it is a kit.TermPane, so
+  a drag selects and copies as in the session's pane (Chat.sideMouse,
+  from the tree; while the session holds the keys the mouse is its own).
 - Codex has no hook; its question is its window title, which leads with
   "[ ! ] Action Required" (blinking to "[ . ]") while an approval waits,
   by default (Codex.Asking, the title through AskReader). Its tui.notifications
