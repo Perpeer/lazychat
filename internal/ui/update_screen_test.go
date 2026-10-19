@@ -103,3 +103,24 @@ func TestUpdateTab(t *testing.T) {
 	d.expect("│new ")
 	d.quitApp()
 }
+
+// The new box opens its popup from any tab, also while a session holds the
+// keys and the mouse comes as the router's report: Chat's did nothing.
+func TestUpdateBoxWhileASessionHasTheKeys(t *testing.T) {
+	e, _ := seeded(t)
+	d := start(t, e, 140, 40)
+	d.app.opts.Version, d.app.opts.Base = "1.0.4 abcdef1", "1.0.4"
+	d.app.opts.Upgrade = "brew update && brew upgrade lazychat"
+	d.key("n", "tab", "tab", "enter")
+	d.expect("FAKE CLAUDE READY", "(ctrl+q) back to lazychat")
+	d.deliver(latestMsg{version: "1.0.5"})
+	d.expect("│new ")
+	rows := strings.Split(d.screen(), "\n")
+	y := lineOf(d.screen(), "│new ")
+	x := utf8.RuneCountInString(rows[y][:strings.Index(rows[y], "│new ")])
+	d.click(x+2, y)
+	d.until("the new box opened no popup while a session had the keys", func() bool { return d.app.popups.Open() })
+	d.expect("brew update && brew upgrade lazychat")
+	d.key("esc")
+	d.quitApp()
+}

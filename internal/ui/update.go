@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 
 	"lazychat/internal/core/update"
 	"lazychat/internal/ui/kit"
@@ -71,6 +72,12 @@ const tailLines = 6
 // upgrading here in the background when the build is upgraded in place,
 // else running the command in a new Terminal shell, through a message,
 // since the Terminal tab owns shells.
+// onUpdate says a cell is the rail's new box or the corner's ↑.
+func (a *App) onUpdate(x, y int) bool {
+	at := tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft}
+	return zone.Get(updateZone).InBounds(at) || zone.Get(updateTabZone).InBounds(at)
+}
+
 func (a *App) openUpdate() {
 	cmd := a.opts.Upgrade
 	version := a.latest

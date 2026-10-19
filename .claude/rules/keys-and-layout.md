@@ -137,3 +137,8 @@ paths:
   repaint erases a line's end only when the line is shorter than the width.
   Read a Terminal.app window's text with AppleScript (`contents of
   selected tab`) to see it; screencapture cannot take Terminal's window ids.
+- A click the shell owns is checked on both mouse paths: kit.RawMouse (a
+  session holds the keys) and tea.MouseMsg. The rail's new box and the
+  corner's ↑ were checked on the second alone, so in Chat with a session
+  open they did nothing (App.onUpdate now serves both; the session lets the
+  keys go first, so the popup has them).

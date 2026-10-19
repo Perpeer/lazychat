@@ -326,6 +326,13 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return a, nil
 		}
+		// The new box and the corner's ↑ open their popup here too; the
+		// session lets the keys go first, so the popup has them.
+		if !msg.Release && msg.Code == 0 && a.updateShown() && a.onUpdate(msg.X-1, msg.Y-1) {
+			a.tab().Blur()
+			a.openUpdate()
+			return a, nil
+		}
 		if msg.X-1 < railW && !msg.Release && msg.Code == 0 {
 			if a.onMascot(msg.X-1, msg.Y-1) {
 				a.openMascot()
@@ -350,7 +357,7 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Action == tea.MouseActionPress {
 			a.wsSel = false
 		}
-		if a.updateShown() && kit.LeftClick(msg) && (zone.Get(updateZone).InBounds(msg) || zone.Get(updateTabZone).InBounds(msg)) {
+		if a.updateShown() && kit.LeftClick(msg) && a.onUpdate(msg.X, msg.Y) {
 			a.openUpdate()
 			return a, nil
 		}
