@@ -181,11 +181,15 @@ func (c *Claude) Overlay(e Exec, x Extras) Exec {
 		x.Dir = e.Dir
 	}
 	x.Home = c.Home
-	s := overlay(claudePieces, x)
-	if s == nil {
-		return e
+	if s := overlay(claudePieces, x); s != nil {
+		e.Args = append(append([]string(nil), e.Args...), "--settings", settingsJSON(s))
 	}
-	e.Args = append(append([]string(nil), e.Args...), "--settings", settingsJSON(s))
+	// lazychat's MCP server, added to the user's own: a --mcp-config adds,
+	// only --strict-mcp-config would replace them.
+	if len(x.MCP) > 0 {
+		server := map[string]any{"command": x.MCP[0], "args": x.MCP[1:]}
+		e.Args = append(append([]string(nil), e.Args...), "--mcp-config", settingsJSON(map[string]any{"mcpServers": map[string]any{"lazychat": server}}))
+	}
 	return e
 }
 

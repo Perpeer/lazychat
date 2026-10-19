@@ -50,6 +50,8 @@ type Chat struct {
 	use agent.Use
 	// first is the session limit's first reading in its window, the start
 	// of the rate its run-out is worked out from.
+	// side are the panes sessions opened under themselves, by session key.
+	side  map[string]*sidePane
 	first struct {
 		at   int64 // the window's reset
 		used int
@@ -60,7 +62,7 @@ type Chat struct {
 var _ kit.Tab = (*Chat)(nil)
 
 func New(core *api.Core, screen kit.Screen) *Chat {
-	c := &Chat{core: core}
+	c := &Chat{core: core, side: map[string]*sidePane{}}
 	c.Init(screen)
 	c.FootRows = useRows
 	c.act = actions.New(core, c, func() { screen.Send(termMsg{}) })
@@ -96,6 +98,10 @@ func (c *Chat) Name() string { return "chat" }
 func (c *Chat) Resize(r kit.Rect) {
 	c.SetRect(r)
 	c.act.Live.ResizeAll(c.PaneSize())
+	cols, _ := c.PaneSize()
+	for _, sp := range c.side {
+		sp.s.Resize(cols, sp.rows)
+	}
 }
 
 func (c *Chat) Status() string { return fmt.Sprintf("%d live", len(c.act.Live.Alive())) }

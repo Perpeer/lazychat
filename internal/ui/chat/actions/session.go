@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -398,7 +399,11 @@ func (a *Actions) launch(e agent.Exec, p state.Project, rec state.Session) error
 	a.nextID++
 	if f := a.questionFile(rec.Key); f != "" {
 		a.Answered(rec.Key)
-		e = a.core.Overlay(rec.Tool, e, agent.Extras{NoticeFile: f, StatusLine: a.core.StatusLine()})
+		x := agent.Extras{NoticeFile: f, StatusLine: a.core.StatusLine()}
+		if self, err := os.Executable(); err == nil {
+			x.MCP = []string{self, "mcp", "--notice", f, "--state", a.core.Store.Path}
+		}
+		e = a.core.Overlay(rec.Tool, e, x)
 	}
 	s, err := term.Start(a.nextID, rec.Name, p.Name, e.Dir, e.Args, cols, rows, a.onOutput)
 	if err != nil {

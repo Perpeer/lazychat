@@ -24,6 +24,7 @@ import (
 
 	"lazychat/internal/core/agent"
 	"lazychat/internal/core/api"
+	"lazychat/internal/core/mcp"
 	"lazychat/internal/core/settings"
 	"lazychat/internal/core/state"
 	"lazychat/internal/core/workspace"
@@ -58,6 +59,12 @@ func main() {
 }
 
 func run(args []string) error {
+	// Claude Code starts this for the sessions lazychat runs; it opens no
+	// workspace and takes no lock, the lazychat that started the session
+	// does that.
+	if len(args) > 0 && args[0] == "mcp" {
+		return mcpServe(args[1:])
+	}
 	var (
 		showVersion   bool
 		workspaceName string
@@ -491,4 +498,16 @@ func menuBarApp(apps, home string) string {
 		}
 	}
 	return ""
+}
+
+// mcpServe answers a claude session's MCP client: the session's notice file
+// and its workspace's state come as flags.
+func mcpServe(args []string) error {
+	fs := flag.NewFlagSet("lazychat mcp", flag.ContinueOnError)
+	notice := fs.String("notice", "", "the session's notice file")
+	stateFile := fs.String("state", "", "the workspace's state file")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	return mcp.Serve(os.Stdin, os.Stdout, *notice, *stateFile)
 }

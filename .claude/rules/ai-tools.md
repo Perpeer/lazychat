@@ -96,6 +96,18 @@ paths:
   registry's order: the user wanted claude's and codex's apart. A resume
   from another folder makes codex ask which folder to use; lazychat resumes
   in the project's, the one the session recorded.
+- lazychat's MCP server (core/mcp, `lazychat mcp --notice <n> --state <ws>`)
+  goes to every claude session lazychat starts as `--mcp-config` beside
+  the `--settings` (Extras.MCP, Claude.Overlay): it adds to the user's
+  servers. It never reaches the running lazychat: `open_pane` and
+  `close_pane` write `<notice>.pane`, which Chat takes on its tick
+  (actions.PaneAsked, chat/side.go), as the hooks' notices are taken; no
+  socket was added. The user asked for an MCP over a command line; tried
+  with claude 2.1.302: `/mcp` shows "lazychat · 3 tools", the client's
+  first `server/discover` probe gets "no method" and connects anyway. The
+  pane is the session's (Chat.side), its rows taken off the session's pane
+  through kit.PaneTab.FootRows; its `Ctrl+X` is named only on a session
+  with one (sidePaneKeys).
 - Codex has no hook; its question is its window title, which leads with
   "[ ! ] Action Required" (blinking to "[ . ]") while an approval waits,
   by default (Codex.Asking, the title through AskReader). Its tui.notifications

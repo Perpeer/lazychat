@@ -369,6 +369,17 @@ them, and the session runs on behind the details. `2` only chooses the
 session; `Enter` goes in. A Codex session has the session tab alone: lazychat
 reads no report from Codex's record, so `3` does nothing there.
 
+A claude session lazychat runs can open a pane right under its own, to
+watch something beside it — a test run's live screen, `tail -f` of a log.
+lazychat gives each claude session its MCP server (`lazychat mcp`, added to
+yours with `--mcp-config`) with three tools: `open_pane` (a shell command,
+run in the project's folder, and its height, 8 rows when not given, 3 to
+half the box), `close_pane`, and `list_sessions` (the workspace's sessions).
+Ask the session in words ("open a pane and follow the run's log"). The
+session's pane gives up the rows; the pane shows while its session is
+shown, closes three seconds after its command ends, with `Ctrl+X` on the
+session's row, or when the session ends; a second `open_pane` replaces it.
+
 The box's last row, under a dim line and inside its border, holds what
 claude's status line hears, in short words between bullets: `Session 12%
 ↻25m • Week 38% ↻Thu 09:00 • Ctx ▮▮▯▯▯▯▯▯▯▯▯▯ 24%/1M • Cache 87% • +120

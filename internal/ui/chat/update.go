@@ -41,6 +41,7 @@ func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 		c.use = c.act.Use(c.cursorKey())
 		c.use.Added, c.use.Removed = c.cursorLines()
 		c.runOut(time.Now())
+		c.takePanes(time.Now())
 		var clock tea.Cmd
 		if msg.N%2 == 0 {
 			clock = c.readClocks()

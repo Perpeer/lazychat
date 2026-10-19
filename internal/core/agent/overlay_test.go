@@ -43,3 +43,18 @@ func TestOverlayCopies(t *testing.T) {
 		t.Errorf("the piece's own map changed: %v", got)
 	}
 }
+
+// lazychat's MCP server goes on the command line as a --mcp-config beside
+// the --settings, so it adds to the user's servers; none without one.
+func TestOverlayMCP(t *testing.T) {
+	c := &Claude{Home: t.TempDir()}
+	e := c.Overlay(Exec{Dir: t.TempDir(), Args: []string{"claude"}}, Extras{NoticeFile: "/n/k", MCP: []string{"/bin/lazychat", "mcp", "--notice", "/n/k"}})
+	args := strings.Join(e.Args, " ")
+	want := `--mcp-config {"mcpServers":{"lazychat":{"args":["mcp","--notice","/n/k"],"command":"/bin/lazychat"}}}`
+	if !strings.Contains(args, want) || !strings.Contains(args, "--settings ") {
+		t.Errorf("args: %s", args)
+	}
+	if e := c.Overlay(Exec{Dir: t.TempDir(), Args: []string{"claude"}}, Extras{NoticeFile: "/n/k"}); strings.Contains(strings.Join(e.Args, " "), "--mcp-config") {
+		t.Errorf("no server, yet %q", e.Args)
+	}
+}

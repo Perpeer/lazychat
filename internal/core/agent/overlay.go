@@ -13,6 +13,9 @@ type Extras struct {
 	NoticeFile string
 	StatusLine string
 	Dir, Home  string
+	// MCP is the command line of lazychat's MCP server for this session
+	// (`lazychat mcp …`); nil for none.
+	MCP []string
 }
 
 // A piece is one thing lazychat adds to a Claude Code session's settings;

@@ -14,6 +14,7 @@ import (
 
 	"lazychat/internal/core/files"
 
+	"lazychat/internal/core/mcp"
 	"lazychat/internal/term"
 )
 
@@ -173,4 +174,19 @@ type screenAsk struct {
 	s    *term.Session
 	gen  uint64
 	asks bool
+}
+
+// PaneAsked is a pane the session asked for under itself through lazychat's
+// MCP server since the last look, taken once.
+func (a *Actions) PaneAsked(key string) (mcp.PaneRequest, bool) {
+	if a.questions == "" {
+		return mcp.PaneRequest{}, false
+	}
+	return mcp.TakePane(filepath.Join(a.questions, key))
+}
+
+// StartPane runs a session's pane command in a shell in dir, cols by rows.
+func (a *Actions) StartPane(dir, command string, cols, rows int) (*term.Session, error) {
+	a.nextID++
+	return term.Start(a.nextID, "pane", "", dir, []string{"/bin/sh", "-c", command}, cols, rows, a.onOutput)
 }

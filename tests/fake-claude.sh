@@ -80,7 +80,9 @@ fi
 # The args start a line of their own: after the folder, whose length
 # changes with each test's temp name, a wrap could split what a test
 # looks for.
-printf 'FAKE CLAUDE READY in %s\nargs:%s\n' "$(pwd)" "$*"
+# lazychat's MCP server's JSON is long and no test reads it: shown short,
+# so a small screen keeps what the tests look for.
+printf 'FAKE CLAUDE READY in %s\nargs:%s\n' "$(pwd)" "$(printf '%s' "$*" | sed 's/ --mcp-config [^ ]*/ --mcp-config …/')"
 # FAKE_CLAUDE_BRACKETS=1 asks for bracketed paste, as claude does, and goes
 # on reading lines: a paste then Enter arrives as one line.
 [ -n "$FAKE_CLAUDE_BRACKETS" ] && printf '\033[?2004h'
@@ -174,6 +176,13 @@ while IFS= read -r line; do
     s=$(printf '%s' "$*" | grep -o "'[^']*\.status'" | head -n 1 | tr -d "'")
     [ -n "$s" ] && printf '%s' "${line#status }" > "$s"
     printf 'status sent\n'
+  esac
+  # "pane <json>" is claude asking lazychat's MCP server for a pane under
+  # the session: the server leaves the request beside the notice file.
+  case $line in pane\ *)
+    n=$(printf '%s' "$*" | grep -o "cat > '[^']*'" | head -n 1 | sed "s/^cat > '//; s/'$//")
+    [ -n "$n" ] && printf '%s' "${line#pane }" > "$n.pane"
+    printf 'pane asked\n'
   esac
   # "fail" is an answer ending on an API error: the StopFailure hook writes
   # its event to the file beside the question's.

@@ -45,7 +45,7 @@ func TestKeymapFooters(t *testing.T) {
 func TestKeymapTables(t *testing.T) {
 	help := helpText()
 	with := func(top []binding) []binding { return append(append([]binding(nil), top...), projectKeys...) }
-	for name, keys := range map[string][]binding{"session": with(sessionKeys), "no session": with(emptyRowKeys), "no project yet": emptyKeys, "move": moveKeys, "terminal": termKeys, "details": pageKeys, "session chosen": paneKeys} {
+	for name, keys := range map[string][]binding{"session": with(sessionKeys), "session with a pane": with(sidePaneKeys), "no session": with(emptyRowKeys), "no project yet": emptyKeys, "move": moveKeys, "terminal": termKeys, "details": pageKeys, "session chosen": paneKeys} {
 		t.Run(name, func(t *testing.T) {
 			if hidden := kit.Unlisted(keys); len(hidden) > 0 {
 				t.Errorf("keys that work but the footer does not name: %q", hidden)

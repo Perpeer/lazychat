@@ -38,7 +38,8 @@ enforces the lines, so a wrong import fails the check.
   state (the list cursor).
 - `internal/term` — the only package that touches ptys and the emulator.
 - `internal/core` — state, workspaces, history, AI tools (`agent`), session
-  status (`status`), Claude's usage (`usage`), `api`. No terminal
+  status (`status`), Claude's usage (`usage`), lazychat's MCP server for
+  its claude sessions (`mcp`), `api`. No terminal
   packages; `api` runs no subprocess.
 - `macos/Lazychat` — the menu bar app, Swift. The app is Lazychat; Lazy is
   only the mascot.
