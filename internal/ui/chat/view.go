@@ -31,6 +31,7 @@ func (c *Chat) View() string {
 		dh := c.draftH(g.bodyH)
 		h := g.bodyH
 		var right string
+		var side []string // the session's panes, under the panel
 		r, ok := c.tree.Current()
 		switch {
 		case c.rep.shown:
@@ -40,16 +41,17 @@ func (c *Chat) View() string {
 		default:
 			// The block blinks with the tick while the session has the keys; unfocused it is a steady underline.
 			lines := c.Pane.View(w-2, h-2-c.FootRows, c.Capture.Held(), c.Tick%2 == 0)
-			side := c.sideLines(w)
-			term := c.rightBoxOver(c.chatTabs(c.Pane.State()), lines, make([]string, max(0, len(side)-1)), w, h, c.Capture.Held() || c.PaneSel, true)
+			// The session's panes are boxes of their own under its box,
+			// which is that much shorter: nothing is drawn over the chat.
+			side = c.sideBoxes(w)
+			term := c.rightBox(c.chatTabs(c.Pane.State()), lines, w, h-len(side), c.Capture.Held() || c.PaneSel, true)
 			from, length := c.Pane.Scrollbar(h - 2 - c.FootRows)
 			right = kit.WithScrollbar(term, from, length)
-			if rows := strings.Split(right, "\n"); len(side) > 0 && len(rows) >= len(side) {
-				// Over the box's lower rows, as the draft: the session keeps its size.
-				right = strings.Join(append(rows[:len(rows)-len(side)], side...), "\n")
-			}
 		}
 		right = hits.Panel(2, right)
+		if len(side) > 0 {
+			right += "\n" + strings.Join(side, "\n")
+		}
 		if dh > 0 {
 			// Over the pane's lower rows, so the session keeps its size.
 			rows := strings.Split(right, "\n")

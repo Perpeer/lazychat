@@ -23,8 +23,12 @@ type clockRead struct {
 	turn *usage.Turn
 }
 
-// clocksMsg is a read's result: each read session's last prompt.
-type clocksMsg struct{ last map[string]*usage.Turn }
+// clocksMsg is a read's result: each read session's last prompt, and the
+// subagents' lines of each session with a pane following them.
+type clocksMsg struct {
+	last   map[string]*usage.Turn
+	agents map[string][]agentLine
+}
 
 // readClocks reads what the live sessions' transcripts gained.
 func (c *Chat) readClocks() tea.Cmd {
@@ -35,7 +39,10 @@ func (c *Chat) readClocks() tea.Cmd {
 	if k.paths == nil {
 		k.paths, k.read = map[string]string{}, map[string]clockRead{}
 	}
-	type job struct{ key, id, dir string }
+	type job struct {
+		key, id, dir string
+		agents       bool // a pane follows its subagents
+	}
 	var jobs []job
 	for _, r := range c.core.Store.Sessions {
 		s, ok := c.act.Live.Get(r.Key)
@@ -46,7 +53,7 @@ func (c *Chat) readClocks() tea.Cmd {
 			continue
 		}
 		if p, ok := c.core.Store.ProjectNamed(r.Project); ok {
-			jobs = append(jobs, job{r.Key, r.ID, p.Path})
+			jobs = append(jobs, job{r.Key, r.ID, p.Path, c.agentsPane(r.Key) != nil})
 		}
 	}
 	if len(jobs) == 0 {
@@ -55,7 +62,7 @@ func (c *Chat) readClocks() tea.Cmd {
 	k.reading = true
 	paths, read, store, core := k.paths, k.read, &c.files, c.core
 	return func() tea.Msg {
-		out := map[string]*usage.Turn{}
+		out, agents := map[string]*usage.Turn{}, map[string][]agentLine{}
 		for _, j := range jobs {
 			path, ok := paths[j.key]
 			if !ok {
@@ -75,6 +82,9 @@ func (c *Chat) readClocks() tea.Cmd {
 				}
 			}
 			s, at := store.update(path)
+			if j.agents {
+				agents[j.key] = agentLines(s)
+			}
 			// A transcript that did not grow has the same last prompt.
 			if was, ok := read[j.key]; ok && was.at == at {
 				out[j.key] = was.turn
@@ -87,7 +97,7 @@ func (c *Chat) readClocks() tea.Cmd {
 			}
 			read[j.key] = clockRead{at: at, turn: last}
 		}
-		return clocksMsg{out}
+		return clocksMsg{out, agents}
 	}
 }
 
@@ -99,5 +109,10 @@ func (c *Chat) clocked(msg clocksMsg) {
 	}
 	for k, t := range msg.last {
 		c.clocks.last[k] = t
+	}
+	for k, lines := range msg.agents {
+		if sp := c.agentsPane(k); sp != nil {
+			sp.lines = lines
+		}
 	}
 }

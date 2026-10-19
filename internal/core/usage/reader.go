@@ -302,6 +302,21 @@ func blocks(raw json.RawMessage) ([]block, bool) {
 	return bs, true
 }
 
+// textOf is a message's text: a string content, or its first text block.
+func textOf(raw json.RawMessage, bs []block, isBlocks bool) string {
+	if !isBlocks {
+		var s string
+		_ = json.Unmarshal(raw, &s)
+		return s
+	}
+	for _, b := range bs {
+		if b.Type == "text" {
+			return b.Text
+		}
+	}
+	return ""
+}
+
 func (r *Reader) mainLine(line []byte) {
 	var rec record
 	if err := json.Unmarshal(line, &rec); err != nil {
@@ -735,7 +750,12 @@ func (r *Reader) agentLine(f *agentFile, line []byte) {
 		}
 	}
 	if rec.Type == "user" {
-		bs, _ := blocks(rec.Message.Content)
+		bs, isBlocks := blocks(rec.Message.Content)
+		// Its first message is its prompt: known while it runs, before the
+		// parent's result names it.
+		if a.Prompt == "" {
+			a.Prompt = textOf(rec.Message.Content, bs, isBlocks)
+		}
 		r.userBlocks(f.run, &rec, bs)
 		return
 	}

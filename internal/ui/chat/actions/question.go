@@ -176,11 +176,11 @@ type screenAsk struct {
 	asks bool
 }
 
-// PaneAsked is a pane the session asked for under itself through lazychat's
-// MCP server since the last look, taken once.
-func (a *Actions) PaneAsked(key string) (mcp.PaneRequest, bool) {
+// PaneAsked is what the session asked of its panes through lazychat's MCP
+// server since the last look, oldest first, taken once.
+func (a *Actions) PaneAsked(key string) []mcp.PaneRequest {
 	if a.questions == "" {
-		return mcp.PaneRequest{}, false
+		return nil
 	}
 	return mcp.TakePane(filepath.Join(a.questions, key))
 }

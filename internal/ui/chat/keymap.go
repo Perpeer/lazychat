@@ -38,7 +38,7 @@ func chatScreen(c *Chat) kit.Screen { return c.Screen }
 // session has the keys they never reach Bubble Tea, the input router hands
 // them to the session. They are filled in init because the help binding
 // reads them all.
-var sessionKeys, sidePaneKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, draftKeys []binding
+var sessionKeys, sideKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, draftKeys []binding
 
 // The report's table, and panel 2's while chosen but not entered.
 var pageKeys, paneKeys []binding
@@ -71,20 +71,23 @@ func init() {
 		{Key: kit.ChatKeys.Wheel},
 		keyHelp, keyQuit,
 	}, moves...)
-	// A session with a pane under it: the same, and the key that closes it,
-	// named only while there is one.
-	sidePaneKeys = append([]binding{
-		{Key: kit.ChatKeys.SideHide, Run: act(func(c *Chat) {
-			if r, ok := c.tree.Session(); ok {
-				c.togglePane(r.Key)
+	// A pane a session opened, given the keys by a click: its own keys, on
+	// no other table.
+	sideKeys = []binding{
+		{Key: kit.ChatKeys.SideToggle, Run: act(func(c *Chat) {
+			if sp := c.focusedPane(); sp != nil {
+				c.togglePane(sp)
 			}
 		})},
 		{Key: kit.ChatKeys.SideClose, Run: act(func(c *Chat) {
-			if r, ok := c.tree.Session(); ok {
-				c.closePane(r.Key)
+			if sp := c.focusedPane(); sp != nil {
+				c.closePane(c.Pane.Key, sp)
+				c.fitPanes()
 			}
 		})},
-	}, sessionKeys...)
+		{Key: kit.ChatKeys.SideBack, Run: act(func(c *Chat) { c.sideFocus = nil })},
+		keyHelp, keyQuit,
+	}
 	// On the empty row Enter makes the first session, as n does.
 	emptyRowKeys = append([]binding{kit.EnterToo(keyNew), keyResume, keyHelp, keyQuit}, moves...)
 	// The project's row, under the session's or the empty row's, the same
@@ -122,7 +125,7 @@ func init() {
 // tables are the footer's two rows for where the keys are now: the row's
 // own and, under a session or a project's empty row, the project's.
 func (c *Chat) tables() (top, below []binding) {
-	r, onSession := c.tree.Session()
+	_, onSession := c.tree.Session()
 	switch {
 	case c.drafting:
 		return draftKeys, nil
@@ -130,12 +133,12 @@ func (c *Chat) tables() (top, below []binding) {
 		return termKeys, nil
 	case c.rep.shown && c.repFocus:
 		return pageKeys, nil
+	case c.focusedPane() != nil:
+		return sideKeys, nil
 	case c.PaneSel:
 		return paneKeys, nil
 	case c.tree.Moving:
 		return moveKeys, nil
-	case onSession && c.side[r.Key] != nil:
-		return sidePaneKeys, projectKeys
 	case onSession:
 		return sessionKeys, projectKeys
 	case c.tree.OnProject():
@@ -163,6 +166,8 @@ func (c *Chat) Lead() string {
 	switch {
 	case c.rep.shown && c.repFocus && !c.Capture.Held():
 		return "details"
+	case c.focusedPane() != nil && !c.Capture.Held():
+		return "pane"
 	case c.PaneSel && !c.Capture.Held():
 		return "session"
 	case below != nil:
@@ -185,13 +190,14 @@ func helpText() string {
 		"The cursor moves from session to session; a project with none has one row saying so. The footer's first row names what can be done with the row, the second what can be done with its project, and only that works. With no project yet, o opens one.",
 		"",
 	}
-	lines = append(lines, kit.HelpSection("Session", sidePaneKeys)...)
+	lines = append(lines, kit.HelpSection("Session", sessionKeys)...)
 	lines = append(lines, kit.HelpSection("No session", emptyRowKeys)...)
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
 	lines = append(lines, kit.HelpSection("Terminal", termKeys)...)
 	lines = append(lines, kit.HelpSection("Session chosen", paneKeys)...)
 	lines = append(lines, kit.HelpSection("Draft", draftKeys)...)
+	lines = append(lines, kit.HelpSection("A session's pane (a click on its title bar)", sideKeys)...)
 	lines = append(lines, kit.HelpSection("Details", pageKeys)...)
 	lines = append(lines, kit.HelpSection("Move mode", moveKeys)...)
 	lines = append(lines, kit.HelpFoot...)

@@ -146,6 +146,24 @@ func TestSampleSession(t *testing.T) {
 	}
 }
 
+// A subagent's prompt is known from its own first message while it runs,
+// before the parent's result names it.
+func TestAgentPromptWhileRunning(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "s-9.jsonl")
+	w := newTranscript(t, path)
+	w.call("m1", 1, 10, 100, 5, "Agent")
+	w.flush()
+	sub := newTranscript(t, filepath.Join(root, "s-9", "subagents", "agent-bg.jsonl"))
+	sub.add(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "count the boards\nby colour"}})
+	sub.call("sub-1", 2, 600, 2400, 16, "Bash")
+	sub.flush()
+	s, _ := Open(path).Update()
+	if len(s.Agents) != 1 || s.Agents[0].Prompt != "count the boards\nby colour" || s.Agents[0].Done() {
+		t.Fatalf("agents: %+v", s.Agents)
+	}
+}
+
 // A long quiet is a resume; a fork's copied history is counted once.
 func TestResumeAndFork(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s-2.jsonl")

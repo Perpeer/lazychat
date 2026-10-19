@@ -53,7 +53,7 @@ func TestServe(t *testing.T) {
 		t.Errorf("initialize: %v", replies[0])
 	}
 	tools := out.String()
-	for _, name := range []string{`"open_pane"`, `"close_pane"`, `"list_sessions"`} {
+	for _, name := range []string{`"open_pane"`, `"follow_agents"`, `"close_pane"`, `"list_sessions"`} {
 		if !strings.Contains(tools, name) {
 			t.Errorf("no tool %s", name)
 		}
@@ -64,17 +64,20 @@ func TestServe(t *testing.T) {
 	if replies[4]["error"] == nil {
 		t.Errorf("an unknown method got no error: %v", replies[4])
 	}
-	req, ok := TakePane(notice)
-	if !ok || req.Rows != 6 || req.Command != "tail -f run.log" || req.Close {
-		t.Fatalf("the pane request: %+v %v", req, ok)
+	reqs := TakePane(notice)
+	if len(reqs) != 1 || reqs[0].Rows != 6 || reqs[0].Command != "tail -f run.log" || reqs[0].Close {
+		t.Fatalf("the pane request: %+v", reqs)
 	}
-	if _, ok := TakePane(notice); ok {
+	if reqs := TakePane(notice); len(reqs) != 0 {
 		t.Error("a request was taken twice")
 	}
-	if err := Serve(strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"close_pane","arguments":{}}}`+"\n"), &out, notice, st.Path); err != nil {
+	// Two calls before lazychat looks: both are taken, in order.
+	calls := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"follow_agents","arguments":{}}}` + "\n" +
+		`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"close_pane","arguments":{"command":"tail -f run.log"}}}` + "\n"
+	if err := Serve(strings.NewReader(calls), &out, notice, st.Path); err != nil {
 		t.Fatal(err)
 	}
-	if req, ok := TakePane(notice); !ok || !req.Close {
-		t.Errorf("the close: %+v %v", req, ok)
+	if reqs := TakePane(notice); len(reqs) != 2 || !reqs[0].Agents || !reqs[1].Close || reqs[1].Command != "tail -f run.log" {
+		t.Errorf("the follow and the close: %+v", reqs)
 	}
 }

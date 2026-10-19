@@ -21,17 +21,11 @@ const useRows = 2
 // line heard on its last row, inside: on the title row it found too little
 // room beside the tabs, and on the bottom border it cluttered the screen.
 func (c *Chat) rightBox(title string, lines []string, w, h int, focused, exact bool) string {
-	return c.rightBoxOver(title, lines, nil, w, h, focused, exact)
-}
-
-// rightBoxOver is rightBox with under rows left below the use row: room
-// for the pane a session opened, drawn over them and the box's bottom.
-func (c *Chat) rightBoxOver(title string, lines, under []string, w, h int, focused, exact bool) string {
-	n := max(0, h-2-useRows-len(under))
-	body := make([]string, n, n+useRows+len(under))
+	n := max(0, h-2-useRows)
+	body := make([]string, n, n+useRows)
 	copy(body, lines)
 	body = append(body, kit.StyleDim.Render(strings.Repeat("─", max(0, w-2))), " "+useTitle(c.use, w-3, time.Now()))
-	return kit.Box(title, append(body, under...), w, h, focused, exact)
+	return kit.Box(title, body, w, h, focused, exact)
 }
 
 // useTitle draws what claude's status line heard in short words, a bullet

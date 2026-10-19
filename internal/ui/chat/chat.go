@@ -48,10 +48,13 @@ type Chat struct {
 	// use is what the cursor session's status line last heard, read each
 	// tick for the title row.
 	use agent.Use
+	// side are the panes sessions opened under themselves, by session key,
+	// in the order opened; sideFocus is the one with the keys, sideDrag the
+	// one a drag selects in.
+	side                map[string][]*sidePane
+	sideFocus, sideDrag *sidePane
 	// first is the session limit's first reading in its window, the start
 	// of the rate its run-out is worked out from.
-	// side are the panes sessions opened under themselves, by session key.
-	side  map[string]*sidePane
 	first struct {
 		at   int64 // the window's reset
 		used int
@@ -62,7 +65,7 @@ type Chat struct {
 var _ kit.Tab = (*Chat)(nil)
 
 func New(core *api.Core, screen kit.Screen) *Chat {
-	c := &Chat{core: core, side: map[string]*sidePane{}}
+	c := &Chat{core: core, side: map[string][]*sidePane{}}
 	c.Init(screen)
 	c.FootRows = useRows
 	c.act = actions.New(core, c, func() { screen.Send(termMsg{}) })
@@ -99,8 +102,12 @@ func (c *Chat) Resize(r kit.Rect) {
 	c.SetRect(r)
 	c.act.Live.ResizeAll(c.PaneSize())
 	cols, _ := c.PaneSize()
-	for key, sp := range c.side {
-		sp.pane.Point(key, sp.s, cols, sp.rows)
+	for key, list := range c.side {
+		for _, sp := range list {
+			if sp.s != nil {
+				sp.pane.Point(key, sp.s, cols, sp.rows)
+			}
+		}
 	}
 }
 

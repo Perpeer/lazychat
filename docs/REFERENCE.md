@@ -369,23 +369,32 @@ them, and the session runs on behind the details. `2` only chooses the
 session; `Enter` goes in. A Codex session has the session tab alone: lazychat
 reads no report from Codex's record, so `3` does nothing there.
 
-A claude session lazychat runs can open a pane right under its own, to
-watch something beside it — a test run's live screen, `tail -f` of a log.
-lazychat gives each claude session its MCP server (`lazychat mcp`, added to
-yours with `--mcp-config`) with three tools: `open_pane` (a shell command,
-run in the project's folder, and its height, 8 rows when not given, 3 to
-half the box), `close_pane`, and `list_sessions` (the workspace's sessions).
-Ask the session in words ("open a pane and follow the run's log"). The
-pane is a box over the session box's lower rows, as the draft is, with the
-use row above it, so the session keeps its size; its command and whether
-it runs are in its top border (a long command shows its end, `…` before
-it). It shows while its session is shown. It opens hidden, its title alone
-in the session box's bottom border, its command running. On the session's
-row `z` shows it and hides it again, `Ctrl+X` closes it and stops its
-command; a click on its title offers both. A drag over its
-rows selects their text, and the release copies it. It also closes three
-seconds after its command ends, or when the session ends; a second
-`open_pane` replaces it.
+A claude session lazychat runs can open panes under its own, to watch
+something beside it — a test run's live screen, `tail -f` of a log, its
+subagents at work. lazychat gives each claude session its MCP server
+(`lazychat mcp`, added to yours with `--mcp-config`; its subagents get it
+too) with four tools: `open_pane` (a shell command, run in the project's
+folder, and its height, 8 rows when not given, 3 to about half the right
+side), `follow_agents` (a pane lazychat draws from the session's
+transcript: each subagent's start and prompt, then each of its tool calls,
+in its own colour, and its end), `close_pane` (one pane by its command, or
+all), and `list_sessions` (the workspace's sessions). Ask the session in
+words ("open a pane and follow the run's log").
+
+Each pane is a box of its own under the session's box, which gets that
+much shorter, so nothing covers the chat or its use row. Panes stack in
+the order opened, the first on top, and show while their session is
+shown. A pane's first row is its title bar: the command (a long one shows
+its end, `…` before it) and whether it runs. A pane opens hidden, its box
+holding the bar alone, its command running. A click on the bar shows or
+hides the pane and gives it the keys (its border lit): the footer then
+names its keys alone — `Enter` shows or hides it, `x` closes it and stops
+its command, `Esc` or a click elsewhere gives the keys back. No other
+footer names a pane's key. A drag over a command pane's rows selects
+their text, and the release copies it. A pane shows only while the panes
+leave the session half the right side. It closes three seconds after its
+command ends, or when the session ends; `open_pane` with the command of
+an open pane replaces that one.
 
 The box's last row, under a dim line and inside its border, holds what
 claude's status line hears, in short words between bullets: `Session 12%

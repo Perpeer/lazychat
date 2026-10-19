@@ -22,27 +22,39 @@ import (
 const PaneSuffix = ".pane"
 
 // PaneRequest is a session's ask: a pane under it running Command, Rows
-// high, or Close for the one it has.
+// high, or one following its subagents (Agents); Close closes the pane
+// running Command, or with none every pane it has.
 type PaneRequest struct {
 	Rows    int    `json:"rows,omitempty"`
 	Command string `json:"command,omitempty"`
+	Agents  bool   `json:"agents,omitempty"`
 	Close   bool   `json:"close,omitempty"`
 }
 
-// TakePane reads and removes the request beside notice; false when there
-// is none or it does not parse.
-func TakePane(notice string) (PaneRequest, bool) {
+// TakePane reads and removes the requests beside notice, oldest first;
+// those that do not parse are left out.
+func TakePane(notice string) []PaneRequest {
 	path := notice + PaneSuffix
-	b, err := os.ReadFile(path)
+	// Moved aside first: a call answered meanwhile starts a new file, not
+	// one about to be removed.
+	taking := path + ".taking"
+	if files.Move(os.Rename, path, taking) != nil {
+		return nil
+	}
+	b, err := os.ReadFile(taking)
+	_ = files.Remove(taking)
 	if err != nil {
-		return PaneRequest{}, false
+		return nil
 	}
-	_ = files.Remove(path)
-	var r PaneRequest
-	if json.Unmarshal(b, &r) != nil || !r.Close && strings.TrimSpace(r.Command) == "" {
-		return PaneRequest{}, false
+	var out []PaneRequest
+	for _, line := range strings.Split(string(b), "\n") {
+		var r PaneRequest
+		if json.Unmarshal([]byte(line), &r) != nil || !r.Close && !r.Agents && strings.TrimSpace(r.Command) == "" {
+			continue
+		}
+		out = append(out, r)
 	}
-	return r, true
+	return out
 }
 
 type message struct {
@@ -54,7 +66,7 @@ type message struct {
 var tools = []map[string]any{
 	{
 		"name":        "open_pane",
-		"description": "Open a pane right under this session in lazychat, running a shell command, to watch something beside the session (a test run's live screen, tail -f of a log). The session's own pane gives up the rows. The pane closes a few seconds after its command ends, or with close_pane; a second call replaces it.",
+		"description": "Open a pane under this session in lazychat, running a shell command, to watch something beside the session (a test run's live screen, tail -f of a log). It opens hidden, its title bar alone; the user shows it with a click. Each call adds a pane under the ones open; a call with the command of an open pane replaces that one. A pane closes a few seconds after its command ends, or with close_pane.",
 		"inputSchema": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -65,9 +77,24 @@ var tools = []map[string]any{
 		},
 	},
 	{
+		"name":        "follow_agents",
+		"description": "Open a pane under this session in lazychat that follows the session's subagents as they run: each one's prompt, then each of its tool calls (the command or file). Read from the session's transcript; a second call does nothing.",
+		"inputSchema": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"rows": map[string]any{"type": "integer", "description": "the pane's height in rows (3 to half the box; 8 when not given)"},
+			},
+		},
+	},
+	{
 		"name":        "close_pane",
-		"description": "Close the pane open_pane opened under this session.",
-		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
+		"description": "Close a pane open_pane or follow_agents opened under this session: the one running command, or every one when no command is given.",
+		"inputSchema": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"command": map[string]any{"type": "string", "description": "the pane's command as open_pane got it; leave out to close them all"},
+			},
+		},
 	},
 	{
 		"name":        "list_sessions",
@@ -144,12 +171,17 @@ func call(name string, args PaneRequest, notice, stateFile string) (string, erro
 		if err := ask(notice, PaneRequest{Rows: args.Rows, Command: args.Command}); err != nil {
 			return "", err
 		}
-		return "lazychat opens the pane under this session in a moment, running: " + args.Command, nil
-	case "close_pane":
-		if err := ask(notice, PaneRequest{Close: true}); err != nil {
+		return "lazychat opens the pane under this session in a moment, hidden, running: " + args.Command, nil
+	case "follow_agents":
+		if err := ask(notice, PaneRequest{Rows: args.Rows, Agents: true}); err != nil {
 			return "", err
 		}
-		return "lazychat closes this session's pane in a moment", nil
+		return "lazychat opens a pane following this session's subagents in a moment, hidden", nil
+	case "close_pane":
+		if err := ask(notice, PaneRequest{Command: args.Command, Close: true}); err != nil {
+			return "", err
+		}
+		return "lazychat closes the pane in a moment", nil
 	case "list_sessions":
 		st, err := state.Load(stateFile)
 		if err != nil {
@@ -179,5 +211,6 @@ func ask(notice string, r PaneRequest) error {
 	if err != nil {
 		return err
 	}
-	return files.WriteAtomic(notice+PaneSuffix, b, 0o600)
+	// Appended: two calls between two of lazychat's ticks are both taken.
+	return files.AppendLine(notice+PaneSuffix, string(b))
 }

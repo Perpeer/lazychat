@@ -99,25 +99,36 @@ paths:
 - lazychat's MCP server (core/mcp, `lazychat mcp --notice <n> --state <ws>`)
   goes to every claude session lazychat starts as `--mcp-config` beside
   the `--settings` (Extras.MCP, Claude.Overlay): it adds to the user's
-  servers. It never reaches the running lazychat: `open_pane` and
-  `close_pane` write `<notice>.pane`, which Chat takes on its tick
+  servers. It never reaches the running lazychat: `open_pane`,
+  `follow_agents` and `close_pane` append a line to `<notice>.pane`
+  (TakePane moves it aside before reading, so a call meanwhile starts a
+  new file), which Chat takes on its tick
   (actions.PaneAsked, chat/side.go), as the hooks' notices are taken; no
   socket was added. The user asked for an MCP over a command line; tried
   with claude 2.1.302: `/mcp` shows "lazychat · 3 tools", the client's
-  first `server/discover` probe gets "no method" and connects anyway. The
-  pane is the session's (Chat.side); its `z` (hide to its title bar, one row)
-  and `Ctrl+X` (close, its command stopped) are named only on a session
-  with one (sidePaneKeys), and a click on its title (hits.Item) offers
-  both in a kit.Picker. At the user's word it is a box over the session
-  box's lower rows, as the draft is, the use row moved up above it
-  (rightBoxOver): the session keeps its size, since a resize makes claude
-  redraw. A frame inside the box under the use row, rows taken off the
-  session through FootRows, came first; the user asked for the overlay.
-  It opens hidden, its title in the box's bottom border, the user opens
-  it to look; its title keeps the command's
-  end (text.FitLeft), where a log's file is; and it is a kit.TermPane, so
-  a drag selects and copies as in the session's pane (Chat.sideMouse,
-  from the tree; while the session holds the keys the mouse is its own).
+  first `server/discover` probe gets "no method" and connects anyway.
+  Subagents inherit the session's MCP tools, background ones too (Claude
+  Code's sub-agents docs), unless an agent's `tools:` leaves them out.
+- The panes are the session's (Chat.side, a list in the order opened),
+  each a box of its own under the session's box, which gets shorter
+  through kit.PaneTab.FootRows (fitPanes). The user's road there: a line
+  under the session's pane, a frame inside the box, a frame under the use
+  row, a box drawn over the box's lower rows as the draft is (the session
+  kept its size), and last, at the user's word that the chat must show as
+  it is, a window of its own; claude redraws once when a pane opens, shows
+  or hides. A pane opens hidden: its box holds its title bar alone (a
+  filled bar, kit.StyleHeader, the user's pick over a dim one), never text
+  in a border. Its keys are its own: a click on its bar toggles it and
+  focuses it (Chat.sideFocus), and only then the footer names them
+  (sideKeys: enter, x, esc); `z` and `Ctrl+X` on the session's footer and
+  a click menu came first and were taken out at the user's word. The title
+  keeps the command's end (text.FitLeft), where a log's file is. A command
+  pane is a kit.TermPane, so a drag selects and copies as in the session's
+  pane (Chat.sideMouse, from the tree; while the session holds the keys
+  the mouse is its own). The subagents' pane (`follow_agents`) has no pty:
+  its lines come from the transcript the clocks read anyway (agentLines in
+  the clocks' goroutine), a subagent's prompt from its own first message
+  while it runs (usage reader agentLine).
 - Codex has no hook; its question is its window title, which leads with
   "[ ! ] Action Required" (blinking to "[ . ]") while an approval waits,
   by default (Codex.Asking, the title through AskReader). Its tui.notifications

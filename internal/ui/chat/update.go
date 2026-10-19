@@ -236,11 +236,10 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 		if c.tabClick(msg) {
 			return nil
 		}
-		// The shown session's pane's title: its actions.
-		if _, ok := hits.ItemAt(msg, 1); ok && c.side[c.Pane.Key] != nil {
-			c.sideMenu(c.Pane.Key)
+		if c.sideClick(msg) {
 			return nil
 		}
+		c.sideFocus = nil // a click elsewhere gives the keys back to the tree
 	}
 	hit := hits.At(msg, len(c.tree.Sessions()), len(c.core.Store.Projects))
 	if c.rep.shown {
@@ -308,7 +307,7 @@ func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 // pointAt is a click beside a session that had the keys: the cursor goes to
 // the row or the project clicked, without opening or starting anything.
 func (c *Chat) pointAt(msg tea.MouseMsg) {
-	if c.tabClick(msg) {
+	if c.tabClick(msg) || c.sideClick(msg) {
 		return
 	}
 	hit := hits.At(msg, len(c.tree.Sessions()), len(c.core.Store.Projects))
@@ -323,6 +322,7 @@ func (c *Chat) pointAt(msg tea.MouseMsg) {
 // takeKeys gives the shown session the keys, which is looking at it: a
 // finished one stops calling at once, and waits quietly for its prompt.
 func (c *Chat) takeKeys() {
+	c.sideFocus = nil
 	if c.Capture.Take() {
 		c.board.See(c.Pane.Key)
 	}
