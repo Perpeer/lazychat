@@ -6,8 +6,6 @@ package actions
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -65,29 +63,6 @@ func New(host Host, tree Shells, onOutput func()) *Actions {
 	return &Actions{host: host, tree: tree, Live: term.NewRegistry(), onOutput: onOutput}
 }
 
-// Program is the shell a terminal runs: $SHELL, else zsh, else sh.
-func Program() string {
-	if s := os.Getenv("SHELL"); s != "" {
-		if _, err := exec.LookPath(s); err == nil {
-			return s
-		}
-	}
-	for _, s := range []string{"/bin/zsh", "/bin/sh"} {
-		if _, err := os.Stat(s); err == nil {
-			return s
-		}
-	}
-	return "sh"
-}
-
-// shellArgv runs the shell without the variables that say it is in
-// Terminal.app: there macOS's own profile would restore a Terminal window's
-// saved session into it and print about it, and it is not in Terminal.app
-// but in lazychat's pane.
-func shellArgv(program string) []string {
-	return []string{"/usr/bin/env", "-u", "TERM_PROGRAM", "-u", "TERM_PROGRAM_VERSION", "-u", "TERM_SESSION_ID", program, "-l"}
-}
-
 // Start opens a new shell in the project's folder, as a login shell so it
 // reads the user's profile, and shows it with the keys.
 func (a *Actions) Start(p state.Project) {
@@ -97,11 +72,11 @@ func (a *Actions) Start(p state.Project) {
 }
 
 func (a *Actions) open(p state.Project) (string, *term.Session, bool) {
-	program := Program()
+	program := term.Shell()
 	key, name := a.tree.Add(p, filepath.Base(program))
 	cols, rows := a.host.PaneSize()
 	a.nextID++
-	s, err := term.Start(a.nextID, name, p.Name, p.Path, shellArgv(program), cols, rows, a.onOutput)
+	s, err := term.Start(a.nextID, name, p.Name, p.Path, term.ShellArgv(program), cols, rows, a.onOutput)
 	if err != nil {
 		a.tree.Remove(key)
 		a.host.Note("new terminal: %v", err)

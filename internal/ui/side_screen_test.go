@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 
 	"lazychat/internal/core/state"
 	"lazychat/internal/ui/kit"
@@ -80,12 +82,13 @@ func TestSidePane(t *testing.T) {
 
 	// A click on its bar: shown, and its keys on the footer alone.
 	clickBar(" ▸ echo watching")
-	d.expect(" ▾ echo watching", "│watching the shed", "(enter) show/hide", "(x) close pane", "(esc) back")
+	d.expect(" ▾ echo watching", "│watching the shed", "(enter) go in", "(space) show/hide", "(x) close pane", "(esc) back")
 	d.expectNot("(w) draft")
 	d.key("esc")
 	fits("shown")
 
-	// A drag over the pane's first row selects it; the release copies.
+	// A press on the pane's rows goes in; a drag over its first row selects
+	// it, and the release copies.
 	scr := strings.Split(d.screen(), "\n")
 	y := lineOf(d.screen(), "│watching the shed")
 	x := len([]rune(scr[y][:strings.Index(scr[y], "│watching the shed")])) + 1
@@ -96,11 +99,13 @@ func TestSidePane(t *testing.T) {
 	if copied != "watching the shed" {
 		t.Fatalf("the drag copied %q, want %q", copied, "watching the shed")
 	}
+	d.expect("(ctrl+q) back to lazychat")
+	d.leave()
 
-	// Its keys: enter hides and shows, esc gives the keys back.
-	d.key("enter")
+	// Its keys: space hides and shows, esc gives the keys back.
+	d.key(" ")
 	d.expect(" ▸ echo watching")
-	d.key("enter")
+	d.key(" ")
 	d.expect(" ▾ echo watching")
 	d.key("esc")
 	d.expect("(w) draft")
@@ -150,5 +155,57 @@ func TestSidePane(t *testing.T) {
 	d.untilIn(3*waitFor, "the pane did not go after its command ended", func() bool {
 		return !strings.Contains(d.screen(), "blue-door.log ")
 	})
+	d.quitApp()
+}
+
+// t on a session's row opens a terminal under it: the user's shell, shown
+// and with the keys, as the Terminal tab's; typing runs in it, the wheel
+// scrolls its history, and while it is focused or holds the keys its box,
+// not the project list's, is lit.
+func TestSidePaneTerminal(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	defer lipgloss.SetColorProfile(termenv.Ascii)
+	e, _ := seeded(t, state.Session{Tool: "claude", Name: "alpha"})
+	d := start(t, e, 160, 40)
+	accent := kit.StyleAccent.Render("x")
+	accent = accent[:strings.Index(accent, "x")]
+	listLit := func() bool {
+		for _, row := range strings.Split(d.app.View(), "\n") {
+			if strings.Contains(row, accent+"┌ [1] projects") {
+				return true
+			}
+		}
+		return false
+	}
+	d.session("oak", "")
+	d.until("the project list is not lit with the tree's keys", listLit)
+
+	d.key("t")
+	d.expect(" ▾ sh", "(ctrl+q) back to lazychat")
+	d.until("the list stays lit while the terminal has the keys", func() bool { return !listLit() })
+	d.raw("seq 1 60\r")
+	d.expect("│60 ")
+	d.raw("echo typed in the shell\r")
+	d.expect("│typed in the shell")
+	d.leave()
+	d.expect("(enter) go in")
+	if listLit() {
+		t.Fatalf("the project list is lit while the terminal is focused")
+	}
+
+	// The wheel over its rows scrolls its history, and back.
+	y := lineOf(d.screen(), " ▾ sh") + 2
+	x := kit.ListWidth(160) + railW + 4
+	for range 4 {
+		d.mouse(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelUp})
+	}
+	d.until("the wheel did not scroll the terminal", func() bool { return !strings.Contains(d.screen(), "│typed in the shell") })
+	for range 4 {
+		d.mouse(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	}
+	d.expect("│typed in the shell")
+
+	d.key("esc")
+	d.until("the project list is not lit once the pane lets go", listLit)
 	d.quitApp()
 }

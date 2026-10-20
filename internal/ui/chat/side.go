@@ -26,6 +26,7 @@ import (
 type sidePane struct {
 	s       *term.Session // the command's; nil for the subagents' pane
 	pane    kit.TermPane  // its view, with the session pane's selection
+	cap     *kit.Capture  // its hold on the keys; nil for the subagents' pane
 	lines   []agentLine   // the subagents' pane's, read from the transcript
 	rows    int
 	command string
@@ -106,9 +107,95 @@ func (c *Chat) openPane(r state.Session, req mcp.PaneRequest) {
 	}
 	// Hidden at first, its title bar alone: the user opens it when they
 	// want to look.
-	sp := &sidePane{s: s, rows: rows, command: req.Command, hidden: true}
-	sp.pane.Point(r.Key, s, cols, rows)
-	c.side[r.Key] = append(c.side[r.Key], sp)
+	c.addPane(r.Key, &sidePane{s: s, rows: rows, command: req.Command, hidden: true})
+}
+
+// openShell opens a terminal under the shown session: the user's shell in
+// its project's folder, shown and with the keys.
+func (c *Chat) openShell(r state.Session) {
+	p, ok := c.core.Store.ProjectNamed(r.Project)
+	if !ok {
+		return
+	}
+	// A pane lives as long as its session: a stopped one would close it.
+	if s, live := c.act.Live.Get(r.Key); !live || !s.Alive() {
+		c.Note("%s is not running: a terminal opens under a running session", r.Name)
+		return
+	}
+	rows := c.paneRows(0)
+	if c.sideRowsAll()+3+rows > c.BodyH()/2 {
+		c.Note("no room for a terminal under the session: hide or close a pane first")
+		return
+	}
+	s, err := c.act.StartShell(p.Path, c.PaneRect().Cols, rows)
+	if err != nil {
+		c.Note("terminal: %v", err)
+		return
+	}
+	sp := &sidePane{s: s, rows: rows, command: filepath.Base(term.Shell())}
+	c.addPane(r.Key, sp)
+	c.fitPanes()
+	c.sideEnter(sp)
+}
+
+// addPane puts a command pane under the session key, with its own hold on
+// the keys, as the session's pane has.
+func (c *Chat) addPane(key string, sp *sidePane) {
+	sp.pane.Point(key, sp.s, c.PaneRect().Cols, sp.rows)
+	sp.cap = kit.NewCapture(c.Screen, &sp.pane, func() kit.Rect { return c.sideRectOf(sp) })
+	sp.cap.Left = func() { c.sideFocus = sp }
+	sp.cap.Beside = c.pointAt
+	c.side[key] = append(c.side[key], sp)
+}
+
+// sideEnter gives a pane's program the keys, shown first when hidden.
+func (c *Chat) sideEnter(sp *sidePane) {
+	if sp.hidden {
+		c.togglePane(sp)
+	}
+	if sp.cap == nil || sp.hidden {
+		return
+	}
+	c.Capture.Drop()
+	c.dropSides(sp)
+	c.sideFocus = sp
+	sp.cap.Take()
+}
+
+// dropSides takes the keys back from every pane but keep.
+func (c *Chat) dropSides(keep *sidePane) {
+	for _, list := range c.side {
+		for _, sp := range list {
+			if sp != keep && sp.cap != nil {
+				sp.cap.Drop()
+			}
+		}
+	}
+}
+
+// sideHeld is the pane holding the keys, or nil.
+func (c *Chat) sideHeld() *sidePane {
+	for _, list := range c.side {
+		for _, sp := range list {
+			if sp.cap != nil && sp.cap.Held() {
+				return sp
+			}
+		}
+	}
+	return nil
+}
+
+// sideUpdate hands a message to the panes' holds on the keys; true when
+// one took it.
+func (c *Chat) sideUpdate(msg tea.Msg) bool {
+	for _, list := range c.side {
+		for _, sp := range list {
+			if sp.cap != nil && sp.cap.Update(msg) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // closePanes closes the session's panes running command, or all of them.
@@ -121,6 +208,9 @@ func (c *Chat) closePanes(key, command string) {
 }
 
 func (c *Chat) closePane(key string, sp *sidePane) {
+	if sp.cap != nil {
+		sp.cap.Drop()
+	}
 	if sp.s != nil && sp.s.Alive() {
 		_ = sp.s.Stop()
 	}
@@ -174,6 +264,9 @@ func (c *Chat) togglePane(sp *sidePane) {
 		c.Note("no room for the pane under the session: hide another one first")
 		return
 	}
+	if !sp.hidden && sp.cap != nil {
+		sp.cap.Drop()
+	}
 	sp.hidden = !sp.hidden
 	c.fitPanes()
 }
@@ -194,7 +287,7 @@ func (c *Chat) sideBoxes(w int) []string {
 	inner := max(1, w-2)
 	for i, sp := range c.side[c.Pane.Key] {
 		frame := kit.StyleDim
-		if sp == c.focusedPane() {
+		if sp == c.focusedPane() || sp.cap != nil && sp.cap.Held() {
 			frame = kit.StyleAccent
 		}
 		mark, name, state := "▾", sp.command, "running"
@@ -213,7 +306,7 @@ func (c *Chat) sideBoxes(w int) []string {
 		bar := kit.StyleHeader.Render(text.FitExactPad(left, inner-text.Width(right)) + right)
 		box := []string{frame.Render("┌" + strings.Repeat("─", inner) + "┐"), frame.Render("│") + bar + frame.Render("│")}
 		if !sp.hidden {
-			for _, line := range sp.view(inner) {
+			for _, line := range sp.view(inner, c.Tick%2 == 0) {
 				box = append(box, frame.Render("│")+text.FitExactPad(line, inner)+"\x1b[0m"+frame.Render("│"))
 			}
 		}
@@ -223,10 +316,11 @@ func (c *Chat) sideBoxes(w int) []string {
 	return out
 }
 
-// view is a shown pane's rows, w wide.
-func (sp *sidePane) view(w int) []string {
+// view is a shown pane's rows, w wide; while it holds the keys its cursor
+// blinks with blinkOn.
+func (sp *sidePane) view(w int, blinkOn bool) []string {
 	if sp.s != nil {
-		return sp.pane.View(w, sp.rows, false, false)
+		return sp.pane.View(w, sp.rows, sp.cap != nil && sp.cap.Held(), blinkOn)
 	}
 	if len(sp.lines) == 0 {
 		return []string{kit.StyleDim.Render(" no subagent yet: the session's subagents show here as they run")}
@@ -254,6 +348,41 @@ func (c *Chat) sideTop(i int) int {
 func (c *Chat) sideRect(i int) kit.Rect {
 	r := c.PaneRect()
 	return kit.Rect{X0: r.X0, Y0: c.sideTop(i) + 2, Cols: r.Cols, Rows: c.side[c.Pane.Key][i].rows}
+}
+
+// sideRectOf is sideRect of a pane, empty while its session is not shown.
+func (c *Chat) sideRectOf(sp *sidePane) kit.Rect {
+	if i := slices.Index(c.side[c.Pane.Key], sp); i >= 0 {
+		return c.sideRect(i)
+	}
+	return kit.Rect{}
+}
+
+// sideAt is the shown command pane whose rows hold the cell x, y.
+func (c *Chat) sideAt(x, y int) (*sidePane, kit.Rect, bool) {
+	for i, sp := range c.side[c.Pane.Key] {
+		r := c.sideRect(i)
+		if sp.s != nil && !sp.hidden && x >= r.X0 && x < r.X0+r.Cols && y >= r.Y0 && y < r.Y0+r.Rows {
+			return sp, r, true
+		}
+	}
+	return nil, kit.Rect{}, false
+}
+
+// sideWheel scrolls the command pane under the wheel, or gives the wheel to
+// its alternate-screen program, as the session's pane does.
+func (c *Chat) sideWheel(msg tea.MouseMsg) bool {
+	d := kit.Wheel(msg)
+	sp, r, ok := c.sideAt(msg.X, msg.Y)
+	if d == 0 || !ok {
+		return false
+	}
+	code := kit.WheelUp
+	if d > 0 {
+		code = kit.WheelDown
+	}
+	sp.pane.Mouse(r, code, msg.X, msg.Y, false)
+	return true
 }
 
 // sideClick is a left click over the shown session's pane i: on its title
@@ -291,16 +420,16 @@ func (c *Chat) sideMouse(msg tea.MouseMsg) bool {
 	if msg.Action != tea.MouseActionPress || !left {
 		return false
 	}
-	for i, sp := range c.side[c.Pane.Key] {
-		r := c.sideRect(i)
-		if sp.s == nil || sp.hidden || msg.X < r.X0 || msg.X >= r.X0+r.Cols || msg.Y < r.Y0 || msg.Y >= r.Y0+r.Rows {
-			continue
-		}
-		sp.pane.Mouse(r, 0, msg.X, msg.Y, false)
-		c.sideDrag, c.sideFocus = sp, sp
-		return true
+	sp, r, ok := c.sideAt(msg.X, msg.Y)
+	if !ok {
+		return false
 	}
-	return false
+	// A click on its rows goes in, as on the session's pane; held on, it
+	// selects.
+	c.sideEnter(sp)
+	sp.pane.Mouse(r, 0, msg.X, msg.Y, false)
+	c.sideDrag = sp
+	return true
 }
 
 // agentLine is one line of the subagents' pane: when, whose (an index

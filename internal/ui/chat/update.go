@@ -17,7 +17,7 @@ var hits = kit.Hits{Row: "row", Heading: "proj", Pane: "term", Item: "side", Pan
 
 func (c *Chat) Update(msg tea.Msg) tea.Cmd {
 	c.mascot.valid = false
-	if c.Capture.Update(msg) {
+	if c.Capture.Update(msg) || c.sideUpdate(msg) {
 		return nil
 	}
 	switch msg := msg.(type) {
@@ -227,7 +227,7 @@ func (c *Chat) cursorProject() string {
 // project, which takes no keys.
 func (c *Chat) Mouse(msg tea.MouseMsg) tea.Cmd {
 	c.mascot.valid = false
-	if c.sideMouse(msg) {
+	if c.sideMouse(msg) || c.sideWheel(msg) {
 		return nil
 	}
 	if kit.LeftClick(msg) {
@@ -310,6 +310,7 @@ func (c *Chat) pointAt(msg tea.MouseMsg) {
 	if c.tabClick(msg) || c.sideClick(msg) {
 		return
 	}
+	c.sideFocus = nil
 	hit := hits.At(msg, len(c.tree.Sessions()), len(c.core.Store.Projects))
 	switch hit.Kind {
 	case kit.HitRow:
@@ -323,6 +324,7 @@ func (c *Chat) pointAt(msg tea.MouseMsg) {
 // finished one stops calling at once, and waits quietly for its prompt.
 func (c *Chat) takeKeys() {
 	c.sideFocus = nil
+	c.dropSides(nil)
 	if c.Capture.Take() {
 		c.board.See(c.Pane.Key)
 	}

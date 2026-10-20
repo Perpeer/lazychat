@@ -18,7 +18,8 @@ func TestKeymapFooters(t *testing.T) {
 		keys []binding
 		want string
 	}{
-		{"session", sessionKeys, "enter continue · n new · r resume · e rename · w draft · m move · x close · d delete · wheel scroll · ? help"},
+		{"session", sessionKeys, "enter continue · n new · r resume · e rename · w draft · t terminal · m move · x close · d delete · wheel scroll · ? help"},
+		{"a session's pane", sideKeys, "enter go in · space show/hide · x close pane · esc back · ? help"},
 		{"no session", emptyRowKeys, "enter/n new · r resume · ? help"},
 		{"project", projectKeys, "shift+o open · shift+e edit · shift+m move · shift+d delete"},
 		{"no project yet", emptyKeys, "o open · ? help"},

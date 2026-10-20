@@ -7,6 +7,7 @@ import (
 
 	"lazychat/internal/core/ssh"
 	"lazychat/internal/core/state"
+	"lazychat/internal/term"
 	"lazychat/internal/ui/kit"
 	"lazychat/internal/ui/terminal/actions"
 	"lazychat/internal/ui/text"
@@ -157,7 +158,7 @@ func (t *Terminal) connPanel(c state.SSH, w, h int) string {
 // section is the rows under the projects: the shell n starts and how many
 // run, as Chat shows its AI tools there.
 func (t *Terminal) section(w int) []string {
-	program := filepath.Base(actions.Program())
+	program := filepath.Base(term.Shell())
 	mark, detail := kit.StyleDim.Render("●"), "none running"
 	if n := len(t.act.Live.Alive()); n > 0 {
 		mark, detail = kit.StyleBusy.Render(kit.Spinner[t.Tick%len(kit.Spinner)]), fmt.Sprintf("%d running", n)

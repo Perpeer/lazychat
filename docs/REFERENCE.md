@@ -387,11 +387,21 @@ the order opened, the first on top, and show while their session is
 shown. A pane's first row is its title bar: the command (a long one shows
 its end, `…` before it) and whether it runs. A pane opens hidden, its box
 holding the bar alone, its command running. A click on the bar shows or
-hides the pane and gives it the keys (its border lit): the footer then
-names its keys alone — `Enter` shows or hides it, `x` closes it and stops
-its command, `Esc` or a click elsewhere gives the keys back. No other
-footer names a pane's key. A drag over a command pane's rows selects
-their text, and the release copies it. A pane shows only while the panes
+hides the pane and focuses it: its border is lit, not the project list's,
+and the footer names its keys alone — `Enter` goes in (the pane's program
+gets the keys, as a session's does; `ctrl+q` or a click beside it comes
+back), `space` shows or hides it, `x` closes it and stops its command,
+`Esc` or a click elsewhere gives the keys back. No other footer names a
+pane's key. A click on a command pane's rows goes in too, and a drag over
+them selects their text, the release copying it; the wheel over them
+scrolls its history, as in a session's pane.
+
+`t` on a session's row opens a terminal under it: your login shell in the
+project's folder, as the Terminal tab's, in a pane of its own, shown and
+with the keys, so you can run anything there by hand. It is a pane like
+the others; it closes when the shell exits or the session ends.
+
+A pane shows only while the panes
 leave the session half the right side. It closes three seconds after its
 command ends, or when the session ends; `open_pane` with the command of
 an open pane replaces that one.
@@ -528,6 +538,7 @@ the tree too.
 | `n` | a new session — the project (the cursor's, `←→` changes), the AI tool (the one Settings names, else the first ready; one not ready says why and starts nothing) and a name |
 | `r` | resume a saved session of the cursor's project (with none under the cursor, a list of projects asks first): Claude Code's and Codex's under their own headings, each newest first, `/rename` titles (Codex's thread names), ten at a time — scrolling reads older ones |
 | `e` | rename the session; the tree and the pane's title follow, and so does Claude: a running Claude session gets `/rename <name>` typed at its prompt once it works on nothing, asks nothing and holds no line you typed but did not send; a stopped one is resumed out of sight with `-n <name>`, without your hooks and MCP servers, and ended as soon as Claude has written the name (nothing is typed, so nothing goes to the model; resuming it yourself first ends that run, and a folder Claude asks to trust ends it at once); when that fails, it gets `-n <name>` at its next resume. Claude opens a new session under the name given (`-n`). Codex keeps no names |
+| `t` | open a terminal under the session: your login shell in its project's folder, as the Terminal tab's, in a pane of its own with the keys (`ctrl+q` comes back); a running session only |
 | `w` | write the session's next prompt while it works: a box opens over the pane's lower rows (`draft · ivy`) — the session keeps its size, so nothing redraws — with a blinking cursor; `Enter` is a new line, the arrows, Home, End, Option+←→, Shift with a move and a paste work as in any text field, a click puts the cursor where it lands, a drag selects and its release copies the text; `Cmd+Enter` (where the terminal passes it on — kitty-protocol terminals, an iTerm mapping; Terminal.app keeps it) or `Option+Enter` (with Option as Meta) pastes it in the prompt, `Ctrl+U` clears it, asked, `Esc` (or `ctrl+q`, or a click outside) puts it away kept. A draft starting with `/` is pasted on one line, its newlines spaces, since claude runs a slash command only from one line. The draft is the session's own, apart from the tool's input, so an answer the agent asks for never takes its place; it is saved with the workspace and marked `✎` on the row |
 | `x` | close it: its program ends (SIGTERM, SIGKILL after 3 s), its row stays and `Enter` resumes the conversation; asked only while it works, since its answer is cut off |
 | `d` | delete it, asked: a running one gets SIGTERM, SIGKILL after 3 s; the record leaves the tree, Claude Code keeps the transcript and `r` brings it back |

@@ -57,6 +57,11 @@ func init() {
 			}
 		})},
 		{Key: kit.ChatKeys.Draft, Run: act(func(c *Chat) { c.openDraft() })},
+		{Key: kit.ChatKeys.Terminal, Run: act(func(c *Chat) {
+			if r, ok := c.tree.Session(); ok && r.Key == c.Pane.Key {
+				c.openShell(r)
+			}
+		})},
 		keyMove,
 		{Key: kit.ChatKeys.Close, Run: act(func(c *Chat) {
 			if r, ok := c.tree.Session(); ok {
@@ -74,6 +79,11 @@ func init() {
 	// A pane a session opened, given the keys by a click: its own keys, on
 	// no other table.
 	sideKeys = []binding{
+		{Key: kit.ChatKeys.SideEnter, Run: act(func(c *Chat) {
+			if sp := c.focusedPane(); sp != nil {
+				c.sideEnter(sp)
+			}
+		})},
 		{Key: kit.ChatKeys.SideToggle, Run: act(func(c *Chat) {
 			if sp := c.focusedPane(); sp != nil {
 				c.togglePane(sp)
@@ -129,7 +139,7 @@ func (c *Chat) tables() (top, below []binding) {
 	switch {
 	case c.drafting:
 		return draftKeys, nil
-	case c.Capture.Held():
+	case c.Capture.Held() || c.sideHeld() != nil:
 		return termKeys, nil
 	case c.rep.shown && c.repFocus:
 		return pageKeys, nil

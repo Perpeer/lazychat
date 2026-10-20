@@ -95,7 +95,7 @@ func TestReap(t *testing.T) {
 	if tr.Count("app") != 0 || len(h.ended) != 1 {
 		t.Errorf("after exit: %d shells, ended %v", tr.Count("app"), h.ended)
 	}
-	if !strings.HasSuffix(Program(), "sh") {
-		t.Errorf("Program() = %q", Program())
+	if !strings.HasSuffix(term.Shell(), "sh") {
+		t.Errorf("term.Shell() = %q", term.Shell())
 	}
 }

@@ -120,8 +120,16 @@ paths:
   filled bar, kit.StyleHeader, the user's pick over a dim one), never text
   in a border. Its keys are its own: a click on its bar toggles it and
   focuses it (Chat.sideFocus), and only then the footer names them
-  (sideKeys: enter, x, esc); `z` and `Ctrl+X` on the session's footer and
-  a click menu came first and were taken out at the user's word. The title
+  (sideKeys: enter goes in, space shows or hides, x, esc); `z` and
+  `Ctrl+X` on the session's footer and a click menu came first and were
+  taken out at the user's word. A command pane takes the keys through a
+  kit.Capture of its own (sidePane.cap, Chat.sideEnter): one Capture drops
+  before another takes, since the router has one writer. `t` opens the
+  user's login shell there (term.Shell, term.ShellArgv, moved from the
+  Terminal tab so both use them): the user asked for a terminal as the
+  Terminal tab's under a session. While a pane is focused or holds the
+  keys, the project list is not lit: the lit border is the one the keys go
+  to. The title
   keeps the command's end (text.FitLeft), where a log's file is. A command
   pane is a kit.TermPane, so a drag selects and copies as in the session's
   pane (Chat.sideMouse, from the tree; while the session holds the keys

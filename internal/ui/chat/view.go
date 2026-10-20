@@ -23,7 +23,8 @@ func (c *Chat) View() string {
 	c.list.follow.Sync(&c.core.Selected, c.cursorProject(), func(p string) { c.tree.SelectProject(p) })
 	g := c.geometry()
 	left := func() string {
-		focused := !c.Capture.Held() && !(c.rep.shown && c.repFocus) && !c.PaneSel
+		// A pane under the session, focused or holding the keys, is lit instead.
+		focused := !c.Capture.Held() && !(c.rep.shown && c.repFocus) && !c.PaneSel && c.focusedPane() == nil && c.sideHeld() == nil
 		rows := kit.WithTools(c.core.ToolStates(), g.leftW-2, g.bodyH-2, func(h int) []string { return c.list.view(g.leftW-2, h, focused) })
 		return hits.Panel(1, kit.Box(c.list.title(), rows, g.leftW, g.bodyH, focused, false))
 	}

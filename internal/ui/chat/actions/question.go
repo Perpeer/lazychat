@@ -185,6 +185,13 @@ func (a *Actions) PaneAsked(key string) []mcp.PaneRequest {
 	return mcp.TakePane(filepath.Join(a.questions, key))
 }
 
+// StartShell runs the user's login shell in dir, cols by rows, as the
+// Terminal tab's.
+func (a *Actions) StartShell(dir string, cols, rows int) (*term.Session, error) {
+	a.nextID++
+	return term.Start(a.nextID, "pane", "", dir, term.ShellArgv(term.Shell()), cols, rows, a.onOutput)
+}
+
 // StartPane runs a session's pane command in a shell in dir, cols by rows.
 func (a *Actions) StartPane(dir, command string, cols, rows int) (*term.Session, error) {
 	a.nextID++
