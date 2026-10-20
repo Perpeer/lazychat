@@ -85,6 +85,8 @@ var ChatKeys = struct {
 	SideToggle    Key
 	SideClose     Key
 	SideBack      Key
+	SideHeld      Key
+	SideOther     Key
 }{
 	Up:            Key{Keys: []string{"up", "k"}, Name: "↑↓ j k g G", Help: "move from session to session, across the projects; the headings take no cursor; on a running session the pane follows"},
 	New:           Key{Keys: []string{"n"}, Hint: Hint{Key: "n", Does: "new"}, Help: "a new session in the cursor's project: a popup asks the AI tool and a name"},
@@ -106,7 +108,9 @@ var ChatKeys = struct {
 	Terminal:      Key{Keys: []string{"t"}, Hint: Hint{Key: "t", Does: "terminal"}, Help: "open a terminal under the session: your login shell in its project's folder, as the Terminal tab's, in a pane of its own with the keys; " + LeaveLabel + " comes back"},
 	SideEnter:     Key{Keys: []string{"enter"}, Hint: Hint{Key: "enter", Does: "go in"}, Help: "give the pane's program the keys, shown first when hidden; " + LeaveLabel + " or a click beside it comes back; a click on its rows goes in too"},
 	SideToggle:    Key{Keys: []string{" "}, Hint: Hint{Key: "space", Does: "show/hide"}, Help: "show the pane, or hide it to its title bar, its command running on; a click on the title bar does the same and gives the pane the keys"},
-	SideClose:     Key{Keys: []string{"x"}, Hint: Hint{Key: "x", Does: "close pane"}, Help: "close the pane, its command stopped; a pane closes by itself a few seconds after its command ends"},
+	SideClose:     Key{Keys: []string{"ctrl+x"}, Hint: Hint{Key: "ctrl+x", Does: "close pane"}, Help: "close the pane, its command stopped, with the keys in it too; a pane closes by itself a few seconds after its command ends"},
+	SideHeld:      Key{Hint: Hint{Key: "ctrl+x", Does: "close pane"}, Help: "close the pane, its program stopped; the program never gets Ctrl+X"},
+	SideOther:     Key{Hint: Hint{Key: "other keys", Does: "go to the pane"}, Help: "every other key, exactly as typed, goes to the pane's program"},
 	SideBack:      Key{Keys: []string{"esc"}, Hint: Hint{Key: "esc", Does: "back"}, Help: "back to the tree; a click anywhere else too"},
 	PickPrompt:    Key{Keys: []string{"up", "k"}, Hint: Hint{Key: "↑↓", Does: "pick prompt"}, Help: "pick the prompt shown in full under the list: up to a newer one, down to an older one; on the newest the page follows the next prompt"},
 	DetailsPageUp: Key{Keys: []string{"pgup"}, Name: "PgUp PgDn", Help: "scroll the page; the wheel too"},

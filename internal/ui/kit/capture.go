@@ -1,6 +1,8 @@
 package kit
 
 import (
+	"slices"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lazychat/internal/core/keylayout"
@@ -30,6 +32,10 @@ type Capture struct {
 	// Enter (Terminal.app without Option as Meta): claude's sessions want
 	// them — Ctrl+Enter sends a queued prompt now — an editor does not.
 	HeldNewline bool
+	// Own are keys the program never gets while it holds the keys: each comes
+	// back to the tab through OnKey, on the loop, as one byte read alone.
+	Own   []byte
+	OnKey func(b byte)
 	// heldKeys is what is held on the keyboard now; tests stand it in.
 	heldKeys func() (shift, option, control bool)
 }
@@ -39,6 +45,10 @@ type Capture struct {
 type (
 	captureLeave struct{ c *Capture }
 	captureTyped struct{ c *Capture }
+	captureOwn   struct {
+		c *Capture
+		b byte
+	}
 	captureKitty struct {
 		c     *Capture
 		key   string
@@ -83,7 +93,16 @@ func (c *Capture) Take() bool {
 	}
 	c.held, c.key = true, c.pane.Key
 	c.screen.Capture(
-		func(b []byte) { _ = s.Write(c.newline(b, s.Kitty())); c.screen.Send(captureTyped{c}) },
+		func(b []byte) {
+			// shortcut: a key the program asked to get as a kitty report is
+			// not seen here, upgrade when a pane runs such a program.
+			if len(b) == 1 && slices.Contains(c.Own, b[0]) {
+				c.screen.Send(captureOwn{c, b[0]})
+				return
+			}
+			_ = s.Write(c.newline(b, s.Kitty()))
+			c.screen.Send(captureTyped{c})
+		},
 		func() { c.screen.Send(captureLeave{c}) },
 	)
 	key := c.key
@@ -119,6 +138,11 @@ func (c *Capture) Update(msg tea.Msg) bool {
 	case captureLeave:
 		if msg.c == c {
 			c.Drop()
+		}
+		return msg.c == c
+	case captureOwn:
+		if msg.c == c && c.OnKey != nil {
+			c.OnKey(msg.b)
 		}
 		return msg.c == c
 	case captureTyped:

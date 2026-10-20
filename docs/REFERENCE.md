@@ -390,8 +390,10 @@ holding the bar alone, its command running. A click on the bar shows or
 hides the pane and focuses it: its border is lit, not the project list's,
 and the footer names its keys alone — `Enter` goes in (the pane's program
 gets the keys, as a session's does; `ctrl+q` or a click beside it comes
-back), `space` shows or hides it, `x` closes it and stops its command,
-`Esc` or a click elsewhere gives the keys back. No other footer names a
+back), `space` shows or hides it, `Ctrl+X` closes it and stops its
+command, `Esc` or a click elsewhere gives the keys back. `Ctrl+X` closes a
+pane with the keys in it too — a terminal, a command pane — so a pane
+closes one way however it is reached; its program never gets that key. No other footer names a
 pane's key. A click on a command pane's rows goes in too, and a drag over
 them selects their text, the release copying it; the wheel over them
 scrolls its history, as in a session's pane.

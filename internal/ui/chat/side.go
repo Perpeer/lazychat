@@ -145,6 +145,13 @@ func (c *Chat) addPane(key string, sp *sidePane) {
 	sp.cap = kit.NewCapture(c.Screen, &sp.pane, func() kit.Rect { return c.sideRectOf(sp) })
 	sp.cap.Left = func() { c.sideFocus = sp }
 	sp.cap.Beside = c.pointAt
+	// Ctrl+X closes the pane with the keys in it too: the same key as on its
+	// own footer, so a pane closes one way however it is reached.
+	sp.cap.Own = []byte{0x18}
+	sp.cap.OnKey = func(byte) {
+		c.closePane(key, sp)
+		c.fitPanes()
+	}
 	c.side[key] = append(c.side[key], sp)
 }
 

@@ -82,7 +82,7 @@ func TestSidePane(t *testing.T) {
 
 	// A click on its bar: shown, and its keys on the footer alone.
 	clickBar(" ▸ echo watching")
-	d.expect(" ▾ echo watching", "│watching the shed", "(enter) go in", "(space) show/hide", "(x) close pane", "(esc) back")
+	d.expect(" ▾ echo watching", "│watching the shed", "(enter) go in", "(space) show/hide", "(ctrl+x) close pane", "(esc) back")
 	d.expectNot("(w) draft")
 	d.key("esc")
 	fits("shown")
@@ -124,8 +124,8 @@ func TestSidePane(t *testing.T) {
 	clickBar(" ▾ echo watching")
 	d.expect(" ▸ echo watching", " ▾ echo second pane")
 	// Closed from its keys, the other stays.
-	d.key("x")
-	d.until("x did not close the pane", func() bool { return !strings.Contains(d.screen(), " ▸ echo watching") })
+	d.key("ctrl+x")
+	d.until("ctrl+x did not close the pane", func() bool { return !strings.Contains(d.screen(), " ▸ echo watching") })
 	d.expect(" ▾ echo second pane")
 	fits("after a close")
 
@@ -207,5 +207,13 @@ func TestSidePaneTerminal(t *testing.T) {
 
 	d.key("esc")
 	d.until("the project list is not lit once the pane lets go", listLit)
+
+	// A click on its rows goes in; Ctrl+X there closes it, the shell never
+	// getting the key.
+	d.click(x, y)
+	d.expect("(ctrl+x) close pane", "(other keys) go to the pane")
+	d.raw("\x18")
+	d.until("ctrl+x in the terminal did not close it", func() bool { return !strings.Contains(d.screen(), " ▾ sh") })
+	d.expect("(t) terminal")
 	d.quitApp()
 }

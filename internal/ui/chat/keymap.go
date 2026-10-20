@@ -38,7 +38,7 @@ func chatScreen(c *Chat) kit.Screen { return c.Screen }
 // session has the keys they never reach Bubble Tea, the input router hands
 // them to the session. They are filled in init because the help binding
 // reads them all.
-var sessionKeys, sideKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, draftKeys []binding
+var sessionKeys, sideKeys, emptyRowKeys, projectKeys, emptyKeys, moveKeys, termKeys, sideTermKeys, draftKeys []binding
 
 // The report's table, and panel 2's while chosen but not entered.
 var pageKeys, paneKeys []binding
@@ -130,6 +130,13 @@ func init() {
 		{Key: kit.ChatKeys.PaneWheel},
 		{Key: kit.ChatKeys.PaneOther},
 	}
+	// A pane's program with the keys: the same, and the one key it keeps.
+	sideTermKeys = []binding{
+		{Key: kit.ChatKeys.PaneLeave},
+		{Key: kit.ChatKeys.SideHeld},
+		{Key: kit.ChatKeys.PaneWheel},
+		{Key: kit.ChatKeys.SideOther},
+	}
 }
 
 // tables are the footer's two rows for where the keys are now: the row's
@@ -139,8 +146,10 @@ func (c *Chat) tables() (top, below []binding) {
 	switch {
 	case c.drafting:
 		return draftKeys, nil
-	case c.Capture.Held() || c.sideHeld() != nil:
+	case c.Capture.Held():
 		return termKeys, nil
+	case c.sideHeld() != nil:
+		return sideTermKeys, nil
 	case c.rep.shown && c.repFocus:
 		return pageKeys, nil
 	case c.focusedPane() != nil:
@@ -205,6 +214,7 @@ func helpText() string {
 	lines = append(lines, kit.HelpSection("Project", projectKeys)...)
 	lines = append(lines, kit.HelpSection("No project", emptyKeys)...)
 	lines = append(lines, kit.HelpSection("Terminal", termKeys)...)
+	lines = append(lines, kit.HelpSection("A pane with the keys", sideTermKeys)...)
 	lines = append(lines, kit.HelpSection("Session chosen", paneKeys)...)
 	lines = append(lines, kit.HelpSection("Draft", draftKeys)...)
 	lines = append(lines, kit.HelpSection("A session's pane (a click on its title bar)", sideKeys)...)
